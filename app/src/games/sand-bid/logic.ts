@@ -2,14 +2,17 @@
  * SAND BID — rules (our own take on a blind time auction)
  *
  * - Every player starts with the same secret bank of time (default 3:00).
- * - Each round, everyone presses and holds their button through a 3-second
- *   countdown. Letting go during the countdown means sitting the round out
- *   (it costs nothing).
- * - When the countdown ends, the clock runs. Each player lets go whenever they
- *   like; the time they held is their bid and is spent from their bank, win
- *   or lose. A bank can't go below zero: at 0:00 the button releases itself.
+ * - Each round, everyone with time left presses and holds their button. When
+ *   all of them are holding, a 3-second countdown starts. Letting go during the
+ *   countdown means sitting the round out (it costs nothing). Players with an
+ *   empty bank sit out automatically.
+ * - When the countdown ends, the round clock runs. Each player lets go whenever
+ *   they like; the time they held is their bid and is spent from their bank,
+ *   win or lose. At 0:00 a player's button releases itself.
+ * - The round lasts until the LAST player lets go, so everyone sees how long
+ *   the round ran (= the winning hold). Who let go when stays secret.
  * - The longest hold wins the round and earns 1 star. Exact ties earn nothing.
- *   Only the winner is announced — nobody learns how long anyone else held.
+ *   (Live round timing lives in round.ts.)
  * - After the last round, most stars wins. Ties go to whoever has more time
  *   left. The player in last place goes to prison.
  */
