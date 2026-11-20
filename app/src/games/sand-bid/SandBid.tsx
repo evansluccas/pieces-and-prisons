@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PixelStage } from '../../engine/PixelStage';
 import { COLORS, Gfx } from '../../engine/gfx';
-import { seededRng } from '../lonely-number/bots';
+import { seededRng } from '../shared/rng';
 import { standingsPanel, starCount, topBar } from '../shared/draw';
 import { Persona, botBid } from './bots';
 import { DEFAULT_CONFIG, GameState, formatMs, newGame, nextRound, resolveRound, standings } from './logic';

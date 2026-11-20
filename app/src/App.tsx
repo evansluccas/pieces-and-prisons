@@ -3,12 +3,14 @@ import { loadAll } from './engine/atlas';
 import { GAMES } from './games/registry';
 import { LonelyNumber, RULES as LONELY_RULES } from './games/lonely-number/LonelyNumber';
 import { SandBid, RULES as SAND_RULES } from './games/sand-bid/SandBid';
+import { DiceTower, RULES as DICE_RULES } from './games/dice-tower/DiceTower';
 import { Hub } from './ui/Hub';
 import { Panel } from './ui/Panel';
 
 const GAME_VIEWS: Record<string, { rules: string[]; View: (p: { botCount: number }) => JSX.Element }> = {
   'lonely-number': { rules: LONELY_RULES, View: LonelyNumber },
   'sand-bid': { rules: SAND_RULES, View: SandBid },
+  'dice-tower': { rules: DICE_RULES, View: DiceTower },
 };
 
 export function App() {

@@ -1,4 +1,4 @@
-import type { Rng } from '../lonely-number/bots';
+import type { Rng } from '../shared/rng';
 
 export type Persona = 'steady' | 'spiker' | 'wild';
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { formatMs, newGame, nextRound, resolveRound, roundWinner, standings } from './logic';
 import { botBid } from './bots';
-import { seededRng } from '../lonely-number/bots';
+import { seededRng } from '../shared/rng';
 
 const players = [
   { id: 'a', name: 'A', isBot: false },
