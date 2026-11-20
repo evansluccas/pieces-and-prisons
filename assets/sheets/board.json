@@ -1,0 +1,165 @@
+{
+ "image": "board.png",
+ "size": {
+  "w": 256,
+  "h": 33
+ },
+ "frames": {
+  "wall_h": {
+   "x": 0,
+   "y": 0,
+   "w": 16,
+   "h": 4
+  },
+  "wall_v": {
+   "x": 17,
+   "y": 0,
+   "w": 4,
+   "h": 16
+  },
+  "counter_square_ruby": {
+   "x": 22,
+   "y": 0,
+   "w": 16,
+   "h": 16
+  },
+  "counter_round_ruby": {
+   "x": 39,
+   "y": 0,
+   "w": 16,
+   "h": 16
+  },
+  "counter_square_sapphire": {
+   "x": 56,
+   "y": 0,
+   "w": 16,
+   "h": 16
+  },
+  "counter_round_sapphire": {
+   "x": 73,
+   "y": 0,
+   "w": 16,
+   "h": 16
+  },
+  "counter_square_emerald": {
+   "x": 90,
+   "y": 0,
+   "w": 16,
+   "h": 16
+  },
+  "counter_round_emerald": {
+   "x": 107,
+   "y": 0,
+   "w": 16,
+   "h": 16
+  },
+  "counter_square_topaz": {
+   "x": 124,
+   "y": 0,
+   "w": 16,
+   "h": 16
+  },
+  "counter_round_topaz": {
+   "x": 141,
+   "y": 0,
+   "w": 16,
+   "h": 16
+  },
+  "counter_square_amethyst": {
+   "x": 158,
+   "y": 0,
+   "w": 16,
+   "h": 16
+  },
+  "counter_round_amethyst": {
+   "x": 175,
+   "y": 0,
+   "w": 16,
+   "h": 16
+  },
+  "counter_square_ivory": {
+   "x": 192,
+   "y": 0,
+   "w": 16,
+   "h": 16
+  },
+  "counter_round_ivory": {
+   "x": 209,
+   "y": 0,
+   "w": 16,
+   "h": 16
+  },
+  "shape_triangle": {
+   "x": 226,
+   "y": 0,
+   "w": 16,
+   "h": 16
+  },
+  "shape_circle": {
+   "x": 0,
+   "y": 17,
+   "w": 16,
+   "h": 16
+  },
+  "shape_star": {
+   "x": 17,
+   "y": 17,
+   "w": 16,
+   "h": 16
+  },
+  "shape_square": {
+   "x": 34,
+   "y": 17,
+   "w": 16,
+   "h": 16
+  },
+  "tile_grass": {
+   "x": 51,
+   "y": 17,
+   "w": 16,
+   "h": 16
+  },
+  "tile_sand": {
+   "x": 68,
+   "y": 17,
+   "w": 16,
+   "h": 16
+  },
+  "tile_water": {
+   "x": 85,
+   "y": 17,
+   "w": 16,
+   "h": 16
+  },
+  "tile_stone": {
+   "x": 102,
+   "y": 17,
+   "w": 16,
+   "h": 16
+  },
+  "tile_night": {
+   "x": 119,
+   "y": 17,
+   "w": 16,
+   "h": 16
+  },
+  "tile_cell": {
+   "x": 136,
+   "y": 17,
+   "w": 16,
+   "h": 16
+  },
+  "tree": {
+   "x": 153,
+   "y": 17,
+   "w": 16,
+   "h": 16
+  },
+  "manhole": {
+   "x": 170,
+   "y": 17,
+   "w": 16,
+   "h": 16
+  }
+ }
+}

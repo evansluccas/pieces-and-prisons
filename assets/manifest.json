@@ -1,0 +1,1645 @@
+{
+ "version": 1,
+ "scale_note": "Sprites are authored at 1x; scale with nearest-neighbour only.",
+ "categories": {
+  "icons": [
+   {
+    "name": "crown",
+    "w": 16,
+    "h": 16,
+    "desc": "",
+    "path": "sprites/icons/crown.png"
+   },
+   {
+    "name": "skull",
+    "w": 16,
+    "h": 16,
+    "desc": "",
+    "path": "sprites/icons/skull.png"
+   },
+   {
+    "name": "house",
+    "w": 16,
+    "h": 16,
+    "desc": "",
+    "path": "sprites/icons/house.png"
+   },
+   {
+    "name": "exile",
+    "w": 16,
+    "h": 16,
+    "desc": "",
+    "path": "sprites/icons/exile.png"
+   },
+   {
+    "name": "eye",
+    "w": 16,
+    "h": 16,
+    "desc": "",
+    "path": "sprites/icons/eye.png"
+   },
+   {
+    "name": "swap",
+    "w": 16,
+    "h": 16,
+    "desc": "",
+    "path": "sprites/icons/swap.png"
+   },
+   {
+    "name": "rotate",
+    "w": 16,
+    "h": 16,
+    "desc": "",
+    "path": "sprites/icons/rotate.png"
+   },
+   {
+    "name": "lock",
+    "w": 16,
+    "h": 16,
+    "desc": "",
+    "path": "sprites/icons/lock.png"
+   },
+   {
+    "name": "check",
+    "w": 16,
+    "h": 16,
+    "desc": "",
+    "path": "sprites/icons/check.png"
+   },
+   {
+    "name": "cross",
+    "w": 16,
+    "h": 16,
+    "desc": "",
+    "path": "sprites/icons/cross.png"
+   },
+   {
+    "name": "hourglass",
+    "w": 16,
+    "h": 16,
+    "desc": "",
+    "path": "sprites/icons/hourglass.png"
+   },
+   {
+    "name": "heart",
+    "w": 16,
+    "h": 16,
+    "desc": "",
+    "path": "sprites/icons/heart.png"
+   },
+   {
+    "name": "star",
+    "w": 16,
+    "h": 16,
+    "desc": "",
+    "path": "sprites/icons/star.png"
+   },
+   {
+    "name": "scroll",
+    "w": 16,
+    "h": 16,
+    "desc": "",
+    "path": "sprites/icons/scroll.png"
+   },
+   {
+    "name": "bell",
+    "w": 16,
+    "h": 16,
+    "desc": "",
+    "path": "sprites/icons/bell.png"
+   },
+   {
+    "name": "question",
+    "w": 16,
+    "h": 16,
+    "desc": "",
+    "path": "sprites/icons/question.png"
+   },
+   {
+    "name": "gear",
+    "w": 16,
+    "h": 16,
+    "desc": "",
+    "path": "sprites/icons/gear.png"
+   },
+   {
+    "name": "player",
+    "w": 16,
+    "h": 16,
+    "desc": "",
+    "path": "sprites/icons/player.png"
+   },
+   {
+    "name": "sword",
+    "w": 16,
+    "h": 16,
+    "desc": "",
+    "path": "sprites/icons/sword.png"
+   },
+   {
+    "name": "shield",
+    "w": 16,
+    "h": 16,
+    "desc": "",
+    "path": "sprites/icons/shield.png"
+   },
+   {
+    "name": "prison",
+    "w": 16,
+    "h": 16,
+    "desc": "",
+    "path": "sprites/icons/prison.png"
+   },
+   {
+    "name": "people",
+    "w": 16,
+    "h": 16,
+    "desc": "",
+    "path": "sprites/icons/people.png"
+   },
+   {
+    "name": "trophy",
+    "w": 16,
+    "h": 16,
+    "desc": "",
+    "path": "sprites/icons/trophy.png"
+   }
+  ],
+  "items": [
+   {
+    "name": "piece",
+    "w": 16,
+    "h": 16,
+    "desc": "The Piece - core currency and life token",
+    "path": "sprites/items/piece.png"
+   },
+   {
+    "name": "revolver_empty",
+    "w": 24,
+    "h": 24,
+    "desc": "Six-chamber cylinder, empty",
+    "path": "sprites/items/revolver_empty.png"
+   },
+   {
+    "name": "revolver_loaded",
+    "w": 24,
+    "h": 24,
+    "desc": "Six-chamber cylinder with 2 rounds",
+    "path": "sprites/items/revolver_loaded.png"
+   },
+   {
+    "name": "revolver_chamber_hidden",
+    "w": 24,
+    "h": 24,
+    "desc": "Cylinder (chambers unknown)",
+    "path": "sprites/items/revolver_chamber_hidden.png"
+   },
+   {
+    "name": "bullet",
+    "w": 8,
+    "h": 16,
+    "desc": "Round",
+    "path": "sprites/items/bullet.png"
+   },
+   {
+    "name": "balance_scale",
+    "w": 24,
+    "h": 24,
+    "desc": "Balance scale (Heavy 13 / Scale games)",
+    "path": "sprites/items/balance_scale.png"
+   },
+   {
+    "name": "scale_pan_ruby",
+    "w": 24,
+    "h": 16,
+    "desc": "Scale pan (ruby)",
+    "path": "sprites/items/scale_pan_ruby.png"
+   },
+   {
+    "name": "scale_pan_emerald",
+    "w": 24,
+    "h": 16,
+    "desc": "Scale pan (emerald)",
+    "path": "sprites/items/scale_pan_emerald.png"
+   },
+   {
+    "name": "scale_pan_sapphire",
+    "w": 24,
+    "h": 16,
+    "desc": "Scale pan (sapphire)",
+    "path": "sprites/items/scale_pan_sapphire.png"
+   },
+   {
+    "name": "rock_small",
+    "w": 10,
+    "h": 10,
+    "desc": "Small rock",
+    "path": "sprites/items/rock_small.png"
+   },
+   {
+    "name": "rock_medium",
+    "w": 12,
+    "h": 12,
+    "desc": "Medium rock",
+    "path": "sprites/items/rock_medium.png"
+   },
+   {
+    "name": "rock_large",
+    "w": 16,
+    "h": 16,
+    "desc": "Large rock",
+    "path": "sprites/items/rock_large.png"
+   },
+   {
+    "name": "piggy_bank",
+    "w": 24,
+    "h": 24,
+    "desc": "Piggy bank",
+    "path": "sprites/items/piggy_bank.png"
+   },
+   {
+    "name": "wall_breaker",
+    "w": 16,
+    "h": 16,
+    "desc": "Wall breaker hammer",
+    "path": "sprites/items/wall_breaker.png"
+   },
+   {
+    "name": "push_button",
+    "w": 16,
+    "h": 16,
+    "desc": "Push button (Time Auction)",
+    "path": "sprites/items/push_button.png"
+   },
+   {
+    "name": "key",
+    "w": 16,
+    "h": 16,
+    "desc": "Key",
+    "path": "sprites/items/key.png"
+   },
+   {
+    "name": "safe",
+    "w": 16,
+    "h": 16,
+    "desc": "Safe / vault",
+    "path": "sprites/items/safe.png"
+   },
+   {
+    "name": "treasure_chest",
+    "w": 16,
+    "h": 16,
+    "desc": "Treasure chest",
+    "path": "sprites/items/treasure_chest.png"
+   }
+  ],
+  "coins": [
+   {
+    "name": "coin_1",
+    "w": 16,
+    "h": 16,
+    "desc": "Gold coin worth 1",
+    "path": "sprites/coins/coin_1.png"
+   },
+   {
+    "name": "coin_2",
+    "w": 16,
+    "h": 16,
+    "desc": "Gold coin worth 2",
+    "path": "sprites/coins/coin_2.png"
+   },
+   {
+    "name": "coin_3",
+    "w": 16,
+    "h": 16,
+    "desc": "Gold coin worth 3",
+    "path": "sprites/coins/coin_3.png"
+   },
+   {
+    "name": "coin_5",
+    "w": 16,
+    "h": 16,
+    "desc": "Gold coin worth 5",
+    "path": "sprites/coins/coin_5.png"
+   },
+   {
+    "name": "coin_10",
+    "w": 16,
+    "h": 16,
+    "desc": "Gold coin worth 10",
+    "path": "sprites/coins/coin_10.png"
+   },
+   {
+    "name": "coin_blank",
+    "w": 16,
+    "h": 16,
+    "desc": "Plain gold coin",
+    "path": "sprites/coins/coin_blank.png"
+   },
+   {
+    "name": "coin_black",
+    "w": 12,
+    "h": 12,
+    "desc": "Black coin (Piggy Bank)",
+    "path": "sprites/coins/coin_black.png"
+   },
+   {
+    "name": "coin_white",
+    "w": 12,
+    "h": 12,
+    "desc": "White coin (Piggy Bank)",
+    "path": "sprites/coins/coin_white.png"
+   },
+   {
+    "name": "coin_silver",
+    "w": 12,
+    "h": 12,
+    "desc": "Small silver coin",
+    "path": "sprites/coins/coin_silver.png"
+   },
+   {
+    "name": "chip_ruby",
+    "w": 16,
+    "h": 16,
+    "desc": "Betting chip (ruby)",
+    "path": "sprites/coins/chip_ruby.png"
+   },
+   {
+    "name": "chip_emerald",
+    "w": 16,
+    "h": 16,
+    "desc": "Betting chip (emerald)",
+    "path": "sprites/coins/chip_emerald.png"
+   },
+   {
+    "name": "chip_sapphire",
+    "w": 16,
+    "h": 16,
+    "desc": "Betting chip (sapphire)",
+    "path": "sprites/coins/chip_sapphire.png"
+   },
+   {
+    "name": "chip_topaz",
+    "w": 16,
+    "h": 16,
+    "desc": "Betting chip (topaz)",
+    "path": "sprites/coins/chip_topaz.png"
+   },
+   {
+    "name": "chip_amethyst",
+    "w": 16,
+    "h": 16,
+    "desc": "Betting chip (amethyst)",
+    "path": "sprites/coins/chip_amethyst.png"
+   },
+   {
+    "name": "chip_iron",
+    "w": 16,
+    "h": 16,
+    "desc": "Betting chip (iron)",
+    "path": "sprites/coins/chip_iron.png"
+   },
+   {
+    "name": "chip_rainbow",
+    "w": 16,
+    "h": 16,
+    "desc": "Rainbow chip (wild colour)",
+    "path": "sprites/coins/chip_rainbow.png"
+   }
+  ],
+  "dice": [
+   {
+    "name": "die_white_1",
+    "w": 16,
+    "h": 16,
+    "desc": "White die showing 1",
+    "path": "sprites/dice/die_white_1.png"
+   },
+   {
+    "name": "die_red_1",
+    "w": 16,
+    "h": 16,
+    "desc": "Red die showing 1",
+    "path": "sprites/dice/die_red_1.png"
+   },
+   {
+    "name": "die_blue_1",
+    "w": 16,
+    "h": 16,
+    "desc": "Blue die showing 1",
+    "path": "sprites/dice/die_blue_1.png"
+   },
+   {
+    "name": "die_white_2",
+    "w": 16,
+    "h": 16,
+    "desc": "White die showing 2",
+    "path": "sprites/dice/die_white_2.png"
+   },
+   {
+    "name": "die_red_2",
+    "w": 16,
+    "h": 16,
+    "desc": "Red die showing 2",
+    "path": "sprites/dice/die_red_2.png"
+   },
+   {
+    "name": "die_blue_2",
+    "w": 16,
+    "h": 16,
+    "desc": "Blue die showing 2",
+    "path": "sprites/dice/die_blue_2.png"
+   },
+   {
+    "name": "die_white_3",
+    "w": 16,
+    "h": 16,
+    "desc": "White die showing 3",
+    "path": "sprites/dice/die_white_3.png"
+   },
+   {
+    "name": "die_red_3",
+    "w": 16,
+    "h": 16,
+    "desc": "Red die showing 3",
+    "path": "sprites/dice/die_red_3.png"
+   },
+   {
+    "name": "die_blue_3",
+    "w": 16,
+    "h": 16,
+    "desc": "Blue die showing 3",
+    "path": "sprites/dice/die_blue_3.png"
+   },
+   {
+    "name": "die_white_4",
+    "w": 16,
+    "h": 16,
+    "desc": "White die showing 4",
+    "path": "sprites/dice/die_white_4.png"
+   },
+   {
+    "name": "die_red_4",
+    "w": 16,
+    "h": 16,
+    "desc": "Red die showing 4",
+    "path": "sprites/dice/die_red_4.png"
+   },
+   {
+    "name": "die_blue_4",
+    "w": 16,
+    "h": 16,
+    "desc": "Blue die showing 4",
+    "path": "sprites/dice/die_blue_4.png"
+   },
+   {
+    "name": "die_white_5",
+    "w": 16,
+    "h": 16,
+    "desc": "White die showing 5",
+    "path": "sprites/dice/die_white_5.png"
+   },
+   {
+    "name": "die_red_5",
+    "w": 16,
+    "h": 16,
+    "desc": "Red die showing 5",
+    "path": "sprites/dice/die_red_5.png"
+   },
+   {
+    "name": "die_blue_5",
+    "w": 16,
+    "h": 16,
+    "desc": "Blue die showing 5",
+    "path": "sprites/dice/die_blue_5.png"
+   },
+   {
+    "name": "die_white_6",
+    "w": 16,
+    "h": 16,
+    "desc": "White die showing 6",
+    "path": "sprites/dice/die_white_6.png"
+   },
+   {
+    "name": "die_red_6",
+    "w": 16,
+    "h": 16,
+    "desc": "Red die showing 6",
+    "path": "sprites/dice/die_red_6.png"
+   },
+   {
+    "name": "die_blue_6",
+    "w": 16,
+    "h": 16,
+    "desc": "Blue die showing 6",
+    "path": "sprites/dice/die_blue_6.png"
+   },
+   {
+    "name": "die_hidden",
+    "w": 16,
+    "h": 16,
+    "desc": "Hidden die",
+    "path": "sprites/dice/die_hidden.png"
+   }
+  ],
+  "board": [
+   {
+    "name": "wall_h",
+    "w": 16,
+    "h": 4,
+    "desc": "Wall segment (horizontal)",
+    "path": "sprites/board/wall_h.png"
+   },
+   {
+    "name": "wall_v",
+    "w": 4,
+    "h": 16,
+    "desc": "Wall segment (vertical)",
+    "path": "sprites/board/wall_v.png"
+   },
+   {
+    "name": "counter_square_ruby",
+    "w": 16,
+    "h": 16,
+    "desc": "Square counter (ruby)",
+    "path": "sprites/board/counter_square_ruby.png"
+   },
+   {
+    "name": "counter_round_ruby",
+    "w": 16,
+    "h": 16,
+    "desc": "Round counter (ruby)",
+    "path": "sprites/board/counter_round_ruby.png"
+   },
+   {
+    "name": "counter_square_sapphire",
+    "w": 16,
+    "h": 16,
+    "desc": "Square counter (sapphire)",
+    "path": "sprites/board/counter_square_sapphire.png"
+   },
+   {
+    "name": "counter_round_sapphire",
+    "w": 16,
+    "h": 16,
+    "desc": "Round counter (sapphire)",
+    "path": "sprites/board/counter_round_sapphire.png"
+   },
+   {
+    "name": "counter_square_emerald",
+    "w": 16,
+    "h": 16,
+    "desc": "Square counter (emerald)",
+    "path": "sprites/board/counter_square_emerald.png"
+   },
+   {
+    "name": "counter_round_emerald",
+    "w": 16,
+    "h": 16,
+    "desc": "Round counter (emerald)",
+    "path": "sprites/board/counter_round_emerald.png"
+   },
+   {
+    "name": "counter_square_topaz",
+    "w": 16,
+    "h": 16,
+    "desc": "Square counter (topaz)",
+    "path": "sprites/board/counter_square_topaz.png"
+   },
+   {
+    "name": "counter_round_topaz",
+    "w": 16,
+    "h": 16,
+    "desc": "Round counter (topaz)",
+    "path": "sprites/board/counter_round_topaz.png"
+   },
+   {
+    "name": "counter_square_amethyst",
+    "w": 16,
+    "h": 16,
+    "desc": "Square counter (amethyst)",
+    "path": "sprites/board/counter_square_amethyst.png"
+   },
+   {
+    "name": "counter_round_amethyst",
+    "w": 16,
+    "h": 16,
+    "desc": "Round counter (amethyst)",
+    "path": "sprites/board/counter_round_amethyst.png"
+   },
+   {
+    "name": "counter_square_ivory",
+    "w": 16,
+    "h": 16,
+    "desc": "Square counter (ivory)",
+    "path": "sprites/board/counter_square_ivory.png"
+   },
+   {
+    "name": "counter_round_ivory",
+    "w": 16,
+    "h": 16,
+    "desc": "Round counter (ivory)",
+    "path": "sprites/board/counter_round_ivory.png"
+   },
+   {
+    "name": "shape_triangle",
+    "w": 16,
+    "h": 16,
+    "desc": "Bingo shape: triangle",
+    "path": "sprites/board/shape_triangle.png"
+   },
+   {
+    "name": "shape_circle",
+    "w": 16,
+    "h": 16,
+    "desc": "Bingo shape: circle",
+    "path": "sprites/board/shape_circle.png"
+   },
+   {
+    "name": "shape_star",
+    "w": 16,
+    "h": 16,
+    "desc": "Bingo shape: star",
+    "path": "sprites/board/shape_star.png"
+   },
+   {
+    "name": "shape_square",
+    "w": 16,
+    "h": 16,
+    "desc": "Bingo shape: square",
+    "path": "sprites/board/shape_square.png"
+   },
+   {
+    "name": "tile_grass",
+    "w": 16,
+    "h": 16,
+    "desc": "Grass tile",
+    "path": "sprites/board/tile_grass.png"
+   },
+   {
+    "name": "tile_sand",
+    "w": 16,
+    "h": 16,
+    "desc": "Sand tile",
+    "path": "sprites/board/tile_sand.png"
+   },
+   {
+    "name": "tile_water",
+    "w": 16,
+    "h": 16,
+    "desc": "Water tile",
+    "path": "sprites/board/tile_water.png"
+   },
+   {
+    "name": "tile_stone",
+    "w": 16,
+    "h": 16,
+    "desc": "Stone floor tile",
+    "path": "sprites/board/tile_stone.png"
+   },
+   {
+    "name": "tile_night",
+    "w": 16,
+    "h": 16,
+    "desc": "Night / void tile",
+    "path": "sprites/board/tile_night.png"
+   },
+   {
+    "name": "tile_cell",
+    "w": 16,
+    "h": 16,
+    "desc": "Empty grid cell",
+    "path": "sprites/board/tile_cell.png"
+   },
+   {
+    "name": "tree",
+    "w": 16,
+    "h": 16,
+    "desc": "Street tree (blocker)",
+    "path": "sprites/board/tree.png"
+   },
+   {
+    "name": "manhole",
+    "w": 16,
+    "h": 16,
+    "desc": "Manhole",
+    "path": "sprites/board/manhole.png"
+   }
+  ],
+  "gems": [
+   {
+    "name": "diamond",
+    "w": 16,
+    "h": 16,
+    "desc": "Diamond",
+    "path": "sprites/gems/diamond.png"
+   },
+   {
+    "name": "gold_ingot",
+    "w": 16,
+    "h": 16,
+    "desc": "Gold ingot",
+    "path": "sprites/gems/gold_ingot.png"
+   },
+   {
+    "name": "silver_ingot",
+    "w": 16,
+    "h": 16,
+    "desc": "Silver ingot",
+    "path": "sprites/gems/silver_ingot.png"
+   },
+   {
+    "name": "copper_ingot",
+    "w": 16,
+    "h": 16,
+    "desc": "Copper ingot",
+    "path": "sprites/gems/copper_ingot.png"
+   },
+   {
+    "name": "gem_ruby",
+    "w": 16,
+    "h": 16,
+    "desc": "Cut ruby",
+    "path": "sprites/gems/gem_ruby.png"
+   },
+   {
+    "name": "gem_emerald",
+    "w": 16,
+    "h": 16,
+    "desc": "Cut emerald",
+    "path": "sprites/gems/gem_emerald.png"
+   },
+   {
+    "name": "gem_sapphire",
+    "w": 16,
+    "h": 16,
+    "desc": "Cut sapphire",
+    "path": "sprites/gems/gem_sapphire.png"
+   },
+   {
+    "name": "gem_amethyst",
+    "w": 16,
+    "h": 16,
+    "desc": "Cut amethyst",
+    "path": "sprites/gems/gem_amethyst.png"
+   },
+   {
+    "name": "gem_topaz",
+    "w": 16,
+    "h": 16,
+    "desc": "Cut topaz",
+    "path": "sprites/gems/gem_topaz.png"
+   },
+   {
+    "name": "bomb",
+    "w": 16,
+    "h": 16,
+    "desc": "Bomb",
+    "path": "sprites/gems/bomb.png"
+   }
+  ],
+  "monsters": [
+   {
+    "name": "pumpkin",
+    "w": 16,
+    "h": 16,
+    "desc": "",
+    "path": "sprites/monsters/pumpkin.png"
+   },
+   {
+    "name": "ghost",
+    "w": 16,
+    "h": 16,
+    "desc": "",
+    "path": "sprites/monsters/ghost.png"
+   },
+   {
+    "name": "bat",
+    "w": 16,
+    "h": 16,
+    "desc": "",
+    "path": "sprites/monsters/bat.png"
+   },
+   {
+    "name": "slime",
+    "w": 16,
+    "h": 16,
+    "desc": "",
+    "path": "sprites/monsters/slime.png"
+   }
+  ],
+  "tokens": [
+   {
+    "name": "token_alliance",
+    "w": 24,
+    "h": 24,
+    "desc": "Token of Alliance",
+    "path": "sprites/tokens/token_alliance.png"
+   },
+   {
+    "name": "token_salvation",
+    "w": 24,
+    "h": 24,
+    "desc": "Token of Salvation",
+    "path": "sprites/tokens/token_salvation.png"
+   },
+   {
+    "name": "token_prize",
+    "w": 24,
+    "h": 24,
+    "desc": "Prize Token (+prize money)",
+    "path": "sprites/tokens/token_prize.png"
+   },
+   {
+    "name": "token_victory",
+    "w": 24,
+    "h": 24,
+    "desc": "Victory token",
+    "path": "sprites/tokens/token_victory.png"
+   },
+   {
+    "name": "token_curse",
+    "w": 24,
+    "h": 24,
+    "desc": "Curse token",
+    "path": "sprites/tokens/token_curse.png"
+   }
+  ],
+  "portraits": [
+   {
+    "name": "citizen",
+    "w": 16,
+    "h": 16,
+    "desc": "Role portrait: citizen",
+    "path": "sprites/portraits/citizen.png"
+   },
+   {
+    "name": "officer",
+    "w": 16,
+    "h": 16,
+    "desc": "Role portrait: officer",
+    "path": "sprites/portraits/officer.png"
+   },
+   {
+    "name": "terrorist",
+    "w": 16,
+    "h": 16,
+    "desc": "Role portrait: terrorist",
+    "path": "sprites/portraits/terrorist.png"
+   },
+   {
+    "name": "fanatic",
+    "w": 16,
+    "h": 16,
+    "desc": "Role portrait: fanatic",
+    "path": "sprites/portraits/fanatic.png"
+   },
+   {
+    "name": "researcher",
+    "w": 16,
+    "h": 16,
+    "desc": "Role portrait: researcher",
+    "path": "sprites/portraits/researcher.png"
+   },
+   {
+    "name": "journalist",
+    "w": 16,
+    "h": 16,
+    "desc": "Role portrait: journalist",
+    "path": "sprites/portraits/journalist.png"
+   }
+  ],
+  "ui": [
+   {
+    "name": "panel_parchment",
+    "w": 24,
+    "h": 24,
+    "desc": "9-slice panel (slice 4px)",
+    "path": "sprites/ui/panel_parchment.png"
+   },
+   {
+    "name": "panel_night",
+    "w": 24,
+    "h": 24,
+    "desc": "9-slice dark panel (slice 4px)",
+    "path": "sprites/ui/panel_night.png"
+   },
+   {
+    "name": "button_blue",
+    "w": 32,
+    "h": 14,
+    "desc": "Button",
+    "path": "sprites/ui/button_blue.png"
+   },
+   {
+    "name": "button_blue_pressed",
+    "w": 32,
+    "h": 14,
+    "desc": "Button pressed",
+    "path": "sprites/ui/button_blue_pressed.png"
+   },
+   {
+    "name": "button_red",
+    "w": 32,
+    "h": 14,
+    "desc": "Danger button",
+    "path": "sprites/ui/button_red.png"
+   },
+   {
+    "name": "button_red_pressed",
+    "w": 32,
+    "h": 14,
+    "desc": "Danger button pressed",
+    "path": "sprites/ui/button_red_pressed.png"
+   },
+   {
+    "name": "button_disabled",
+    "w": 32,
+    "h": 14,
+    "desc": "Disabled button",
+    "path": "sprites/ui/button_disabled.png"
+   },
+   {
+    "name": "ribbon",
+    "w": 48,
+    "h": 14,
+    "desc": "Title ribbon (9-slice middle)",
+    "path": "sprites/ui/ribbon.png"
+   },
+   {
+    "name": "slot_frame",
+    "w": 20,
+    "h": 20,
+    "desc": "Inventory / item slot",
+    "path": "sprites/ui/slot_frame.png"
+   }
+  ],
+  "cards": [
+   {
+    "name": "back",
+    "w": 32,
+    "h": 44,
+    "desc": "Card back",
+    "path": "sprites/cards/back.png"
+   },
+   {
+    "name": "blank",
+    "w": 32,
+    "h": 44,
+    "desc": "Blank card front",
+    "path": "sprites/cards/blank.png"
+   },
+   {
+    "name": "number_0",
+    "w": 32,
+    "h": 44,
+    "desc": "Number card 0",
+    "path": "sprites/cards/number_0.png"
+   },
+   {
+    "name": "number_1",
+    "w": 32,
+    "h": 44,
+    "desc": "Number card 1",
+    "path": "sprites/cards/number_1.png"
+   },
+   {
+    "name": "number_2",
+    "w": 32,
+    "h": 44,
+    "desc": "Number card 2",
+    "path": "sprites/cards/number_2.png"
+   },
+   {
+    "name": "number_3",
+    "w": 32,
+    "h": 44,
+    "desc": "Number card 3",
+    "path": "sprites/cards/number_3.png"
+   },
+   {
+    "name": "number_4",
+    "w": 32,
+    "h": 44,
+    "desc": "Number card 4",
+    "path": "sprites/cards/number_4.png"
+   },
+   {
+    "name": "number_5",
+    "w": 32,
+    "h": 44,
+    "desc": "Number card 5",
+    "path": "sprites/cards/number_5.png"
+   },
+   {
+    "name": "number_6",
+    "w": 32,
+    "h": 44,
+    "desc": "Number card 6",
+    "path": "sprites/cards/number_6.png"
+   },
+   {
+    "name": "number_7",
+    "w": 32,
+    "h": 44,
+    "desc": "Number card 7",
+    "path": "sprites/cards/number_7.png"
+   },
+   {
+    "name": "number_8",
+    "w": 32,
+    "h": 44,
+    "desc": "Number card 8",
+    "path": "sprites/cards/number_8.png"
+   },
+   {
+    "name": "number_9",
+    "w": 32,
+    "h": 44,
+    "desc": "Number card 9",
+    "path": "sprites/cards/number_9.png"
+   },
+   {
+    "name": "number_10",
+    "w": 32,
+    "h": 44,
+    "desc": "Number card 10",
+    "path": "sprites/cards/number_10.png"
+   },
+   {
+    "name": "op_plus",
+    "w": 32,
+    "h": 44,
+    "desc": "Operator card +",
+    "path": "sprites/cards/op_plus.png"
+   },
+   {
+    "name": "op_minus",
+    "w": 32,
+    "h": 44,
+    "desc": "Operator card -",
+    "path": "sprites/cards/op_minus.png"
+   },
+   {
+    "name": "op_times",
+    "w": 32,
+    "h": 44,
+    "desc": "Operator card x",
+    "path": "sprites/cards/op_times.png"
+   },
+   {
+    "name": "op_divide",
+    "w": 32,
+    "h": 44,
+    "desc": "Operator card /",
+    "path": "sprites/cards/op_divide.png"
+   },
+   {
+    "name": "op_equals",
+    "w": 32,
+    "h": 44,
+    "desc": "Operator card =",
+    "path": "sprites/cards/op_equals.png"
+   },
+   {
+    "name": "spade_A",
+    "w": 32,
+    "h": 44,
+    "desc": "A of spades",
+    "path": "sprites/cards/spade_A.png"
+   },
+   {
+    "name": "spade_2",
+    "w": 32,
+    "h": 44,
+    "desc": "2 of spades",
+    "path": "sprites/cards/spade_2.png"
+   },
+   {
+    "name": "spade_3",
+    "w": 32,
+    "h": 44,
+    "desc": "3 of spades",
+    "path": "sprites/cards/spade_3.png"
+   },
+   {
+    "name": "spade_4",
+    "w": 32,
+    "h": 44,
+    "desc": "4 of spades",
+    "path": "sprites/cards/spade_4.png"
+   },
+   {
+    "name": "spade_5",
+    "w": 32,
+    "h": 44,
+    "desc": "5 of spades",
+    "path": "sprites/cards/spade_5.png"
+   },
+   {
+    "name": "spade_6",
+    "w": 32,
+    "h": 44,
+    "desc": "6 of spades",
+    "path": "sprites/cards/spade_6.png"
+   },
+   {
+    "name": "spade_7",
+    "w": 32,
+    "h": 44,
+    "desc": "7 of spades",
+    "path": "sprites/cards/spade_7.png"
+   },
+   {
+    "name": "spade_8",
+    "w": 32,
+    "h": 44,
+    "desc": "8 of spades",
+    "path": "sprites/cards/spade_8.png"
+   },
+   {
+    "name": "spade_9",
+    "w": 32,
+    "h": 44,
+    "desc": "9 of spades",
+    "path": "sprites/cards/spade_9.png"
+   },
+   {
+    "name": "spade_10",
+    "w": 32,
+    "h": 44,
+    "desc": "10 of spades",
+    "path": "sprites/cards/spade_10.png"
+   },
+   {
+    "name": "spade_J",
+    "w": 32,
+    "h": 44,
+    "desc": "J of spades",
+    "path": "sprites/cards/spade_J.png"
+   },
+   {
+    "name": "spade_Q",
+    "w": 32,
+    "h": 44,
+    "desc": "Q of spades",
+    "path": "sprites/cards/spade_Q.png"
+   },
+   {
+    "name": "spade_K",
+    "w": 32,
+    "h": 44,
+    "desc": "K of spades",
+    "path": "sprites/cards/spade_K.png"
+   },
+   {
+    "name": "heart_A",
+    "w": 32,
+    "h": 44,
+    "desc": "A of hearts",
+    "path": "sprites/cards/heart_A.png"
+   },
+   {
+    "name": "heart_2",
+    "w": 32,
+    "h": 44,
+    "desc": "2 of hearts",
+    "path": "sprites/cards/heart_2.png"
+   },
+   {
+    "name": "heart_3",
+    "w": 32,
+    "h": 44,
+    "desc": "3 of hearts",
+    "path": "sprites/cards/heart_3.png"
+   },
+   {
+    "name": "heart_4",
+    "w": 32,
+    "h": 44,
+    "desc": "4 of hearts",
+    "path": "sprites/cards/heart_4.png"
+   },
+   {
+    "name": "heart_5",
+    "w": 32,
+    "h": 44,
+    "desc": "5 of hearts",
+    "path": "sprites/cards/heart_5.png"
+   },
+   {
+    "name": "heart_6",
+    "w": 32,
+    "h": 44,
+    "desc": "6 of hearts",
+    "path": "sprites/cards/heart_6.png"
+   },
+   {
+    "name": "heart_7",
+    "w": 32,
+    "h": 44,
+    "desc": "7 of hearts",
+    "path": "sprites/cards/heart_7.png"
+   },
+   {
+    "name": "heart_8",
+    "w": 32,
+    "h": 44,
+    "desc": "8 of hearts",
+    "path": "sprites/cards/heart_8.png"
+   },
+   {
+    "name": "heart_9",
+    "w": 32,
+    "h": 44,
+    "desc": "9 of hearts",
+    "path": "sprites/cards/heart_9.png"
+   },
+   {
+    "name": "heart_10",
+    "w": 32,
+    "h": 44,
+    "desc": "10 of hearts",
+    "path": "sprites/cards/heart_10.png"
+   },
+   {
+    "name": "heart_J",
+    "w": 32,
+    "h": 44,
+    "desc": "J of hearts",
+    "path": "sprites/cards/heart_J.png"
+   },
+   {
+    "name": "heart_Q",
+    "w": 32,
+    "h": 44,
+    "desc": "Q of hearts",
+    "path": "sprites/cards/heart_Q.png"
+   },
+   {
+    "name": "heart_K",
+    "w": 32,
+    "h": 44,
+    "desc": "K of hearts",
+    "path": "sprites/cards/heart_K.png"
+   },
+   {
+    "name": "diamond_A",
+    "w": 32,
+    "h": 44,
+    "desc": "A of diamonds",
+    "path": "sprites/cards/diamond_A.png"
+   },
+   {
+    "name": "diamond_2",
+    "w": 32,
+    "h": 44,
+    "desc": "2 of diamonds",
+    "path": "sprites/cards/diamond_2.png"
+   },
+   {
+    "name": "diamond_3",
+    "w": 32,
+    "h": 44,
+    "desc": "3 of diamonds",
+    "path": "sprites/cards/diamond_3.png"
+   },
+   {
+    "name": "diamond_4",
+    "w": 32,
+    "h": 44,
+    "desc": "4 of diamonds",
+    "path": "sprites/cards/diamond_4.png"
+   },
+   {
+    "name": "diamond_5",
+    "w": 32,
+    "h": 44,
+    "desc": "5 of diamonds",
+    "path": "sprites/cards/diamond_5.png"
+   },
+   {
+    "name": "diamond_6",
+    "w": 32,
+    "h": 44,
+    "desc": "6 of diamonds",
+    "path": "sprites/cards/diamond_6.png"
+   },
+   {
+    "name": "diamond_7",
+    "w": 32,
+    "h": 44,
+    "desc": "7 of diamonds",
+    "path": "sprites/cards/diamond_7.png"
+   },
+   {
+    "name": "diamond_8",
+    "w": 32,
+    "h": 44,
+    "desc": "8 of diamonds",
+    "path": "sprites/cards/diamond_8.png"
+   },
+   {
+    "name": "diamond_9",
+    "w": 32,
+    "h": 44,
+    "desc": "9 of diamonds",
+    "path": "sprites/cards/diamond_9.png"
+   },
+   {
+    "name": "diamond_10",
+    "w": 32,
+    "h": 44,
+    "desc": "10 of diamonds",
+    "path": "sprites/cards/diamond_10.png"
+   },
+   {
+    "name": "diamond_J",
+    "w": 32,
+    "h": 44,
+    "desc": "J of diamonds",
+    "path": "sprites/cards/diamond_J.png"
+   },
+   {
+    "name": "diamond_Q",
+    "w": 32,
+    "h": 44,
+    "desc": "Q of diamonds",
+    "path": "sprites/cards/diamond_Q.png"
+   },
+   {
+    "name": "diamond_K",
+    "w": 32,
+    "h": 44,
+    "desc": "K of diamonds",
+    "path": "sprites/cards/diamond_K.png"
+   },
+   {
+    "name": "club_A",
+    "w": 32,
+    "h": 44,
+    "desc": "A of clubs",
+    "path": "sprites/cards/club_A.png"
+   },
+   {
+    "name": "club_2",
+    "w": 32,
+    "h": 44,
+    "desc": "2 of clubs",
+    "path": "sprites/cards/club_2.png"
+   },
+   {
+    "name": "club_3",
+    "w": 32,
+    "h": 44,
+    "desc": "3 of clubs",
+    "path": "sprites/cards/club_3.png"
+   },
+   {
+    "name": "club_4",
+    "w": 32,
+    "h": 44,
+    "desc": "4 of clubs",
+    "path": "sprites/cards/club_4.png"
+   },
+   {
+    "name": "club_5",
+    "w": 32,
+    "h": 44,
+    "desc": "5 of clubs",
+    "path": "sprites/cards/club_5.png"
+   },
+   {
+    "name": "club_6",
+    "w": 32,
+    "h": 44,
+    "desc": "6 of clubs",
+    "path": "sprites/cards/club_6.png"
+   },
+   {
+    "name": "club_7",
+    "w": 32,
+    "h": 44,
+    "desc": "7 of clubs",
+    "path": "sprites/cards/club_7.png"
+   },
+   {
+    "name": "club_8",
+    "w": 32,
+    "h": 44,
+    "desc": "8 of clubs",
+    "path": "sprites/cards/club_8.png"
+   },
+   {
+    "name": "club_9",
+    "w": 32,
+    "h": 44,
+    "desc": "9 of clubs",
+    "path": "sprites/cards/club_9.png"
+   },
+   {
+    "name": "club_10",
+    "w": 32,
+    "h": 44,
+    "desc": "10 of clubs",
+    "path": "sprites/cards/club_10.png"
+   },
+   {
+    "name": "club_J",
+    "w": 32,
+    "h": 44,
+    "desc": "J of clubs",
+    "path": "sprites/cards/club_J.png"
+   },
+   {
+    "name": "club_Q",
+    "w": 32,
+    "h": 44,
+    "desc": "Q of clubs",
+    "path": "sprites/cards/club_Q.png"
+   },
+   {
+    "name": "club_K",
+    "w": 32,
+    "h": 44,
+    "desc": "K of clubs",
+    "path": "sprites/cards/club_K.png"
+   },
+   {
+    "name": "gem_diamond_5",
+    "w": 32,
+    "h": 44,
+    "desc": "Gem card: diamond 5",
+    "path": "sprites/cards/gem_diamond_5.png"
+   },
+   {
+    "name": "gem_diamond_6",
+    "w": 32,
+    "h": 44,
+    "desc": "Gem card: diamond 6",
+    "path": "sprites/cards/gem_diamond_6.png"
+   },
+   {
+    "name": "gem_gold_4",
+    "w": 32,
+    "h": 44,
+    "desc": "Gem card: gold 4",
+    "path": "sprites/cards/gem_gold_4.png"
+   },
+   {
+    "name": "gem_gold_5",
+    "w": 32,
+    "h": 44,
+    "desc": "Gem card: gold 5",
+    "path": "sprites/cards/gem_gold_5.png"
+   },
+   {
+    "name": "gem_silver_2",
+    "w": 32,
+    "h": 44,
+    "desc": "Gem card: silver 2",
+    "path": "sprites/cards/gem_silver_2.png"
+   },
+   {
+    "name": "gem_silver_3",
+    "w": 32,
+    "h": 44,
+    "desc": "Gem card: silver 3",
+    "path": "sprites/cards/gem_silver_3.png"
+   },
+   {
+    "name": "gem_silver_4",
+    "w": 32,
+    "h": 44,
+    "desc": "Gem card: silver 4",
+    "path": "sprites/cards/gem_silver_4.png"
+   },
+   {
+    "name": "gem_copper_1",
+    "w": 32,
+    "h": 44,
+    "desc": "Gem card: copper 1",
+    "path": "sprites/cards/gem_copper_1.png"
+   },
+   {
+    "name": "gem_copper_2",
+    "w": 32,
+    "h": 44,
+    "desc": "Gem card: copper 2",
+    "path": "sprites/cards/gem_copper_2.png"
+   },
+   {
+    "name": "gem_bomb_4",
+    "w": 32,
+    "h": 44,
+    "desc": "Bomb card -4",
+    "path": "sprites/cards/gem_bomb_4.png"
+   },
+   {
+    "name": "gem_bomb_6",
+    "w": 32,
+    "h": 44,
+    "desc": "Bomb card -6",
+    "path": "sprites/cards/gem_bomb_6.png"
+   },
+   {
+    "name": "color_ruby",
+    "w": 32,
+    "h": 44,
+    "desc": "Colour card (ruby)",
+    "path": "sprites/cards/color_ruby.png"
+   },
+   {
+    "name": "color_sapphire",
+    "w": 32,
+    "h": 44,
+    "desc": "Colour card (sapphire)",
+    "path": "sprites/cards/color_sapphire.png"
+   },
+   {
+    "name": "color_emerald",
+    "w": 32,
+    "h": 44,
+    "desc": "Colour card (emerald)",
+    "path": "sprites/cards/color_emerald.png"
+   },
+   {
+    "name": "color_topaz",
+    "w": 32,
+    "h": 44,
+    "desc": "Colour card (topaz)",
+    "path": "sprites/cards/color_topaz.png"
+   },
+   {
+    "name": "color_amethyst",
+    "w": 32,
+    "h": 44,
+    "desc": "Colour card (amethyst)",
+    "path": "sprites/cards/color_amethyst.png"
+   },
+   {
+    "name": "role_terrorist",
+    "w": 32,
+    "h": 44,
+    "desc": "Hidden-role card: terrorist",
+    "path": "sprites/cards/role_terrorist.png"
+   },
+   {
+    "name": "role_fanatic",
+    "w": 32,
+    "h": 44,
+    "desc": "Hidden-role card: fanatic",
+    "path": "sprites/cards/role_fanatic.png"
+   },
+   {
+    "name": "role_officer",
+    "w": 32,
+    "h": 44,
+    "desc": "Hidden-role card: officer",
+    "path": "sprites/cards/role_officer.png"
+   },
+   {
+    "name": "role_citizen",
+    "w": 32,
+    "h": 44,
+    "desc": "Hidden-role card: citizen",
+    "path": "sprites/cards/role_citizen.png"
+   },
+   {
+    "name": "role_researcher",
+    "w": 32,
+    "h": 44,
+    "desc": "Hidden-role card: researcher",
+    "path": "sprites/cards/role_researcher.png"
+   },
+   {
+    "name": "role_journalist",
+    "w": 32,
+    "h": 44,
+    "desc": "Hidden-role card: journalist",
+    "path": "sprites/cards/role_journalist.png"
+   },
+   {
+    "name": "shape_triangle",
+    "w": 32,
+    "h": 44,
+    "desc": "Shape card: triangle",
+    "path": "sprites/cards/shape_triangle.png"
+   },
+   {
+    "name": "shape_circle",
+    "w": 32,
+    "h": 44,
+    "desc": "Shape card: circle",
+    "path": "sprites/cards/shape_circle.png"
+   },
+   {
+    "name": "shape_star",
+    "w": 32,
+    "h": 44,
+    "desc": "Shape card: star",
+    "path": "sprites/cards/shape_star.png"
+   }
+  ]
+ }
+}

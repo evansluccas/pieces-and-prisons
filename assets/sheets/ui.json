@@ -1,0 +1,63 @@
+{
+ "image": "ui.png",
+ "size": {
+  "w": 256,
+  "h": 45
+ },
+ "frames": {
+  "panel_parchment": {
+   "x": 0,
+   "y": 0,
+   "w": 24,
+   "h": 24
+  },
+  "panel_night": {
+   "x": 25,
+   "y": 0,
+   "w": 24,
+   "h": 24
+  },
+  "button_blue": {
+   "x": 50,
+   "y": 0,
+   "w": 32,
+   "h": 14
+  },
+  "button_blue_pressed": {
+   "x": 83,
+   "y": 0,
+   "w": 32,
+   "h": 14
+  },
+  "button_red": {
+   "x": 116,
+   "y": 0,
+   "w": 32,
+   "h": 14
+  },
+  "button_red_pressed": {
+   "x": 149,
+   "y": 0,
+   "w": 32,
+   "h": 14
+  },
+  "button_disabled": {
+   "x": 182,
+   "y": 0,
+   "w": 32,
+   "h": 14
+  },
+  "ribbon": {
+   "x": 0,
+   "y": 25,
+   "w": 48,
+   "h": 14
+  },
+  "slot_frame": {
+   "x": 49,
+   "y": 25,
+   "w": 20,
+   "h": 20
+  }
+ }
+}
