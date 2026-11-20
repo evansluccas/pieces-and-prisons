@@ -8,6 +8,8 @@ interface Props {
   height: number;
   draw: DrawFn;
   onHit?: (id: string) => void;
+  /** Fires when the pointer is released anywhere (for hold-to-act controls). */
+  onRelease?: () => void;
 }
 
 /**
@@ -15,7 +17,7 @@ interface Props {
  * that fits its container (crisp pixels, no blur). Sprites are drawn with
  * smoothing off; text uses a real font so it stays sharp at any scale.
  */
-export function PixelStage({ width, height, draw, onHit }: Props) {
+export function PixelStage({ width, height, draw, onHit, onRelease }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawRef = useRef(draw);
@@ -23,8 +25,20 @@ export function PixelStage({ width, height, draw, onHit }: Props) {
   const hitsRef = useRef<HitRegion[]>([]);
   const hoverRef = useRef<string | null>(null);
   const scaleRef = useRef(1);
+  const releaseRef = useRef(onRelease);
   drawRef.current = draw;
   hitRef.current = onHit;
+  releaseRef.current = onRelease;
+
+  useEffect(() => {
+    const up = () => releaseRef.current?.();
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+    return () => {
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+    };
+  }, []);
 
   useEffect(() => {
     const wrap = wrapRef.current!;

@@ -2,10 +2,14 @@ import { useEffect, useState } from 'react';
 import { loadAll } from './engine/atlas';
 import { GAMES } from './games/registry';
 import { LonelyNumber, RULES as LONELY_RULES } from './games/lonely-number/LonelyNumber';
+import { SandBid, RULES as SAND_RULES } from './games/sand-bid/SandBid';
 import { Hub } from './ui/Hub';
 import { Panel } from './ui/Panel';
 
-const RULES: Record<string, string[]> = { 'lonely-number': LONELY_RULES };
+const GAME_VIEWS: Record<string, { rules: string[]; View: (p: { botCount: number }) => JSX.Element }> = {
+  'lonely-number': { rules: LONELY_RULES, View: LonelyNumber },
+  'sand-bid': { rules: SAND_RULES, View: SandBid },
+};
 
 export function App() {
   const [ready, setReady] = useState(false);
@@ -23,6 +27,7 @@ export function App() {
   if (!current) return <Hub onPlay={(id) => { setCurrent(id); setShowRules(true); }} />;
 
   const info = GAMES.find((g) => g.id === current)!;
+  const { rules, View } = GAME_VIEWS[current];
   return (
     <div className="game-screen">
       <nav className="game-nav">
@@ -38,10 +43,10 @@ export function App() {
       </nav>
       {showRules && (
         <Panel kind="parchment" className="rules">
-          <ol>{RULES[current].map((r) => <li key={r}>{r}</li>)}</ol>
+          <ol>{rules.map((r) => <li key={r}>{r}</li>)}</ol>
         </Panel>
       )}
-      {current === 'lonely-number' && <LonelyNumber key={bots} botCount={bots} />}
+      <View key={`${current}-${bots}`} botCount={bots} />
     </div>
   );
 }

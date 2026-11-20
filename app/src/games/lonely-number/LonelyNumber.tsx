@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { getSheet } from '../../engine/atlas';
 import { PixelStage } from '../../engine/PixelStage';
+import { standingsPanel, starCount, topBar } from '../shared/draw';
 import { COLORS, Gfx } from '../../engine/gfx';
 import { Persona, botKeep, botPickPair, seededRng } from './bots';
 import {
@@ -103,11 +104,11 @@ function drawScene(
   g: Gfx, s: GameState, selected: Card[], meta: Record<string, { portrait: string }>, since: number,
 ) {
   g.tile('board', 'tile_night', 0, 0, W, H);
-  g.panel('panel_night', 4, 4, W - 8, 22, 4);
-  g.text(`CYCLE ${cycleOf(s)}/${s.config.cycles}`, 12, 10, { color: COLORS.gold, size: 8 });
-  g.text(`ROUND ${roundInCycle(s)}/${s.config.roundsPerCycle}`, 80, 10, { size: 8 });
-  g.text(`(${s.round}/${totalRounds(s)})`, 140, 10, { size: 8, color: COLORS.muted });
-  g.text('LONELY NUMBER', W - 12, 10, { align: 'right', color: COLORS.amethyst, size: 8 });
+  topBar(g, [
+    { text: `CYCLE ${cycleOf(s)}/${s.config.cycles}`, color: COLORS.gold },
+    { text: `ROUND ${roundInCycle(s)}/${s.config.roundsPerCycle}` },
+    { text: `(${s.round}/${totalRounds(s)})`, color: COLORS.muted },
+  ], 'LONELY NUMBER');
 
   const opponents = s.players.filter((p) => p.id !== ME);
   const slot = (W - 8) / opponents.length;
@@ -188,11 +189,6 @@ function drawScene(
   if (s.phase === 'gameOver') drawGameOver(g, s);
 }
 
-function starCount(g: Gfx, cx: number, y: number, n: number, color: string) {
-  g.sprite('icons', 'star', cx - 18, y - 4);
-  g.text(`${n}`, cx + 2, y, { color, shadow: false, size: 8 });
-}
-
 function drawFlipCard(g: Gfx, name: string, x: number, y: number, t: number, alpha: number) {
   // t: 0 → back, 1 → face. Squash horizontally around the middle.
   const half = t < 0.5;
@@ -211,22 +207,12 @@ function winnerGlow(g: Gfx, x: number, y: number, since: number) {
 }
 
 function drawGameOver(g: Gfx, s: GameState) {
-  g.rect(0, 0, W, H, COLORS.night, 0.75);
-  g.panel('panel_parchment', 120, 30, 240, 210, 4);
-  g.text('FINAL RESULT', W / 2, 42, { align: 'center', size: 12, color: '#5e3a24', shadow: false });
   const order = standings(s);
-  order.forEach((p, i) => {
-    const y = 66 + i * 24;
-    const last = i === order.length - 1;
-    g.sprite('icons', i === 0 ? 'crown' : last ? 'prison' : 'star', 136, y - 4);
-    g.text(`${i + 1}. ${p.name}`, 158, y, { color: '#3a2216', shadow: false, size: 10 });
-    g.text(`${p.tokens}★  ${p.wins} wins`, 340, y, { align: 'right', color: '#5e3a24', shadow: false, size: 9 });
-  });
-  const winner = order[0];
-  g.text(winner.id === ME ? 'You win the match!' : `${winner.name} wins the match.`, W / 2, 196, {
-    align: 'center', color: '#86192f', shadow: false, size: 10,
-  });
-  g.button('again', 'Play again', W / 2 - 40, 216, 80);
+  standingsPanel(
+    g,
+    order.map((p) => ({ name: p.name, detail: `${p.tokens}★  ${p.wins} wins` })),
+    order[0].id === ME ? 'You win the match!' : `${order[0].name} wins the match.`,
+  );
 }
 
 // ---------------------------------------------------------------- log (DOM)
