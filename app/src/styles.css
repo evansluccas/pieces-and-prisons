@@ -74,6 +74,7 @@ canvas.stage { image-rendering: pixelated; display: block; max-width: 100%; }
 .log li { padding: 4px 0; border-bottom: 1px solid #241944; }
 .log .win { color: var(--emerald); }
 .log em { color: var(--muted); font-style: normal; display: block; }
+.log em.tip { color: var(--ruby); }
 
 @media (max-width: 900px) {
   .game-layout { flex-direction: column; }

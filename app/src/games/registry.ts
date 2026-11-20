@@ -17,7 +17,7 @@ export const GAMES: GameInfo[] = [
   { id: 'lonely-number', name: 'Lonely Number', tagline: 'Show two, keep one. The lowest number nobody else kept wins.', stage: 'prison', players: '3–6', icon: ['cards', 'number_1'], playable: true },
   { id: 'sand-bid', name: 'Sand Bid', tagline: 'Spend a shared hourglass of time to win blind auctions.', stage: 'prison', players: '3–6', icon: ['icons', 'hourglass'], playable: true },
   { id: 'dice-tower', name: 'Dice Tower', tagline: 'Draft dice, hide a secret one, and bet on your own result.', stage: 'prison', players: '3–6', icon: ['dice', 'die_red_5'], playable: true },
-  { id: 'tipping-scales', name: 'Tipping Scales', tagline: 'Load stones onto coloured scales — never be the one who tips it.', stage: 'prison', players: '3–7', icon: ['items', 'balance_scale'], playable: false },
+  { id: 'tipping-scales', name: 'Tipping Scales', tagline: 'Load stones onto coloured scales — never be the one who tips it.', stage: 'prison', players: '3–7', icon: ['items', 'balance_scale'], playable: true },
   { id: 'six-chambers', name: 'Six Chambers', tagline: 'Peek, spin and swap chambers before the cylinder fires.', stage: 'prison', players: '6', icon: ['items', 'revolver_loaded'], playable: false },
   { id: 'walls-and-wards', name: 'Walls & Wards', tagline: 'Move, build a wall, repeat. Claim the biggest territory.', stage: 'prison', players: '2–4', icon: ['board', 'counter_square_ruby'], playable: false },
   { id: 'piggy-bluff', name: 'Piggy Bluff', tagline: 'Pass the piggy bank and call the coin count — or doubt it.', stage: 'prison', players: '3–6', icon: ['items', 'piggy_bank'], playable: false },

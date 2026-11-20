@@ -25,6 +25,7 @@ export function PixelStage({ width, height, draw, onHit, onRelease }: Props) {
   const hitsRef = useRef<HitRegion[]>([]);
   const hoverRef = useRef<string | null>(null);
   const scaleRef = useRef(1);
+  const paintRef = useRef<(() => void) | null>(null);
   const releaseRef = useRef(onRelease);
   drawRef.current = draw;
   hitRef.current = onHit;
@@ -56,8 +57,7 @@ export function PixelStage({ width, height, draw, onHit, onRelease }: Props) {
     ro.observe(wrap);
     resize();
 
-    let raf = 0;
-    const loop = (t: number) => {
+    const paint = (t: number) => {
       const ctx = canvas.getContext('2d')!;
       const k = scaleRef.current * (window.devicePixelRatio || 1);
       ctx.setTransform(k, 0, 0, k, 0, 0);
@@ -66,16 +66,29 @@ export function PixelStage({ width, height, draw, onHit, onRelease }: Props) {
       const g = new Gfx(ctx, width, height, hoverRef.current, t);
       drawRef.current(g);
       hitsRef.current = g.hits;
+    };
+    paintRef.current = () => paint(performance.now());
+
+    let raf = 0;
+    const loop = (t: number) => {
+      paint(t);
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
     return () => {
       cancelAnimationFrame(raf);
       ro.disconnect();
+      paintRef.current = null;
     };
   }, [width, height]);
 
-  const locate = (e: React.PointerEvent) => {
+  /**
+   * Click areas are rebuilt on every paint. Repaint right before hit-testing
+   * so a click always matches the current state, even if the frame loop is
+   * throttled (background tab, slow device).
+   */
+  const locate = (e: React.PointerEvent, fresh = false) => {
+    if (fresh) paintRef.current?.();
     const rect = canvasRef.current!.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * width;
     const y = ((e.clientY - rect.top) / rect.height) * height;
@@ -98,7 +111,7 @@ export function PixelStage({ width, height, draw, onHit, onRelease }: Props) {
         }}
         onPointerLeave={() => (hoverRef.current = null)}
         onPointerDown={(e) => {
-          const id = locate(e);
+          const id = locate(e, true);
           if (id) hitRef.current?.(id);
         }}
       />
