@@ -2,7 +2,7 @@
 
 A collection of strategy, deduction and bluffing party games inspired by Korean "brain survival" game shows. Players earn **Pieces**, avoid **prison**, and outplay each other one match at a time.
 
-> **Status:** pre-production. The art assets and research notes are done. The games themselves come next.
+> **Status:** early development. The art assets are done, and the first game, **Lonely Number**, is playable against bots. More games are on the way.
 
 ![Contact sheet of all sprites](docs/contact-sheet.png)
 
@@ -34,6 +34,27 @@ A collection of strategy, deduction and bluffing party games inspired by Korean 
 - **Portraits** (6): chibi role portraits.
 - **Icons** (23): UI icons such as crown, skull, prison, house, exile, eye, swap, timer, lock and more.
 - **Monsters** (4) and **UI** (9): panels, buttons, a ribbon and an item slot.
+
+## Run the app
+
+The app is React + TypeScript + Canvas, built with Vite. The game board draws onto a low-resolution canvas that is scaled up by whole numbers, so the pixels stay crisp.
+
+```bash
+cd app
+npm install
+npm run dev      # http://localhost:5173
+npm test         # game-logic unit tests
+```
+
+| Path | What |
+|---|---|
+| `app/src/engine/` | Sprite-sheet loader, the `PixelStage` canvas (integer scaling and click areas), and `Gfx` drawing helpers |
+| `app/src/games/registry.ts` | Every game in the hub, and which ones are playable |
+| `app/src/games/<game>/logic.ts` | Rules as pure, unit-tested functions |
+| `app/src/games/<game>/bots.ts` | Computer opponents |
+| `app/src/ui/` | Hub and DOM panels drawn with the UI sprites |
+
+Each game keeps its rules in pure TypeScript, separate from rendering. That way the bots, the tests and a future online mode can all share the same rules.
 
 ## Rebuild the assets
 
