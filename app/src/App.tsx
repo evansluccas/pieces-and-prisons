@@ -5,6 +5,7 @@ import { LonelyNumber, RULES as LONELY_RULES } from './games/lonely-number/Lonel
 import { SandBid, RULES as SAND_RULES } from './games/sand-bid/SandBid';
 import { DiceTower, RULES as DICE_RULES } from './games/dice-tower/DiceTower';
 import { TippingScales, RULES as SCALES_RULES } from './games/tipping-scales/TippingScales';
+import { SixChambers, RULES as CHAMBER_RULES } from './games/six-chambers/SixChambers';
 import { Hub } from './ui/Hub';
 import { Panel } from './ui/Panel';
 
@@ -13,6 +14,7 @@ const GAME_VIEWS: Record<string, { rules: string[]; View: (p: { botCount: number
   'sand-bid': { rules: SAND_RULES, View: SandBid },
   'dice-tower': { rules: DICE_RULES, View: DiceTower },
   'tipping-scales': { rules: SCALES_RULES, View: TippingScales },
+  'six-chambers': { rules: CHAMBER_RULES, View: SixChambers },
 };
 
 export function App() {
