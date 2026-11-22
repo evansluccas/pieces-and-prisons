@@ -2,7 +2,7 @@ import { GAMES, STAGE_LABEL, Stage } from '../games/registry';
 import { Panel, Sprite } from './Panel';
 
 export function Hub({ onPlay }: { onPlay: (id: string) => void }) {
-  const stages: Stage[] = ['prison', 'main', 'exile'];
+  const stages: Stage[] = ['prison', 'main', 'exile', 'final', 'hidden'];
   return (
     <div className="hub">
       <header className="hub-head">
@@ -16,7 +16,8 @@ export function Hub({ onPlay }: { onPlay: (id: string) => void }) {
         <section key={stage}>
           <h2>{STAGE_LABEL[stage]}</h2>
           <div className="game-grid">
-            {GAMES.filter((g) => g.stage === stage).map((g) => (
+            {/* playable games first, then what's coming, each in list order */}
+            {GAMES.filter((g) => g.stage === stage).sort((a, b) => Number(b.playable) - Number(a.playable)).map((g) => (
               <button
                 key={g.id}
                 className={`game-card ${g.playable ? '' : 'locked'}`}

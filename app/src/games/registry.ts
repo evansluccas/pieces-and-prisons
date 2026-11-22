@@ -1,6 +1,6 @@
 import type { Category } from '../engine/atlas';
 
-export type Stage = 'prison' | 'main' | 'exile';
+export type Stage = 'prison' | 'main' | 'exile' | 'final' | 'hidden';
 
 export interface GameInfo {
   id: string;
@@ -30,10 +30,23 @@ export const GAMES: GameInfo[] = [
   { id: 'smugglers-gems', name: "Smuggler's Gems", tagline: 'Swap gem cards, dodge bombs, and match the buyer.', stage: 'main', players: '3–6', icon: ['gems', 'diamond'], playable: true, paced: true, memory: true },
   { id: 'split-decision', name: 'Split Decision', tagline: 'Ten questions, two answers each: count cubes and blocks, lay turf, remember cards.', stage: 'main', players: '2–6', icon: ['icons', 'swap'], playable: true },
   { id: 'rumor-exchange', name: 'Rumor Exchange', tagline: 'Trade stocks whose hidden rules are revealed bit by bit.', stage: 'main', players: '2–6', icon: ['coins', 'coin_10'], playable: true },
+  { id: 'high-low-equations', name: 'High-Low Equations', tagline: 'Build an equation from your cards and bet it lands nearest 1 or 20.', stage: 'main', players: '3–6', icon: ['cards', 'op_times'], playable: false },
+  { id: 'turf-war', name: 'Turf War', tagline: 'Grow your land with turf pieces; your score is your biggest square.', stage: 'main', players: '2–4', icon: ['board', 'tile_grass'], playable: false },
+  { id: 'tri-mancala', name: 'Tri-Mancala', tagline: 'Sow stones into three colours — only your weakest score counts.', stage: 'main', players: '2–4', icon: ['items', 'rock_medium'], playable: false },
   { id: 'color-doubt', name: 'Color Doubt', tagline: 'Bid on how many cards of a colour exist — or call the bluff.', stage: 'main', players: '3–6', icon: ['cards', 'color_ruby'], playable: true, paced: true },
   { id: 'number-forge', name: 'Number Forge', tagline: 'Race to forge the target from three tiles of a number pyramid.', stage: 'main', players: '2–6', icon: ['cards', 'op_plus'], playable: true },
   { id: 'second-glance', name: 'Second Glance', tagline: 'Memorise the scene, then mark the five things that changed.', stage: 'exile', players: '1+', icon: ['icons', 'eye'], playable: true },
-  { id: 'fence-loop', name: 'Fence Loop', tagline: 'Draw one closed fence that satisfies every number.', stage: 'exile', players: '1+', icon: ['board', 'wall_h'], playable: true },
+  { id: 'piece-together', name: 'Piece Together', tagline: 'Fit eight pieces into the outline before the clock runs out.', stage: 'exile', players: '1+', icon: ['items', 'piece'], playable: false },
+  { id: 'mirror-pieces', name: 'Mirror Pieces', tagline: 'Build shapes that mirror perfectly — pieces turn but never flip.', stage: 'exile', players: '1+', icon: ['icons', 'rotate'], playable: false },
+  { id: 'nine-mens-morris', name: "Nine Men's Morris", tagline: 'The classic mill game: line up three to take a piece.', stage: 'final', players: '2', icon: ['board', 'counter_round_ivory'], playable: false },
+  { id: 'hex-sum', name: 'Hex Sum', tagline: 'Memorise a hex of numbers, then find three that hit the target.', stage: 'final', players: '2', icon: ['board', 'shape_circle'], playable: false },
+  { id: 'high-or-low', name: 'High or Low', tagline: 'One card shown, one hidden: bet whether it is higher or lower.', stage: 'final', players: '2', icon: ['cards', 'number_7'], playable: false },
+  { id: 'tigers-and-goats', name: 'Tigers & Goats', tagline: 'Play both sides at once: four tigers hunt twenty goats.', stage: 'final', players: '2', icon: ['icons', 'sword'], playable: false },
+  { id: 'ask-and-arrange', name: 'Ask & Arrange', tagline: "Spend ten tokens on questions to uncover your rival's eight-card row.", stage: 'final', players: '2', icon: ['icons', 'question'], playable: false },
+  { id: 'knights-tour', name: "Knight's Tour", tagline: 'Visit every square of the board exactly once with a knight.', stage: 'hidden', players: '1+', icon: ['icons', 'shield'], playable: false },
+  { id: 'blind-five', name: 'Blind Five', tagline: 'Five in a row with face-down stones — remember which are yours.', stage: 'hidden', players: '2', icon: ['coins', 'coin_black'], playable: false },
+  { id: 'magic-squares', name: 'Magic Squares', tagline: 'Fill ever-bigger magic squares so every line adds up.', stage: 'hidden', players: '1+', icon: ['icons', 'crown'], playable: false },
+  { id: 'fence-loop', name: 'Fence Loop', tagline: 'Draw one closed fence that satisfies every number.', stage: 'exile', players: '1+', icon: ['board', 'tree'], playable: true },
   { id: 'cipher-lock', name: 'Cipher Lock', tagline: 'Deduce the four-letter code from its clues.', stage: 'exile', players: '1+', icon: ['icons', 'lock'], playable: true },
 ];
 
@@ -41,4 +54,6 @@ export const STAGE_LABEL: Record<Stage, string> = {
   prison: 'Prison matches',
   main: 'Main matches',
   exile: 'Exile puzzles',
+  final: 'Final duels',
+  hidden: 'Hidden stages',
 };
