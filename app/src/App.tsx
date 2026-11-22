@@ -13,6 +13,7 @@ import { SmugglersGems, RULES as GEM_RULES } from './games/smugglers-gems/Smuggl
 import { BOT_SPEED, SPEEDS, Speed, setSpeed } from './games/shared/pace';
 import { ColorDoubt, RULES as DOUBT_RULES } from './games/color-doubt/ColorDoubt';
 import { NumberForge, RULES as FORGE_RULES } from './games/number-forge/NumberForge';
+import { RumorExchange, RULES as RUMOR_RULES } from './games/rumor-exchange/RumorExchange';
 import { Hub } from './ui/Hub';
 import { Panel } from './ui/Panel';
 
@@ -28,6 +29,7 @@ const GAME_VIEWS: Record<string, { rules: string[]; View: (p: { botCount: number
   'smugglers-gems': { rules: GEM_RULES, View: SmugglersGems },
   'color-doubt': { rules: DOUBT_RULES, View: ColorDoubt },
   'number-forge': { rules: FORGE_RULES, View: NumberForge },
+  'rumor-exchange': { rules: RUMOR_RULES, View: RumorExchange },
 };
 
 export function App() {
