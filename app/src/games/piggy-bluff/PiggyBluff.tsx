@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { PixelStage } from '../../engine/PixelStage';
 import { COLORS, Gfx } from '../../engine/gfx';
 import { seededRng } from '../shared/rng';
+import { pace } from '../shared/pace';
 import { standingsPanel, starCount, topBar } from '../shared/draw';
 import { Persona, botAdd, botClaim, botRespond } from './bots';
 import {
-  Color, DEFAULT_CONFIG, GameState, add, claim, countOdds, knowledge, newGame, proceed, respond, responders, standings, total,
+  Color, DEFAULT_CONFIG, GameState, MAX_CLAIM, add, claim, newGame, proceed, respond, responders, standings,
 } from './logic';
 
 const W = 480;
@@ -26,7 +27,7 @@ export const RULES = [
   'ADD: whoever holds the bank secretly drops in 1–3 coins. Everyone sees HOW MANY went in — only the adder knows the colours. Then they pass the bank to another player.',
   'CLAIM: the receiver must announce how many coins of the asked colour are inside (black, then white, then black…). You only know the coins you added yourself.',
   'DOUBT: everyone else secretly picks Doubt or Believe. If nobody doubts, nothing is scored and the bank keeps filling. If anyone doubts, it is opened: wrong claim → each doubter +1, claimer −1. Correct claim → claimer +1, each doubter −1. Then it resets to 1 black + 1 white.',
-  'First to 5 points wins (or most points after 24 claims). Lowest score goes to prison. The odds bars show what YOU can work out — the bots use the same maths.',
+  'MEMORY: nothing is counted for you. Each drop is announced once (“Jun dropped 2 coins”) — keep your own tally of the bank and of what you put in. First to 5 points wins (or most points after 24 claims). Lowest score goes to prison.',
 ];
 
 // Dev-only: ?quick plays to 2 points.
@@ -71,16 +72,13 @@ export function PiggyBluff({ botCount = 3 }: { botCount?: number }) {
       };
     }
     if (!job) return;
-    const t = setTimeout(() => setGame((g) => ({ ...g, state: job!() })), BOT_DELAY);
+    const t = setTimeout(() => setGame((g) => ({ ...g, state: job!() })), pace(BOT_DELAY));
     return () => clearTimeout(t);
   });
 
-  // when it becomes my turn to count, start the picker at my most likely count
+  // when it becomes my turn to count, start the picker at 1 (the starting coin)
   useEffect(() => {
-    if (s.phase === 'claim' && s.receiver === ME) {
-      const odds = countOdds(s, ME, s.color);
-      setDraft((d) => ({ ...d, count: odds.indexOf(Math.max(...odds)) }));
-    }
+    if (s.phase === 'claim' && s.receiver === ME) setDraft((d) => ({ ...d, count: 1 }));
   }, [s.phase, s.receiver]);
 
   const set = (next: GameState) => setGame((g) => ({ ...g, state: next }));
@@ -103,7 +101,8 @@ export function PiggyBluff({ botCount = 3 }: { botCount?: number }) {
         setDraft(freshDraft());
       }
     } else if (s.phase === 'claim' && s.receiver === ME) {
-      if (id.startsWith('n:')) setDraft({ ...draft, count: Number(id.slice(2)) });
+      if (id === 'n-' && draft.count > 0) setDraft({ ...draft, count: draft.count - 1 });
+      if (id === 'n+' && draft.count < MAX_CLAIM) setDraft({ ...draft, count: draft.count + 1 });
       if (id === 'announce') set(claim(s, ME, draft.count));
     } else if (s.phase === 'doubt' && id === 'doubt') set(respond(s, ME, true));
     else if (s.phase === 'doubt' && id === 'believe') set(respond(s, ME, false));
@@ -157,7 +156,14 @@ function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, draft: Dr
   const shaking = s.phase === 'claim' || s.phase === 'doubt';
   const jiggle = shaking ? (Math.floor(g.time / 120) % 2 ? 1 : 0) : 0;
   g.sprite('items', 'piggy_bank', bx + jiggle, 100, { scale: 3 });
-  g.text(`${total(s.bank)} coins inside`, bx + 36, 172, { align: 'center', size: 8, color: COLORS.ink });
+  // only the latest drop is announced — keep your own tally
+  const drop = s.additions[s.additions.length - 1];
+  if (drop && s.phase !== 'reveal') {
+    const n = drop.black + drop.white;
+    g.text(`${nameOf(s, drop.player)} dropped ${n} coin${n === 1 ? '' : 's'}`, bx + 36, 172, { align: 'center', size: 8, color: COLORS.ink });
+  } else if (s.phase !== 'reveal' && s.additions.length === 0) {
+    g.text('fresh bank: 1 black + 1 white', bx + 36, 172, { align: 'center', size: 8, color: COLORS.muted });
+  }
   g.text('NEXT ASK', 230, 104, { size: 7, color: COLORS.muted });
   g.sprite('coins', `coin_${s.color}`, 230, 114, { scale: 2 });
   g.text(COLOR_NAME[s.color], 258, 118, { size: 10, color: COLORS.gold });
@@ -203,18 +209,15 @@ function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, draft: Dr
     g.text(draft.to ? `to ${nameOf(s, draft.to)}` : 'click a player ↑', x + 104, 222, { size: 8, color: draft.to ? COLORS.gold : COLORS.muted });
     g.button('pass', 'Drop & pass', 392, 244, 80, { disabled: !draft.to || draft.black + draft.white === 0 });
   } else if (s.phase === 'claim' && s.receiver === ME) {
-    const k = knowledge(s, ME);
-    g.text(`You know ${k.known.black} black + ${k.known.white} white · ${k.unknown} coin${k.unknown === 1 ? '' : 's'} you didn't see`, x, 202, {
-      size: 7, color: COLORS.muted,
-    });
-    oddsBars(g, countOdds(s, ME, s.color), draft.count, x, 214, 320, true);
+    g.text(`How many ${s.color} coins? Count from memory.`, x, 204, { size: 8, color: COLORS.muted });
+    g.sprite('coins', `coin_${s.color}`, x, 218, { scale: 2 });
+    g.button('n-', '−', x + 28, 222, 16);
+    g.text(`${draft.count}`, x + 56, 223, { align: 'center', size: 12, color: COLORS.gold });
+    g.button('n+', '+', x + 68, 222, 16);
     g.button('announce', `Say ${draft.count}`, 392, 244, 80);
   } else if (s.phase === 'doubt' && s.receiver !== ME) {
-    const odds = countOdds(s, ME, s.color);
-    const p = odds[s.claim!] ?? 0;
     if (!(ME in s.responses)) {
-      g.text(`From what you know, “${s.claim}” is right ${Math.round(p * 100)}% of the time`, x, 202, { size: 8, color: COLORS.ink });
-      oddsBars(g, odds, s.claim!, x, 214, 300, false);
+      g.text(`${nameOf(s, s.receiver)} says ${s.claim} ${s.color}. Does that match your tally?`, x, 210, { size: 8, color: COLORS.ink });
       g.button('doubt', 'Doubt', 392, 214, 80, { color: 'red' });
       g.button('believe', 'Believe', 392, 236, 80);
     } else {
@@ -270,20 +273,6 @@ function coinStepper(g: Gfx, color: Color, n: number, key: string, x: number, y:
   g.button(`${key}+`, '+', x + 64, y + 4, 16);
 }
 
-function oddsBars(g: Gfx, odds: number[], selected: number, x: number, y: number, maxW: number, clickable: boolean) {
-  const n = Math.min(odds.length, 21);
-  const bw = Math.max(8, Math.min(16, Math.floor(maxW / n)));
-  const peak = Math.max(...odds, 0.01);
-  for (let k = 0; k < n; k++) {
-    const bx = x + k * bw;
-    const h = Math.round((odds[k] / peak) * 22);
-    const sel = k === selected;
-    g.rect(bx + 1, y + 26 - h, bw - 2, h, sel ? COLORS.gold : '#51408f');
-    g.text(`${k}`, bx + bw / 2, y + 28, { align: 'center', size: 7, color: sel ? COLORS.gold : COLORS.muted, shadow: false });
-    if (clickable) g.hit(`n:${k}`, bx, y, bw, 38);
-  }
-}
-
 // ---------------------------------------------------------------- log (DOM)
 
 function ClaimLog({ state }: { state: GameState }) {
@@ -291,8 +280,12 @@ function ClaimLog({ state }: { state: GameState }) {
   return (
     <aside className="log">
       <h3>Claim log</h3>
-      {state.history.length === 0 && <p className="muted">Every claim and how it ended appears here.</p>}
-      <ol>
+      {state.phase !== 'gameOver' ? (
+        <p className="sealed">Sealed until the match ends — keeping count is part of the game.</p>
+      ) : (
+        <p className="muted">Every claim and how it ended.</p>
+      )}
+      {state.phase === 'gameOver' && <ol>
         {[...state.history].reverse().map((r) => (
           <li key={r.n}>
             <b>#{r.n}</b> {name(r.claimer)}: {r.claim} {r.color}
@@ -303,7 +296,7 @@ function ClaimLog({ state }: { state: GameState }) {
             </em>
           </li>
         ))}
-      </ol>
+      </ol>}
     </aside>
   );
 }

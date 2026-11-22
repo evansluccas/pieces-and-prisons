@@ -10,6 +10,7 @@ import { WallsAndWards, RULES as WALL_RULES } from './games/walls-and-wards/Wall
 import { PiggyBluff, RULES as PIGGY_RULES } from './games/piggy-bluff/PiggyBluff';
 import { BlindBingo, RULES as BINGO_RULES } from './games/blind-bingo/BlindBingo';
 import { SmugglersGems, RULES as GEM_RULES } from './games/smugglers-gems/SmugglersGems';
+import { BOT_SPEED, SPEEDS, Speed, setSpeed } from './games/shared/pace';
 import { Hub } from './ui/Hub';
 import { Panel } from './ui/Panel';
 
@@ -31,6 +32,23 @@ export function App() {
   const [current, setCurrent] = useState<string | null>(null);
   const [showRules, setShowRules] = useState(true);
   const [bots, setBots] = useState(3);
+  const [speed, setSpeedState] = useState<Speed>(() => {
+    try {
+      return (localStorage.getItem('speed') as Speed) || BOT_SPEED;
+    } catch {
+      return BOT_SPEED;
+    }
+  });
+  // the Speed setting only applies to games whose moves play out one at a time
+  setSpeed(current && GAMES.find((g) => g.id === current)?.paced ? speed : BOT_SPEED);
+  const changeSpeed = (v: Speed) => {
+    setSpeedState(v);
+    try {
+      localStorage.setItem('speed', v);
+    } catch {
+      /* private mode: keep it for this visit only */
+    }
+  };
 
   useEffect(() => {
     loadAll().then(() => setReady(true)).catch((e) => setError(String(e)));
@@ -53,12 +71,21 @@ export function App() {
             {[2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
         </label>
+        {info.paced && <label className="muted">
+          Speed{' '}
+          <select value={speed} onChange={(e) => changeSpeed(e.target.value as Speed)}>
+            {SPEEDS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+          </select>
+        </label>}
         <button className="link" onClick={() => setShowRules((v) => !v)}>{showRules ? 'Hide rules' : 'Rules'}</button>
       </nav>
       {showRules && (
         <Panel kind="parchment" className="rules">
           <ol>{rules.map((r) => <li key={r}>{r}</li>)}</ol>
         </Panel>
+      )}
+      {info.memory && (
+        <p className="memory-note">Memory game — nothing is written down. Each move is shown once; the full log opens when the match ends.</p>
       )}
       <View key={`${current}-${bots}`} botCount={bots} />
     </div>

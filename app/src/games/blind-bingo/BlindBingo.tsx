@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { PixelStage } from '../../engine/PixelStage';
 import { COLORS, Gfx } from '../../engine/gfx';
 import { seededRng } from '../shared/rng';
+import { pace } from '../shared/pace';
 import { standingsPanel, topBar } from '../shared/draw';
 import { Persona, botBid, botChoose } from './bots';
 import {
@@ -70,7 +71,7 @@ export function BlindBingo({ botCount = 3 }: { botCount?: number }) {
         }
         return { ...g, state: st };
       });
-    }, BOT_DELAY);
+    }, pace(BOT_DELAY));
     return () => clearTimeout(t);
   });
 

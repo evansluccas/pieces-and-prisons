@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react';
 import { PixelStage } from '../../engine/PixelStage';
 import { COLORS, Gfx } from '../../engine/gfx';
 import { seededRng } from '../shared/rng';
+import { pace } from '../shared/pace';
 import { standingsPanel, topBar } from '../shared/draw';
 import { Persona, botTurn } from './bots';
 import {
-  BUYER, Card, DEFAULT_CONFIG, DISCARD, GameState, TurnEvent, canSwapWith, cardName, cardScore, cardSprite, currentTurn,
-  knownCards, newGame, nextRound, pass, peek, standings, swap, visibleEvent,
+  BUYER, Card, DEFAULT_CONFIG, DISCARD, GameState, TurnEvent, canSwapWith, cardName, cardSprite, currentTurn,
+  newGame, nextRound, pass, peek, standings, swap, visibleEvent,
 } from './logic';
 
 const W = 480;
@@ -25,7 +26,7 @@ const KIND_INK: Record<Card['kind'], string> = { diamond: '#c8e8ff', gold: '#f5c
 export const RULES = [
   'Each round the cards in play are ANNOUNCED (listed on the table): two bombs (−6, −4) plus gem cards. They are dealt face down — 1 to each player, 3 to the BUYER row, 1 to the DISCARD. You only see your own card.',
   'EXCHANGES: everyone gets two turns (first → last, then back). On your turn click a card to SWAP yours with it blindly — another player’s, a Buyer card or the Discard — or PASS. A bomb can only go to another player.',
-  'Everyone sees who swapped with what, never the cards. You remember what you gave and got, so knowledge travels with the cards (shown face-up when you know them).',
+  'MEMORY: everyone sees who swapped with what, never the cards. Nothing is written down — each move is announced once. Remember what you gave, got and peeked, and follow where those cards travel.',
   'PEEK: once per match, look at one Buyer or Discard card without using your turn.',
   'SCORING: the Buyer row is revealed. Your gem scores its value × the number of Buyer cards of the same kind (no match = 0). A bomb costs its value. The −6 holder starts next round.',
   'SECRET PARTNER: your partner’s total is added to yours at the end. 3 rounds; highest final score wins, last place goes to prison.',
@@ -67,7 +68,7 @@ export function SmugglersGems({ botCount = 3 }: { botCount?: number }) {
         }
         return { ...g, state: next };
       });
-    }, BOT_DELAY);
+    }, pace(s.events[s.events.length - 1]?.player === ME ? BOT_DELAY * 2.5 : BOT_DELAY)); // time to read your own result
     return () => clearTimeout(t);
   });
 
@@ -120,9 +121,9 @@ function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, peeking: 
   const turn = currentTurn(s);
   const myTurn = turn === ME;
   const reveal = s.phase === 'reveal' || s.phase === 'gameOver';
-  const know = knownCards(s, ME);
   const last = s.history[s.history.length - 1];
-  const faceOf = (loc: string) => (reveal ? last?.hands[loc] ?? s.hands[loc] : know[loc]);
+  // only your own card is face up; everything else you have to remember
+  const faceOf = (loc: string) => (reveal ? last?.hands[loc] ?? s.hands[loc] : loc === ME ? s.hands[ME] : null);
   const me = s.players.find((p) => p.id === ME)!;
   const partner = s.players.find((p) => p.id === me.partner)!;
 
@@ -148,17 +149,17 @@ function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, peeking: 
     if (reveal && last) {
       const sc = last.scores[p.id];
       g.text(`${sc >= 0 ? '+' : ''}${sc}`, x0 + w - 22, 86, { align: 'center', size: 8, color: sc < 0 ? '#86192f' : '#1b6a43', shadow: false });
-    } else if (!reveal && know[p.id]) g.text('known', x0 + w - 22, 86, { align: 'center', size: 6, color: '#5e3a24', shadow: false });
+    }
   });
 
   // buyer row + discard
   g.text('BUYER ROW', 12, 103, { size: 7, color: COLORS.gold });
   BUYER.forEach((b, i) => {
-    const can = myTurn && (peeking ? !me.peeked && !know[b] : canSwapWith(s, ME, b));
+    const can = myTurn && (peeking ? !me.peeked : canSwapWith(s, ME, b));
     drawCardAt(g, b, 12 + i * 36, 112, faceOf(b), can, peeking);
   });
   g.text('DISCARD', 130, 103, { size: 7, color: COLORS.muted });
-  const canD = myTurn && (peeking ? !know[DISCARD] : canSwapWith(s, ME, DISCARD));
+  const canD = myTurn && (peeking ? !me.peeked : canSwapWith(s, ME, DISCARD));
   drawCardAt(g, DISCARD, 130, 112, faceOf(DISCARD), canD, peeking);
 
   // public card list
@@ -182,14 +183,11 @@ function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, peeking: 
   let msg = '';
   let sub = '';
   if (s.phase === 'exchange') {
-    if (myTurn) {
-      msg = peeking ? 'Peek: click a Buyer or Discard card' : 'Your turn — click a card to swap, or Pass';
-      sub = s.hands[ME].kind === 'bomb' ? 'You hold a bomb: it can only go to a player' : 'swaps are blind — you only see what you get';
-    } else {
-      msg = `${locName(s, turn!)}'s turn…`;
-      const e = s.events[s.events.length - 1];
-      if (e) sub = `last: ${describe(s, e)}`;
-    }
+    msg = myTurn ? (peeking ? 'Peek: click a Buyer or Discard card' : 'Your turn — click a card to swap, or Pass') : `${locName(s, turn!)}'s turn…`;
+    // only the move that just happened — remember the rest yourself
+    const e = s.events[s.events.length - 1];
+    if (e) sub = `last move: ${describe(s, e)}`;
+    else if (myTurn) sub = 'swaps are blind — you only see what you get';
   } else if (reveal && last) {
     const buyer = BUYER.map((b) => last.hands[b]);
     msg = `Buyer wants: ${buyer.map(cardName).join(' · ')}`;
@@ -204,15 +202,11 @@ function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, peeking: 
   g.sprite('cards', cardSprite(mine), 14, 194);
   g.sprite('portraits', meta[ME], 52, 196, { scale: 2 });
   if (myTurn) g.frame(13, 193, 34, 46, Math.floor(g.time / 250) % 2 ? COLORS.gold : '#fff3b0');
-  const buyerKnown = BUYER.map((b) => know[b]).filter(Boolean) as Card[];
   g.text(`Your card: ${cardName(mine)}`, 92, 196, { size: 9, color: KIND_INK[mine.kind] });
   g.text(
     mine.kind === 'bomb' ? `costs ${mine.value} — pass it to a player!` : `scores ${mine.value} × each ${mine.kind} in the Buyer row`,
     92, 208, { size: 7, color: COLORS.muted },
   );
-  if (!reveal && mine.kind !== 'bomb' && buyerKnown.length) {
-    g.text(`known Buyer cards give you ${cardScore(mine, buyerKnown)} so far`, 92, 218, { size: 7, color: COLORS.emerald });
-  }
   g.text(`Secret partner: ${partner.name} (their total adds to yours)`, 92, 232, { size: 7, color: COLORS.amethyst });
   g.text(`Your total: ${me.total}  ·  partner: ${partner.total}`, 92, 244, { size: 8, color: COLORS.ink });
 
@@ -255,23 +249,22 @@ function GemLog({ state }: { state: GameState }) {
   return (
     <aside className="log">
       <h3>Smuggling log</h3>
-      <p className="muted">{over ? 'Match over — partners revealed below.' : 'You see every swap, but only the cards you were part of.'}</p>
+      {over ? (
+        <p className="muted">Match over — every move you saw, and the partners.</p>
+      ) : (
+        <p className="sealed">Sealed until the match ends — remembering the swaps is part of the game.</p>
+      )}
       {over && (
         <p className="muted">
           {state.players.map((p) => `${p.id === ME ? 'You' : p.name} → ${name(p.partner)}`).join(' · ')}
         </p>
       )}
-      <ol>
-        {state.phase === 'exchange' && (
-          <li>
-            <b>Round {state.round}</b>
-            {[...state.events].reverse().map((e, i) => <em key={i}>{describe(state, e)}</em>)}
-          </li>
-        )}
+      {over && <ol>
         {[...state.history].reverse().map((r) => (
           <li key={r.round}>
             <b>Round {r.round} result</b>
             <em>Buyer: {BUYER.map((b) => cardName(r.hands[b])).join(' · ')}</em>
+            {r.events.map((e, i) => <em key={`e${i}`}>{describe(state, e)}</em>)}
             {state.players.map((p) => (
               <em key={p.id} className={r.scores[p.id] < 0 ? 'tip' : r.scores[p.id] > 0 ? 'win' : ''}>
                 {p.id === ME ? 'You' : p.name}: {cardName(r.hands[p.id])} → {r.scores[p.id] >= 0 ? '+' : ''}{r.scores[p.id]}
@@ -279,7 +272,7 @@ function GemLog({ state }: { state: GameState }) {
             ))}
           </li>
         ))}
-      </ol>
+      </ol>}
     </aside>
   );
 }

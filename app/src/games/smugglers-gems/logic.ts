@@ -53,7 +53,7 @@ export interface TurnEvent {
   seen?: Card; // peek result
 }
 
-export interface RoundRecord { round: number; hands: Record<string, Card>; scores: Record<string, number> }
+export interface RoundRecord { round: number; hands: Record<string, Card>; scores: Record<string, number>; events: TurnEvent[] }
 
 export type Phase = 'exchange' | 'reveal' | 'gameOver';
 
@@ -161,7 +161,7 @@ function advance(s: GameState): GameState {
     phase: 'reveal',
     players: s.players.map((p) => ({ ...p, total: p.total + scores[p.id] })),
     startSeat: bomb6 >= 0 ? bomb6 : (s.startSeat + 1) % s.players.length,
-    history: [...s.history, { round: s.round, hands: s.hands, scores }],
+    history: [...s.history, { round: s.round, hands: s.hands, scores, events: s.events }],
   };
 }
 

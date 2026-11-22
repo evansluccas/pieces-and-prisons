@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { PixelStage } from '../../engine/PixelStage';
 import { COLORS, Gfx } from '../../engine/gfx';
 import { seededRng } from '../shared/rng';
+import { pace } from '../shared/pace';
 import { standingsPanel, topBar } from '../shared/draw';
 import { Persona, botAction } from './bots';
-import { beliefFor, seatOdds } from './knowledge';
 import {
   ActionKind, COST, DEFAULT_CONFIG, GameState, NEEDS_PAIR, SEATS, TurnEvent, act, eventVisibleTo, fireThreshold,
   newGame, nextRound, pairOf, standings,
@@ -34,7 +34,7 @@ export const RULES = [
   'Everyone starts each round with 16 credits. On your turn you MUST take one action and pay for it:',
   'Peek, everyone sees (1) · Peek, only you see (2) — look at the chambers facing a seat and its clockwise neighbour. Spin 1 seat (3) · Spin 2 seats (4) — turn the cylinder clockwise. Secret swap (6) — swap the chambers facing two neighbouring seats; others only see that you made a secret move.',
   'When half the table (rounded up) is out of credits, the cylinder fires: anyone facing a loaded chamber is knocked out of the round. Survivors score 1 point.',
-  'Your notes on the cylinder show what YOU can deduce: red = loaded, green = empty, % = chance. Most points after 3 rounds wins (ties: more credits saved). Last place goes to prison.',
+  'MEMORY: nothing is written down. Each move — and what your peeks show — is announced once, as it happens. Keep track of the cylinder yourself. Most points after 3 rounds wins (ties: more credits saved). Last place goes to prison.',
 ];
 
 // Dev-only: ?quick plays a 1-round match with 6 credits each.
@@ -67,7 +67,9 @@ export function SixChambers({ botCount = 3 }: { botCount?: number }) {
   useEffect(() => {
     if (s.phase !== 'turns' || !s.turn || s.turn === ME) return;
     const id = s.turn;
-    const t = setTimeout(() => apply(act(s, id, botAction(s, id, persona(id), game.rng))), BOT_DELAY);
+    // after your own move, wait longer so you can read (and memorise) what it showed
+    const mine = s.events[s.events.length - 1]?.player === ME;
+    const t = setTimeout(() => apply(act(s, id, botAction(s, id, persona(id), game.rng))), pace(mine ? BOT_DELAY * 2.5 : BOT_DELAY));
     return () => clearTimeout(t);
   });
 
@@ -140,7 +142,7 @@ export function describe(s: GameState, ev: TurnEvent, viewer = ME): string {
 function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, kind: ActionKind | null, sinceFire: number) {
   const fired = s.phase === 'fired' || s.phase === 'gameOver';
   const last = s.history[s.history.length - 1];
-  const reveal = fired && sinceFire > 700;
+  const reveal = fired && sinceFire > pace(700);
   const me = s.players.find((p) => p.id === ME)!;
   const myTurn = s.phase === 'turns' && s.turn === ME;
   const broke = s.players.filter((p) => p.credits === 0).length;
@@ -152,8 +154,8 @@ function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, kind: Act
     { text: `fires at ${need} broke (${broke}/${need})`, color: broke >= need - 1 ? COLORS.ruby : COLORS.muted },
   ], 'SIX CHAMBERS');
 
-  // what I can deduce (or the truth once fired)
-  const odds = fired && last ? last.chambers.map((x) => (x ? 1 : 0)) : seatOdds(beliefFor(s.events, ME, s.config.bullets));
+  // nothing is tracked for you: chambers stay hidden until the cylinder fires
+  const truth = fired && last ? last.chambers : null;
 
   // pair being targeted
   const hoverSeat = kind ? [...Array(SEATS).keys()].find((k) => g.isHover(`seat:${k}`)) : undefined;
@@ -166,17 +168,9 @@ function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, kind: Act
     const a = (-90 + k * 60) * (Math.PI / 180);
     const cx = 150 + 18.6 * Math.cos(a) + shake;
     const cy = 146 + 18.6 * Math.sin(a);
-    const o = odds[k];
     if (fired && !reveal) continue;
-    if (o > 0.999) {
-      g.sprite('items', 'bullet', Math.round(cx - 4), Math.round(cy - 8), { alpha: reveal ? 1 : 0.95 });
-    } else if (o < 0.001) {
-      g.frame(Math.round(cx - 4), Math.round(cy - 4), 8, 8, COLORS.emerald);
-    } else {
-      const lx = 150 + 46 * Math.cos(a);
-      const ly = 146 + 40 * Math.sin(a);
-      g.text(`${Math.round(o * 100)}%`, lx, ly - 4, { align: 'center', size: 7, color: o >= 0.5 ? COLORS.ruby : COLORS.muted });
-    }
+    if (truth?.[k]) g.sprite('items', 'bullet', Math.round(cx - 4), Math.round(cy - 8));
+    else if (truth) g.frame(Math.round(cx - 4), Math.round(cy - 4), 8, 8, COLORS.emerald);
     if (target.includes(k)) g.frame(Math.round(cx - 6), Math.round(cy - 6), 12, 12, COLORS.gold);
   }
   if (fired && !reveal) g.text('BANG!', 150, 138, { align: 'center', size: 14, color: COLORS.ruby });
@@ -226,10 +220,12 @@ function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, kind: Act
   else if (s.phase === 'turns' && me.credits === 0) hint = 'You are out of credits — waiting for the shot';
   if (hint) wrapText(g, hint, px + 10, 168, 150, COLORS.muted);
 
-  // latest public news
-  const news = s.events.slice(-3).map((e) => describe(s, e));
-  g.text('LATEST', px + 10, 190, { size: 7, color: COLORS.muted });
-  news.forEach((line, i) => wrapText(g, line, px + 10, 200 + i * 18, 156, COLORS.ink, 2));
+  // only the move that just happened — remember the rest yourself
+  const lastMove = s.phase === 'turns' ? s.events[s.events.length - 1] : undefined;
+  if (lastMove) {
+    g.text('LAST MOVE', px + 10, 192, { size: 7, color: COLORS.muted });
+    wrapText(g, describe(s, lastMove), px + 10, 203, 156, COLORS.gold, 4);
+  }
 
   if (fired && reveal && last) {
     const names = last.hit.map((id) => (id === ME ? 'You' : s.players.find((p) => p.id === id)!.name));
@@ -276,8 +272,12 @@ function ChamberLog({ state }: { state: GameState }) {
   return (
     <aside className="log">
       <h3>Round log</h3>
-      <p className="muted">You only see what you are allowed to see. Secret moves show up as “secret”.</p>
-      <ol>
+      {state.phase !== 'gameOver' ? (
+        <p className="sealed">Sealed until the match ends — remembering the moves is part of the game.</p>
+      ) : (
+        <p className="muted">Everything you saw this match. Secret moves show up as “secret”.</p>
+      )}
+      {state.phase === 'gameOver' && <ol>
         {rounds.map((r) => (
           <li key={r.round}>
             <b>Round {r.round}</b>
@@ -290,7 +290,7 @@ function ChamberLog({ state }: { state: GameState }) {
             )}
           </li>
         ))}
-      </ol>
+      </ol>}
     </aside>
   );
 }

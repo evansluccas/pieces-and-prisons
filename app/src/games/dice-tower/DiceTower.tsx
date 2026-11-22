@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { PixelStage } from '../../engine/PixelStage';
 import { COLORS, Gfx } from '../../engine/gfx';
 import { Rng, seededRng } from '../shared/rng';
+import { pace } from '../shared/pace';
 import { standingsPanel, starCount, topBar } from '../shared/draw';
 import { Persona, botDraft, botPredict } from './bots';
 import {
@@ -63,7 +64,7 @@ export function DiceTower({ botCount = 3 }: { botCount?: number }) {
       const t = setTimeout(() => {
         const p = s.players.find((x) => x.id === picker)!;
         update(draft(s, picker, botDraft(p.secret, p.picks, s.pool, persona(picker), game.rng)));
-      }, BOT_DELAY);
+      }, pace(BOT_DELAY));
       return () => clearTimeout(t);
     }
     if (s.phase === 'predict' && s.players.some((p) => p.isBot && p.prediction === null)) {
@@ -114,7 +115,7 @@ function drawDice(g: Gfx, dice: { name: string; alpha?: number }[], cx: number, 
 function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, since: number) {
   const picker = currentPicker(s);
   const showResult = s.phase === 'result' || s.phase === 'gameOver';
-  const revealed = showResult && since > REVEAL_MS;
+  const revealed = showResult && since > pace(REVEAL_MS);
   const last = s.history[s.history.length - 1];
   const me = s.players.find((p) => p.id === ME)!;
 

@@ -80,3 +80,6 @@ canvas.stage { image-rendering: pixelated; display: block; max-width: 100%; }
   .game-layout { flex-direction: column; }
   .log { width: 100%; max-height: none; }
 }
+
+.memory-note { margin: 4px 0 8px; color: var(--amethyst, #b48cf2); font-size: 13px; }
+.log .sealed { color: var(--muted); font-style: italic; }

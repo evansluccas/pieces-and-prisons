@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { add, claim, countOdds, knowledge, newGame, proceed, respond, standings } from './logic';
+import { MAX_CLAIM, add, claim, countOdds, knowledge, newGame, proceed, respond, standings } from './logic';
 import { botAdd, botClaim, botRespond } from './bots';
 import { seededRng } from '../shared/rng';
 
@@ -23,12 +23,15 @@ describe('adding and claiming', () => {
     expect(s.bank).toEqual({ black: 3, white: 2 }); // bank keeps its coins
   });
 
-  it('only accepts possible counts', () => {
-    let s = add(newGame(three), 'a', { black: 1, white: 0 }, 'b');
-    expect(() => claim(s, 'b', 9)).toThrow();
-    expect(() => claim(s, 'c', 1)).toThrow();
-    s = claim(s, 'b', 0);
-    expect(s.phase).toBe('doubt');
+  it('accepts any count up to the cap — a miscount is just a wrong claim', () => {
+    const s = add(newGame(three), 'a', { black: 1, white: 0 }, 'b'); // 3 coins inside
+    expect(() => claim(s, 'b', -1)).toThrow();
+    expect(() => claim(s, 'b', MAX_CLAIM + 1)).toThrow();
+    expect(() => claim(s, 'c', 1)).toThrow(); // not c's claim
+    let t = claim(s, 'b', 9); // more coins than the bank holds
+    expect(t.phase).toBe('doubt');
+    t = respond(respond(t, 'a', true), 'c', false);
+    expect(t.history[0].correct).toBe(false);
   });
 });
 

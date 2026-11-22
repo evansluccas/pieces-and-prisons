@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { PixelStage } from '../../engine/PixelStage';
 import { COLORS as UI, Gfx } from '../../engine/gfx';
 import { seededRng } from '../shared/rng';
+import { pace } from '../shared/pace';
 import { standingsPanel, topBar } from '../shared/draw';
 import { Persona, botPlay } from './bots';
 import {
@@ -98,7 +99,7 @@ function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, sel: Sel,
   const last = s.history[s.history.length - 1];
   const inResult = s.phase === 'result' || s.phase === 'gameOver';
   const steps = inResult && last ? last.events.length : 0;
-  const shown = inResult ? Math.min(steps, Math.floor(since / STEP_MS) + 1) : 0; // events revealed so far
+  const shown = inResult ? Math.min(steps, Math.floor(since / pace(STEP_MS)) + 1) : 0; // events revealed so far
   const revealDone = !inResult || shown >= steps;
   const current = inResult && last && !revealDone ? last.events[shown - 1] : null;
   const name = (id: string) => (id === ME ? 'You' : s.players.find((p) => p.id === id)!.name);

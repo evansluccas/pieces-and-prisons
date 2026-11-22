@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { PixelStage } from '../../engine/PixelStage';
 import { COLORS, Gfx } from '../../engine/gfx';
 import { seededRng } from '../shared/rng';
+import { pace } from '../shared/pace';
 import { standingsPanel, topBar } from '../shared/draw';
 import { Persona, botMove, botPlace, influence } from './bots';
 import {
@@ -70,7 +71,7 @@ export function WallsAndWards({ botCount = 3 }: { botCount?: number }) {
         const m = botMove(st, id, persona(id), g.rng);
         return { ...g, state: move(st, id, m.counter, m.to, m.wall) };
       });
-    }, BOT_DELAY);
+    }, pace(BOT_DELAY));
     return () => clearTimeout(t);
   });
 

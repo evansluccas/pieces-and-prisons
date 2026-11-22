@@ -23,6 +23,9 @@ export type Color = 'black' | 'white';
 export interface Coins { black: number; white: number }
 export interface Addition extends Coins { player: string }
 
+/** Highest count anyone may announce. */
+export const MAX_CLAIM = 40;
+
 export interface Config { target: number; maxClaims: number; maxAdd: number }
 export const DEFAULT_CONFIG: Config = { target: 5, maxClaims: 24, maxAdd: 3 };
 
@@ -94,7 +97,8 @@ export function add(s: GameState, id: string, coins: Coins, to: string): GameSta
 
 export function claim(s: GameState, id: string, n: number): GameState {
   if (s.phase !== 'claim' || s.receiver !== id) throw new Error('not your claim');
-  if (!Number.isInteger(n) || n < 0 || n > total(s.bank)) throw new Error('impossible count');
+  // any count is allowed — a miscount is simply a wrong claim
+  if (!Number.isInteger(n) || n < 0 || n > MAX_CLAIM) throw new Error('impossible count');
   return { ...s, claim: n, responses: {}, phase: 'doubt' };
 }
 
