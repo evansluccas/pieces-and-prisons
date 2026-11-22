@@ -17,6 +17,8 @@ import { RumorExchange, RULES as RUMOR_RULES } from './games/rumor-exchange/Rumo
 import { CipherLock, RULES as CIPHER_RULES } from './games/cipher-lock/CipherLock';
 import { FenceLoop, RULES as FENCE_RULES } from './games/fence-loop/FenceLoop';
 import { SecondGlance, RULES as GLANCE_RULES } from './games/second-glance/SecondGlance';
+import { DeadeyeHoldem, RULES as DEADEYE_RULES } from './games/deadeye-holdem/DeadeyeHoldem';
+import { SplitDecision, RULES as SPLIT_RULES } from './games/split-decision/SplitDecision';
 import { Hub } from './ui/Hub';
 import { Panel } from './ui/Panel';
 
@@ -36,6 +38,8 @@ const GAME_VIEWS: Record<string, { rules: string[]; View: (p: { botCount: number
   'cipher-lock': { rules: CIPHER_RULES, View: CipherLock },
   'fence-loop': { rules: FENCE_RULES, View: FenceLoop },
   'second-glance': { rules: GLANCE_RULES, View: SecondGlance },
+  'deadeye-holdem': { rules: DEADEYE_RULES, View: DeadeyeHoldem },
+  'split-decision': { rules: SPLIT_RULES, View: SplitDecision },
 };
 
 export function App() {

@@ -2,10 +2,10 @@
 
 A collection of strategy, deduction and bluffing party games inspired by Korean "brain survival" game shows. Players earn **Pieces**, avoid **prison**, and outplay each other one match at a time.
 
-> **Status:** all 15 games are playable against bots (or, for the exile puzzles, against ghost times). Online multiplayer is next.
+> **Status:** 17 games are playable against bots (or, for the exile puzzles, against ghost times). More are being added before online multiplayer.
 >
-> - **Prison matches:** Lonely Number, Sand Bid, Dice Tower, Tipping Scales, Six Chambers, Walls & Wards, Piggy Bluff
-> - **Main matches:** Blind Bingo, Smuggler's Gems, Color Doubt, Number Forge, Rumor Exchange
+> - **Prison matches:** Lonely Number, Sand Bid, Dice Tower, Tipping Scales, Six Chambers, Walls & Wards (with the wall breaker), Piggy Bluff, Deadeye Hold'em
+> - **Main matches:** Blind Bingo, Smuggler's Gems, Split Decision, Color Doubt, Number Forge, Rumor Exchange
 > - **Exile puzzles:** Cipher Lock, Fence Loop, Second Glance
 
 ![Contact sheet of all sprites](docs/contact-sheet.png)

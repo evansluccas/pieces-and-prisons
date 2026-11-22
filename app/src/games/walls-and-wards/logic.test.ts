@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GameState, edgeKey, isSettled, move, newGame, place, reachable, regions, scores, standings } from './logic';
+import { GameState, breakableWalls, edgeKey, hasBreaker, isSettled, move, newGame, place, reachable, regions, scores, standings } from './logic';
 import { botMove, botPlace, influence } from './bots';
 import { seededRng } from '../shared/rng';
 
@@ -80,7 +80,7 @@ describe('territory', () => {
     let guard = 0;
     while (s.phase === 'play' && guard++ < 300) {
       const m = botMove(s, s.turn!, 'builder', rng);
-      s = move(s, s.turn!, m.counter, m.to, m.wall);
+      s = move(s, s.turn!, m.counter, m.to, m.wall, m.broke ?? null);
     }
     expect(s.phase).toBe('gameOver');
     const order = standings(s);
@@ -95,5 +95,32 @@ describe('bots', () => {
     const inf = influence(s);
     expect(inf.a + inf.b).toBeLessThanOrEqual(49);
     expect(inf.a).toBeGreaterThan(0);
+  });
+});
+
+describe('wall breaker', () => {
+  it('once per match: knock down a wall touching your counter, then move through it', () => {
+    let s = placed(); // a's square on (0,0)
+    s = { ...s, walls: ['v:0:0', 'h:0:0'] }; // boxed into the corner
+    expect(reachable(s, 'a-0')).toEqual([{ x: 0, y: 0 }]);
+    expect(breakableWalls(s, 'a').sort()).toEqual(['h:0:0', 'v:0:0']);
+    expect(breakableWalls(s, 'b')).toEqual([]);
+    expect(() => move(s, 'a', 'a-0', { x: 2, y: 0 }, 'S')).toThrow(); // can't pass without breaking
+    s = move(s, 'a', 'a-0', { x: 2, y: 0 }, 'S', 'v:0:0');
+    expect(s.walls).not.toContain('v:0:0');
+    expect(s.history[0].broke).toBe('v:0:0');
+    expect(hasBreaker(s, 'a')).toBe(false);
+    expect(breakableWalls(s, 'a')).toEqual([]);
+    s = move(s, 'b', 'b-0', { x: 6, y: 5 }, 'W');
+    expect(() => move({ ...s, walls: [...s.walls, 'v:1:0'] }, 'a', 'a-0', { x: 2, y: 0 }, 'S', 'v:1:0')).toThrow();
+  });
+
+  it('bots only break a wall when it clearly pays off', () => {
+    let s = placed();
+    s = { ...s, walls: ['v:0:0', 'h:0:0'], turn: 'a' };
+    const m = botMove(s, 'a', 'builder', seededRng(1));
+    if (m.broke) expect(breakableWalls(s, 'a')).toContain(m.broke);
+    const next = move(s, 'a', m.counter, m.to, m.wall, m.broke ?? null);
+    expect(next.history).toHaveLength(1);
   });
 });

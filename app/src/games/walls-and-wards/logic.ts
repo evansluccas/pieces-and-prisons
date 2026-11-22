@@ -10,6 +10,9 @@
  *   Counters can't pass through walls or other counters.
  *   Then you MUST build a wall on one free side of the cell that counter ends
  *   on (the board edge already counts as a wall).
+ * - WALL BREAKER: once per match, at the start of your turn, you may knock
+ *   down one wall that touches the cell of one of your counters. Then you
+ *   move and build as usual.
  * - The match ends when no open area holds counters of more than one player
  *   (or after a long safety limit of turns).
  * - Your territory = every cell in areas that only your counters are in.
@@ -33,7 +36,7 @@ export const DEFAULT_CONFIG: Config = { maxTurns: 140 };
 
 export type Phase = 'place' | 'play' | 'gameOver';
 
-export interface MoveRecord { player: string; counter: string; from: Cell; to: Cell; wall: Dir | null }
+export interface MoveRecord { player: string; counter: string; from: Cell; to: Cell; wall: Dir | null; broke?: string }
 
 export interface GameState {
   config: Config;
@@ -45,6 +48,7 @@ export interface GameState {
   turn: string | null;
   turns: number;
   history: MoveRecord[];
+  breakersUsed: string[]; // players who have used their wall breaker
 }
 
 // ------------------------------------------------------------ geometry ---
@@ -112,6 +116,7 @@ export function newGame(players: PlayerState[], config = DEFAULT_CONFIG): GameSt
     turn: ids[0],
     turns: 0,
     history: [],
+    breakersUsed: [],
   };
 }
 
@@ -126,8 +131,29 @@ export function place(s: GameState, playerId: string, cell: Cell): GameState {
   return { ...s, counters, placeOrder, phase: 'play', turn: s.players[0].id };
 }
 
-export function move(s: GameState, playerId: string, counterId: string, to: Cell, wall: Dir | null): GameState {
+/** The two cells a wall key sits between. */
+export function wallCells(key: string): [Cell, Cell] {
+  const [kind, xs, ys] = key.split(':');
+  const x = Number(xs);
+  const y = Number(ys);
+  return kind === 'h' ? [{ x, y }, { x, y: y + 1 }] : [{ x, y }, { x: x + 1, y }];
+}
+
+export const hasBreaker = (s: GameState, playerId: string) => !(s.breakersUsed ?? []).includes(playerId);
+
+/** Walls this player could knock down: ones touching a cell with one of their counters. */
+export function breakableWalls(s: GameState, playerId: string): string[] {
+  if (s.phase !== 'play' || !hasBreaker(s, playerId)) return [];
+  const mine = s.counters.filter((c) => c.owner === playerId);
+  return s.walls.filter((w) => wallCells(w).some((c) => mine.some((k) => k.x === c.x && k.y === c.y)));
+}
+
+export function move(s: GameState, playerId: string, counterId: string, to: Cell, wall: Dir | null, broke: string | null = null): GameState {
   if (s.phase !== 'play' || s.turn !== playerId) throw new Error('not your turn');
+  if (broke) {
+    if (!breakableWalls(s, playerId).includes(broke)) throw new Error('you can’t break that wall');
+    s = { ...s, walls: s.walls.filter((w) => w !== broke), breakersUsed: [...(s.breakersUsed ?? []), playerId] };
+  }
   const c = s.counters.find((k) => k.id === counterId);
   if (!c || c.owner !== playerId) throw new Error('not your counter');
   if (!reachable(s, counterId).some((r) => r.x === to.x && r.y === to.y)) throw new Error('cannot reach that cell');
@@ -137,7 +163,7 @@ export function move(s: GameState, playerId: string, counterId: string, to: Cell
   if (sides.length && (wall === null || !sides.includes(wall))) throw new Error('you must build a wall on a free side');
   if (!sides.length && wall !== null) throw new Error('no free side to wall');
   const walls = wall ? [...s.walls, edgeKey(to.x, to.y, wall)!] : s.walls;
-  const record: MoveRecord = { player: playerId, counter: counterId, from: { x: c.x, y: c.y }, to, wall };
+  const record: MoveRecord = { player: playerId, counter: counterId, from: { x: c.x, y: c.y }, to, wall, ...(broke ? { broke } : {}) };
   const next: GameState = { ...moved, walls, turns: s.turns + 1, history: [...s.history, record] };
   if (isSettled(next) || next.turns >= s.config.maxTurns) return { ...next, phase: 'gameOver', turn: null };
   const i = s.players.findIndex((p) => p.id === playerId);

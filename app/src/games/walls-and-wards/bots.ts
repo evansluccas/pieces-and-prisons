@@ -1,6 +1,6 @@
 import type { Rng } from '../shared/rng';
 import {
-  Cell, DIRS, Dir, GameState, SIZE, freeSides, inBounds, isOpen, move, place, reachable, regions,
+  Cell, DIRS, Dir, GameState, SIZE, breakableWalls, freeSides, inBounds, isOpen, move, place, reachable, regions,
 } from './logic';
 
 export type Persona = 'builder' | 'raider' | 'wild';
@@ -63,20 +63,31 @@ function evaluate(s: GameState, me: string, persona: Persona): number {
   return inf[me] + sealed * sealW - bestRival * rivalW - theirSealed * 0.2;
 }
 
-export interface BotMove { counter: string; to: Cell; wall: Dir | null }
+export interface BotMove { counter: string; to: Cell; wall: Dir | null; broke?: string | null }
 
-/** Try every counter × destination × wall and keep the best-scoring result. */
+/**
+ * Try every counter × destination × wall and keep the best-scoring result.
+ * The wall breaker is saved for a move that is clearly better with it.
+ */
 export function botMove(s: GameState, me: string, persona: Persona, rng: Rng): BotMove {
-  const options: BotMove[] = [];
-  for (const c of s.counters.filter((k) => k.owner === me)) {
-    for (const to of reachable(s, c.id)) {
-      const moved = { ...s, counters: s.counters.map((k) => (k.id === c.id ? { ...k, ...to } : k)) };
-      const sides = freeSides(moved, to);
-      if (!sides.length) options.push({ counter: c.id, to, wall: null });
-      for (const w of sides) options.push({ counter: c.id, to, wall: w });
-    }
+  if (persona === 'wild' && rng() < 0.25) {
+    const all = allOptions(s, me);
+    return { ...all[Math.floor(rng() * all.length)], broke: null };
   }
-  if (persona === 'wild' && rng() < 0.25) return options[Math.floor(rng() * options.length)];
+  const plain = bestMove(s, me, persona, rng, null);
+  let best = plain;
+  for (const w of breakableWalls(s, me)) {
+    const opened = { ...s, walls: s.walls.filter((x) => x !== w) };
+    const m = bestMove(opened, me, persona, rng, w);
+    if (m.score > best.score) best = m;
+  }
+  const worthIt = persona === 'wild' ? 1.5 : 3;
+  const pick = best !== plain && best.score - plain.score >= worthIt ? best : plain;
+  return { counter: pick.counter, to: pick.to, wall: pick.wall, broke: pick === plain ? null : pick.broke };
+}
+
+function bestMove(s: GameState, me: string, persona: Persona, rng: Rng, broke: string | null): BotMove & { score: number } {
+  const options = allOptions(s, me);
   let best = options[0];
   let bestScore = -Infinity;
   for (const o of options) {
@@ -87,7 +98,20 @@ export function botMove(s: GameState, me: string, persona: Persona, rng: Rng): B
       best = o;
     }
   }
-  return best;
+  return { ...best, broke, score: bestScore };
+}
+
+function allOptions(s: GameState, me: string): BotMove[] {
+  const options: BotMove[] = [];
+  for (const c of s.counters.filter((k) => k.owner === me)) {
+    for (const to of reachable(s, c.id)) {
+      const moved = { ...s, counters: s.counters.map((k) => (k.id === c.id ? { ...k, ...to } : k)) };
+      const sides = freeSides(moved, to);
+      if (!sides.length) options.push({ counter: c.id, to, wall: null });
+      for (const w of sides) options.push({ counter: c.id, to, wall: w });
+    }
+  }
+  return options;
 }
 
 /** Place a counter where it claims the most of the board. */
