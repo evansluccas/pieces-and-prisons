@@ -29,7 +29,7 @@ export const GAMES: GameInfo[] = [
   { id: 'smugglers-gems', name: "Smuggler's Gems", tagline: 'Swap gem cards, dodge bombs, and match the buyer.', stage: 'main', players: '3–6', icon: ['gems', 'diamond'], playable: true, paced: true, memory: true },
   { id: 'rumor-exchange', name: 'Rumor Exchange', tagline: 'Trade stocks whose hidden rules are revealed bit by bit.', stage: 'main', players: '4–12', icon: ['coins', 'coin_10'], playable: false },
   { id: 'color-doubt', name: 'Color Doubt', tagline: 'Bid on how many cards of a colour exist — or call the bluff.', stage: 'main', players: '3–6', icon: ['cards', 'color_ruby'], playable: true, paced: true },
-  { id: 'number-forge', name: 'Number Forge', tagline: 'Combine three numbers to hit the target first.', stage: 'main', players: '2–6', icon: ['cards', 'op_plus'], playable: false },
+  { id: 'number-forge', name: 'Number Forge', tagline: 'Race to forge the target from three tiles of a number pyramid.', stage: 'main', players: '2–6', icon: ['cards', 'op_plus'], playable: true },
   { id: 'second-glance', name: 'Second Glance', tagline: 'Memorise the scene, then mark what changed.', stage: 'exile', players: '1+', icon: ['icons', 'eye'], playable: false },
   { id: 'fence-loop', name: 'Fence Loop', tagline: 'Draw one closed fence that satisfies every number.', stage: 'exile', players: '1+', icon: ['board', 'wall_h'], playable: false },
   { id: 'cipher-lock', name: 'Cipher Lock', tagline: 'Deduce the four-letter code from its clues.', stage: 'exile', players: '1+', icon: ['icons', 'lock'], playable: false },

@@ -12,6 +12,7 @@ import { BlindBingo, RULES as BINGO_RULES } from './games/blind-bingo/BlindBingo
 import { SmugglersGems, RULES as GEM_RULES } from './games/smugglers-gems/SmugglersGems';
 import { BOT_SPEED, SPEEDS, Speed, setSpeed } from './games/shared/pace';
 import { ColorDoubt, RULES as DOUBT_RULES } from './games/color-doubt/ColorDoubt';
+import { NumberForge, RULES as FORGE_RULES } from './games/number-forge/NumberForge';
 import { Hub } from './ui/Hub';
 import { Panel } from './ui/Panel';
 
@@ -26,6 +27,7 @@ const GAME_VIEWS: Record<string, { rules: string[]; View: (p: { botCount: number
   'blind-bingo': { rules: BINGO_RULES, View: BlindBingo },
   'smugglers-gems': { rules: GEM_RULES, View: SmugglersGems },
   'color-doubt': { rules: DOUBT_RULES, View: ColorDoubt },
+  'number-forge': { rules: FORGE_RULES, View: NumberForge },
 };
 
 export function App() {
