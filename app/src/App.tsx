@@ -21,6 +21,7 @@ import { DeadeyeHoldem, RULES as DEADEYE_RULES } from './games/deadeye-holdem/De
 import { SplitDecision, RULES as SPLIT_RULES } from './games/split-decision/SplitDecision';
 import { PieceTogether, RULES as PIECE_RULES } from './games/piece-together/PieceTogether';
 import { MirrorPieces, RULES as MIRROR_RULES } from './games/mirror-pieces/MirrorPieces';
+import { NineMensMorris, RULES as MORRIS_RULES } from './games/nine-mens-morris/NineMensMorris';
 import { Hub } from './ui/Hub';
 import { Panel } from './ui/Panel';
 
@@ -44,6 +45,7 @@ const GAME_VIEWS: Record<string, { rules: string[]; View: (p: { botCount: number
   'split-decision': { rules: SPLIT_RULES, View: SplitDecision },
   'piece-together': { rules: PIECE_RULES, View: PieceTogether },
   'mirror-pieces': { rules: MIRROR_RULES, View: MirrorPieces },
+  'nine-mens-morris': { rules: MORRIS_RULES, View: NineMensMorris },
 };
 
 export function App() {
@@ -85,12 +87,13 @@ export function App() {
       <nav className="game-nav">
         <button className="link" onClick={() => setCurrent(null)}>← All games</button>
         <h1>{info.name}</h1>
-        <label className="muted">
+        {/* duels are always one against one */}
+        {info.players !== '2' && <label className="muted">
           Opponents{' '}
           <select value={bots} onChange={(e) => setBots(Number(e.target.value))}>
             {[2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
-        </label>
+        </label>}
         {info.paced && <label className="muted">
           Speed{' '}
           <select value={speed} onChange={(e) => changeSpeed(e.target.value as Speed)}>
