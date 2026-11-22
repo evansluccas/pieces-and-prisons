@@ -24,6 +24,7 @@ import { MirrorPieces, RULES as MIRROR_RULES } from './games/mirror-pieces/Mirro
 import { NineMensMorris, RULES as MORRIS_RULES } from './games/nine-mens-morris/NineMensMorris';
 import { HexSum, RULES as HEX_RULES } from './games/hex-sum/HexSum';
 import { HighOrLow, RULES as HILO_RULES } from './games/high-or-low/HighOrLow';
+import { TigersAndGoats, RULES as TIGER_RULES } from './games/tigers-and-goats/TigersAndGoats';
 import { Hub } from './ui/Hub';
 import { Panel } from './ui/Panel';
 
@@ -50,6 +51,7 @@ const GAME_VIEWS: Record<string, { rules: string[]; View: (p: { botCount: number
   'nine-mens-morris': { rules: MORRIS_RULES, View: NineMensMorris },
   'hex-sum': { rules: HEX_RULES, View: HexSum },
   'high-or-low': { rules: HILO_RULES, View: HighOrLow },
+  'tigers-and-goats': { rules: TIGER_RULES, View: TigersAndGoats },
 };
 
 export function App() {

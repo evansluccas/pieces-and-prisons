@@ -41,7 +41,7 @@ export const GAMES: GameInfo[] = [
   { id: 'nine-mens-morris', name: "Nine Men's Morris", tagline: 'The classic mill game: line up three to take a piece.', stage: 'final', players: '2', icon: ['board', 'counter_round_ivory'], playable: true, paced: true },
   { id: 'hex-sum', name: 'Hex Sum', tagline: 'Memorise 19 hidden numbers, then flip three in a row to hit the target.', stage: 'final', players: '2', icon: ['board', 'shape_circle'], playable: true, paced: true },
   { id: 'high-or-low', name: 'High or Low', tagline: 'Show one card, hide another: count, bluff, call higher or lower.', stage: 'final', players: '2', icon: ['cards', 'number_7'], playable: true, paced: true },
-  { id: 'tigers-and-goats', name: 'Tigers & Goats', tagline: 'Play both sides at once: four tigers hunt twenty goats.', stage: 'final', players: '2', icon: ['icons', 'sword'], playable: false },
+  { id: 'tigers-and-goats', name: 'Tigers & Goats', tagline: 'Play both sides in turn: four tigers hunt twenty goats.', stage: 'final', players: '2', icon: ['icons', 'sword'], playable: true, paced: true },
   { id: 'ask-and-arrange', name: 'Ask & Arrange', tagline: "Spend ten tokens on questions to uncover your rival's eight-card row.", stage: 'final', players: '2', icon: ['icons', 'question'], playable: false },
   { id: 'knights-tour', name: "Knight's Tour", tagline: 'Visit every square of the board exactly once with a knight.', stage: 'hidden', players: '1+', icon: ['icons', 'shield'], playable: false },
   { id: 'blind-five', name: 'Blind Five', tagline: 'Five in a row with face-down stones — remember which are yours.', stage: 'hidden', players: '2', icon: ['coins', 'coin_black'], playable: false },
