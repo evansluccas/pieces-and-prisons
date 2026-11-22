@@ -28,7 +28,7 @@ export const GAMES: GameInfo[] = [
   { id: 'deadeye-holdem', name: "Deadeye Hold'em", tagline: 'Poker with four shared cards — and one secret shot to knock out a hand.', stage: 'prison', players: '2–6', icon: ['cards', 'spade_A'], playable: true, paced: true },
   { id: 'blind-bingo', name: 'Blind Bingo', tagline: 'Bid unbreakable coins for shapes. Nobody sees who won.', stage: 'main', players: '3–6', icon: ['board', 'shape_star'], playable: true },
   { id: 'smugglers-gems', name: "Smuggler's Gems", tagline: 'Swap gem cards, dodge bombs, and match the buyer.', stage: 'main', players: '3–6', icon: ['gems', 'diamond'], playable: true, paced: true, memory: true },
-  { id: 'split-decision', name: 'Split Decision', tagline: 'Ten questions, two answers each: count cubes and blocks, lay turf, remember cards.', stage: 'main', players: '2–6', icon: ['icons', 'swap'], playable: true },
+  { id: 'split-decision', name: 'Split Decision', tagline: 'Ten two-answer questions: cubes, sums, turf and card memory.', stage: 'main', players: '2–6', icon: ['icons', 'swap'], playable: true },
   { id: 'rumor-exchange', name: 'Rumor Exchange', tagline: 'Trade stocks whose hidden rules are revealed bit by bit.', stage: 'main', players: '2–6', icon: ['coins', 'coin_10'], playable: true },
   { id: 'high-low-equations', name: 'High-Low Equations', tagline: 'Build an equation from your cards and bet it lands nearest 1 or 20.', stage: 'main', players: '3–6', icon: ['cards', 'op_times'], playable: false },
   { id: 'turf-war', name: 'Turf War', tagline: 'Grow your land with turf pieces; your score is your biggest square.', stage: 'main', players: '2–4', icon: ['board', 'tile_grass'], playable: false },

@@ -40,12 +40,15 @@ img.px { image-rendering: pixelated; display: block; }
   font-size: 14px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--amethyst);
   margin: 28px 0 12px; border-bottom: 2px solid #372a66; padding-bottom: 6px;
 }
-.game-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
-.game-card { all: unset; cursor: pointer; display: block; }
+/* every card in a grid gets the same height, whatever its tagline length */
+.game-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); grid-auto-rows: 1fr; gap: 12px; }
+.game-card { all: unset; cursor: pointer; display: block; height: 100%; }
 .game-card:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .game-card.locked { cursor: not-allowed; opacity: 0.6; }
 .game-card:not(.locked):hover .game-card-inner { transform: translateY(-2px); }
-.game-card-inner { display: flex; gap: 14px; align-items: center; min-height: 104px; transition: transform 0.1s; }
+.game-card-inner { display: flex; gap: 14px; align-items: center; min-height: 104px; height: 100%; box-sizing: border-box; transition: transform 0.1s; }
+/* icons sit in the same 48px-wide box, whatever the sprite's shape */
+.game-card-inner > img.px { flex: 0 0 48px; width: 48px; object-fit: contain; }
 .game-card-text { display: flex; flex-direction: column; gap: 2px; }
 .game-card-text strong { font-size: 18px; font-weight: normal; }
 .game-card-text span { font-size: 13px; opacity: 0.85; }
