@@ -23,6 +23,7 @@ import { PieceTogether, RULES as PIECE_RULES } from './games/piece-together/Piec
 import { MirrorPieces, RULES as MIRROR_RULES } from './games/mirror-pieces/MirrorPieces';
 import { NineMensMorris, RULES as MORRIS_RULES } from './games/nine-mens-morris/NineMensMorris';
 import { HexSum, RULES as HEX_RULES } from './games/hex-sum/HexSum';
+import { HighOrLow, RULES as HILO_RULES } from './games/high-or-low/HighOrLow';
 import { Hub } from './ui/Hub';
 import { Panel } from './ui/Panel';
 
@@ -48,6 +49,7 @@ const GAME_VIEWS: Record<string, { rules: string[]; View: (p: { botCount: number
   'mirror-pieces': { rules: MIRROR_RULES, View: MirrorPieces },
   'nine-mens-morris': { rules: MORRIS_RULES, View: NineMensMorris },
   'hex-sum': { rules: HEX_RULES, View: HexSum },
+  'high-or-low': { rules: HILO_RULES, View: HighOrLow },
 };
 
 export function App() {
