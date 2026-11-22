@@ -40,6 +40,9 @@ const T5: Cell[][] = [
   [[0, 0], [1, 0], [1, 1], [1, 2], [2, 2]],         // Z
 ];
 
+/** The piece shapes, by size (3, 4 and 5 squares). */
+export const SHAPES = { T3, T4, T5 };
+
 const PROFILE: Record<Difficulty, { count: number; pool: Cell[][] }> = {
   easy: { count: 6, pool: [...T3, ...T4, ...T4] },
   normal: { count: 8, pool: [...T3, ...T4, ...T4, ...T5] },
