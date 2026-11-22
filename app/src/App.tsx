@@ -22,6 +22,7 @@ import { SplitDecision, RULES as SPLIT_RULES } from './games/split-decision/Spli
 import { PieceTogether, RULES as PIECE_RULES } from './games/piece-together/PieceTogether';
 import { MirrorPieces, RULES as MIRROR_RULES } from './games/mirror-pieces/MirrorPieces';
 import { NineMensMorris, RULES as MORRIS_RULES } from './games/nine-mens-morris/NineMensMorris';
+import { HexSum, RULES as HEX_RULES } from './games/hex-sum/HexSum';
 import { Hub } from './ui/Hub';
 import { Panel } from './ui/Panel';
 
@@ -46,6 +47,7 @@ const GAME_VIEWS: Record<string, { rules: string[]; View: (p: { botCount: number
   'piece-together': { rules: PIECE_RULES, View: PieceTogether },
   'mirror-pieces': { rules: MIRROR_RULES, View: MirrorPieces },
   'nine-mens-morris': { rules: MORRIS_RULES, View: NineMensMorris },
+  'hex-sum': { rules: HEX_RULES, View: HexSum },
 };
 
 export function App() {

@@ -39,7 +39,7 @@ export const GAMES: GameInfo[] = [
   { id: 'piece-together', name: 'Piece Together', tagline: 'Fit eight pieces into the outline before the clock runs out.', stage: 'exile', players: '1+', icon: ['items', 'piece'], playable: true },
   { id: 'mirror-pieces', name: 'Mirror Pieces', tagline: 'Build shapes that mirror perfectly — pieces turn but never flip.', stage: 'exile', players: '1+', icon: ['icons', 'rotate'], playable: true },
   { id: 'nine-mens-morris', name: "Nine Men's Morris", tagline: 'The classic mill game: line up three to take a piece.', stage: 'final', players: '2', icon: ['board', 'counter_round_ivory'], playable: true, paced: true },
-  { id: 'hex-sum', name: 'Hex Sum', tagline: 'Memorise a hex of numbers, then find three that hit the target.', stage: 'final', players: '2', icon: ['board', 'shape_circle'], playable: false },
+  { id: 'hex-sum', name: 'Hex Sum', tagline: 'Memorise 19 hidden numbers, then flip three in a row to hit the target.', stage: 'final', players: '2', icon: ['board', 'shape_circle'], playable: true, paced: true },
   { id: 'high-or-low', name: 'High or Low', tagline: 'One card shown, one hidden: bet whether it is higher or lower.', stage: 'final', players: '2', icon: ['cards', 'number_7'], playable: false },
   { id: 'tigers-and-goats', name: 'Tigers & Goats', tagline: 'Play both sides at once: four tigers hunt twenty goats.', stage: 'final', players: '2', icon: ['icons', 'sword'], playable: false },
   { id: 'ask-and-arrange', name: 'Ask & Arrange', tagline: "Spend ten tokens on questions to uncover your rival's eight-card row.", stage: 'final', players: '2', icon: ['icons', 'question'], playable: false },
