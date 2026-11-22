@@ -15,6 +15,7 @@ import { ColorDoubt, RULES as DOUBT_RULES } from './games/color-doubt/ColorDoubt
 import { NumberForge, RULES as FORGE_RULES } from './games/number-forge/NumberForge';
 import { RumorExchange, RULES as RUMOR_RULES } from './games/rumor-exchange/RumorExchange';
 import { CipherLock, RULES as CIPHER_RULES } from './games/cipher-lock/CipherLock';
+import { FenceLoop, RULES as FENCE_RULES } from './games/fence-loop/FenceLoop';
 import { Hub } from './ui/Hub';
 import { Panel } from './ui/Panel';
 
@@ -32,6 +33,7 @@ const GAME_VIEWS: Record<string, { rules: string[]; View: (p: { botCount: number
   'number-forge': { rules: FORGE_RULES, View: NumberForge },
   'rumor-exchange': { rules: RUMOR_RULES, View: RumorExchange },
   'cipher-lock': { rules: CIPHER_RULES, View: CipherLock },
+  'fence-loop': { rules: FENCE_RULES, View: FenceLoop },
 };
 
 export function App() {
