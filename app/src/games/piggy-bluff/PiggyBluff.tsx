@@ -1,0 +1,309 @@
+import { useEffect, useState } from 'react';
+import { PixelStage } from '../../engine/PixelStage';
+import { COLORS, Gfx } from '../../engine/gfx';
+import { seededRng } from '../shared/rng';
+import { standingsPanel, starCount, topBar } from '../shared/draw';
+import { Persona, botAdd, botClaim, botRespond } from './bots';
+import {
+  Color, DEFAULT_CONFIG, GameState, add, claim, countOdds, knowledge, newGame, proceed, respond, responders, standings, total,
+} from './logic';
+
+const W = 480;
+const H = 270;
+const ME = 'you';
+const BOT_DELAY = 800;
+const BOTS: { name: string; persona: Persona; portrait: string }[] = [
+  { name: 'Hana', persona: 'steady', portrait: 'officer' },
+  { name: 'Jun', persona: 'trickster', portrait: 'journalist' },
+  { name: 'Seo', persona: 'skeptic', portrait: 'fanatic' },
+  { name: 'Mira', persona: 'steady', portrait: 'researcher' },
+  { name: 'Taeo', persona: 'trickster', portrait: 'terrorist' },
+];
+const COLOR_NAME: Record<Color, string> = { black: 'BLACK', white: 'WHITE' };
+
+export const RULES = [
+  'A piggy bank starts with 1 black and 1 white coin.',
+  'ADD: whoever holds the bank secretly drops in 1–3 coins. Everyone sees HOW MANY went in — only the adder knows the colours. Then they pass the bank to another player.',
+  'CLAIM: the receiver must announce how many coins of the asked colour are inside (black, then white, then black…). You only know the coins you added yourself.',
+  'DOUBT: everyone else secretly picks Doubt or Believe. If nobody doubts, nothing is scored and the bank keeps filling. If anyone doubts, it is opened: wrong claim → each doubter +1, claimer −1. Correct claim → claimer +1, each doubter −1. Then it resets to 1 black + 1 white.',
+  'First to 5 points wins (or most points after 24 claims). Lowest score goes to prison. The odds bars show what YOU can work out — the bots use the same maths.',
+];
+
+// Dev-only: ?quick plays to 2 points.
+const QUICK = import.meta.env.DEV && new URLSearchParams(location.search).has('quick');
+
+function setup(botCount: number) {
+  const bots = BOTS.slice(0, Math.max(2, botCount));
+  const state = newGame(
+    [{ id: ME, name: 'You', isBot: false }, ...bots.map((b, i) => ({ id: `bot${i}`, name: b.name, isBot: true }))],
+    QUICK ? { ...DEFAULT_CONFIG, target: 2 } : DEFAULT_CONFIG,
+  );
+  return { state, bots, rng: seededRng(Date.now() & 0xffff) };
+}
+
+interface Draft { black: number; white: number; to: string | null; count: number }
+const freshDraft = (): Draft => ({ black: 1, white: 0, to: null, count: 0 });
+
+export function PiggyBluff({ botCount = 3 }: { botCount?: number }) {
+  const [game, setGame] = useState(() => setup(botCount));
+  const [draft, setDraft] = useState<Draft>(freshDraft);
+  const s = game.state;
+  const persona = (id: string) => game.bots[Number(id.slice(3))].persona;
+
+  // bots: add & pass, claim, and decide doubts (with pauses you can follow)
+  useEffect(() => {
+    let job: (() => GameState) | null = null;
+    if (s.phase === 'add' && s.holder !== ME) {
+      job = () => {
+        const m = botAdd(s, s.holder, persona(s.holder), game.rng);
+        return add(s, s.holder, m.coins, m.to);
+      };
+    } else if (s.phase === 'claim' && s.receiver !== ME) {
+      job = () => claim(s, s.receiver!, botClaim(s, s.receiver!, game.rng));
+    } else if (s.phase === 'doubt' && responders(s).some((id) => id !== ME && !(id in s.responses))) {
+      job = () => {
+        let next = s;
+        for (const id of responders(s)) {
+          if (id === ME || id in next.responses || next.phase !== 'doubt') continue;
+          next = respond(next, id, botRespond(next, id, persona(id), game.rng));
+        }
+        return next;
+      };
+    }
+    if (!job) return;
+    const t = setTimeout(() => setGame((g) => ({ ...g, state: job!() })), BOT_DELAY);
+    return () => clearTimeout(t);
+  });
+
+  // when it becomes my turn to count, start the picker at my most likely count
+  useEffect(() => {
+    if (s.phase === 'claim' && s.receiver === ME) {
+      const odds = countOdds(s, ME, s.color);
+      setDraft((d) => ({ ...d, count: odds.indexOf(Math.max(...odds)) }));
+    }
+  }, [s.phase, s.receiver]);
+
+  const set = (next: GameState) => setGame((g) => ({ ...g, state: next }));
+
+  const onHit = (id: string) => {
+    if (id === 'again') {
+      setDraft(freshDraft());
+      return setGame(setup(botCount));
+    }
+    if (id === 'continue') return set(proceed(s));
+    if (s.phase === 'add' && s.holder === ME) {
+      const max = s.config.maxAdd;
+      if (id === 'b+' && draft.black + draft.white < max) setDraft({ ...draft, black: draft.black + 1 });
+      if (id === 'b-' && draft.black > 0) setDraft({ ...draft, black: draft.black - 1 });
+      if (id === 'w+' && draft.black + draft.white < max) setDraft({ ...draft, white: draft.white + 1 });
+      if (id === 'w-' && draft.white > 0) setDraft({ ...draft, white: draft.white - 1 });
+      if (id.startsWith('to:')) setDraft({ ...draft, to: id.slice(3) });
+      if (id === 'pass' && draft.to && draft.black + draft.white > 0) {
+        set(add(s, ME, { black: draft.black, white: draft.white }, draft.to));
+        setDraft(freshDraft());
+      }
+    } else if (s.phase === 'claim' && s.receiver === ME) {
+      if (id.startsWith('n:')) setDraft({ ...draft, count: Number(id.slice(2)) });
+      if (id === 'announce') set(claim(s, ME, draft.count));
+    } else if (s.phase === 'doubt' && id === 'doubt') set(respond(s, ME, true));
+    else if (s.phase === 'doubt' && id === 'believe') set(respond(s, ME, false));
+  };
+
+  const meta: Record<string, string> = { [ME]: 'citizen' };
+  game.bots.forEach((b, i) => (meta[`bot${i}`] = b.portrait));
+
+  return (
+    <div className="game-layout">
+      <PixelStage width={W} height={H} draw={(g) => drawScene(g, s, meta, draft)} onHit={onHit} />
+      <ClaimLog state={s} />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- drawing
+
+const nameOf = (s: GameState, id: string | null) => (id === ME ? 'You' : s.players.find((p) => p.id === id)?.name ?? '');
+
+function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, draft: Draft) {
+  const me = s.players.find((p) => p.id === ME)!;
+  const last = s.history[s.history.length - 1];
+  const passing = s.phase === 'add' && s.holder === ME;
+
+  g.tile('board', 'tile_night', 0, 0, W, H);
+  topBar(g, [
+    { text: `CLAIM ${Math.min(s.claims + 1, s.config.maxClaims)}/${s.config.maxClaims}`, color: COLORS.gold },
+    { text: `first to ${s.config.target} points`, color: COLORS.muted },
+  ], 'PIGGY BLUFF');
+
+  // opponents
+  const opponents = s.players.filter((p) => p.id !== ME);
+  const slot = (W - 8) / opponents.length;
+  opponents.forEach((p, i) => {
+    const cx = Math.round(4 + slot * i + slot / 2);
+    const x0 = Math.round(cx - slot / 2 + 4);
+    const w = Math.round(slot - 8);
+    const chosen = passing && draft.to === p.id;
+    g.panel('panel_parchment', x0, 30, w, 66, 4);
+    if (chosen || (passing && g.isHover(`to:${p.id}`))) g.frame(x0 - 1, 29, w + 2, 68, chosen ? COLORS.gold : '#fff3b0', 2);
+    g.sprite('portraits', meta[p.id], cx - 16, 34, { scale: 2 });
+    g.text(p.name, cx, 67, { align: 'center', color: '#3a2216', shadow: false });
+    starCount(g, cx, 78, p.points, p.points < 0 ? '#86192f' : '#5e3a24');
+    g.text(status(s, p.id), cx, 87, { align: 'center', size: 7, color: '#86192f', shadow: false });
+    if (passing) g.hit(`to:${p.id}`, x0, 30, w, 66);
+  });
+
+  // centre: bank and the current claim
+  const bx = 120;
+  const shaking = s.phase === 'claim' || s.phase === 'doubt';
+  const jiggle = shaking ? (Math.floor(g.time / 120) % 2 ? 1 : 0) : 0;
+  g.sprite('items', 'piggy_bank', bx + jiggle, 100, { scale: 3 });
+  g.text(`${total(s.bank)} coins inside`, bx + 36, 172, { align: 'center', size: 8, color: COLORS.ink });
+  g.text('NEXT ASK', 230, 104, { size: 7, color: COLORS.muted });
+  g.sprite('coins', `coin_${s.color}`, 230, 114, { scale: 2 });
+  g.text(COLOR_NAME[s.color], 258, 118, { size: 10, color: COLORS.gold });
+
+  if (s.claim !== null && (s.phase === 'doubt' || s.phase === 'reveal')) {
+    g.panel('panel_parchment', 230, 138, 238, 30, 4);
+    g.text(`${nameOf(s, s.receiver)}: “${s.claim} ${COLOR_NAME[s.color].toLowerCase()} coin${s.claim === 1 ? '' : 's'} inside”`, 240, 148, {
+      size: 9, color: '#3a2216', shadow: false,
+    });
+  }
+
+  // message
+  let msg = '';
+  let sub = '';
+  if (s.phase === 'add') {
+    msg = passing ? 'Drop 1–3 coins in, then pick who must count' : `${nameOf(s, s.holder)} is adding coins…`;
+    sub = passing ? 'colours are secret — the number of coins is not' : '';
+  } else if (s.phase === 'claim') {
+    msg = s.receiver === ME ? `How many ${s.color} coins are inside?` : `${nameOf(s, s.receiver)} is counting…`;
+  } else if (s.phase === 'doubt') {
+    msg = s.receiver === ME ? 'Waiting for the others to doubt or believe…' : 'Doubt or believe?';
+  } else if (s.phase === 'reveal' && last) {
+    if (!last.opened) msg = 'Everyone believed — the bank keeps its coins';
+    else {
+      const ppl = last.doubters.map((d) => nameOf(s, d)).join(' & ');
+      msg = last.correct ? `Correct! ${nameOf(s, last.claimer)} +1 · ${ppl} −1` : `Wrong! ${ppl} +1 · ${nameOf(s, last.claimer)} −1`;
+    }
+  }
+  if (msg) g.text(msg, 230, 176, { size: 9, color: COLORS.gold });
+  if (sub) g.text(sub, 230, 187, { size: 7, color: COLORS.muted });
+
+  // your panel
+  g.panel('panel_night', 4, 196, W - 8, 70, 4);
+  g.sprite('portraits', meta[ME], 12, 202, { scale: 2 });
+  g.text('You', 28, 236, { align: 'center' });
+  starCount(g, 28, 248, me.points, me.points < 0 ? COLORS.ruby : COLORS.ink);
+  const x = 56;
+
+  if (passing) {
+    coinStepper(g, 'black', draft.black, 'b', x, 204);
+    coinStepper(g, 'white', draft.white, 'w', x, 228);
+    g.text(`${draft.black + draft.white}/${s.config.maxAdd} coins`, x + 104, 208, { size: 8, color: COLORS.muted });
+    g.text(draft.to ? `to ${nameOf(s, draft.to)}` : 'click a player ↑', x + 104, 222, { size: 8, color: draft.to ? COLORS.gold : COLORS.muted });
+    g.button('pass', 'Drop & pass', 392, 244, 80, { disabled: !draft.to || draft.black + draft.white === 0 });
+  } else if (s.phase === 'claim' && s.receiver === ME) {
+    const k = knowledge(s, ME);
+    g.text(`You know ${k.known.black} black + ${k.known.white} white · ${k.unknown} coin${k.unknown === 1 ? '' : 's'} you didn't see`, x, 202, {
+      size: 7, color: COLORS.muted,
+    });
+    oddsBars(g, countOdds(s, ME, s.color), draft.count, x, 214, 320, true);
+    g.button('announce', `Say ${draft.count}`, 392, 244, 80);
+  } else if (s.phase === 'doubt' && s.receiver !== ME) {
+    const odds = countOdds(s, ME, s.color);
+    const p = odds[s.claim!] ?? 0;
+    if (!(ME in s.responses)) {
+      g.text(`From what you know, “${s.claim}” is right ${Math.round(p * 100)}% of the time`, x, 202, { size: 8, color: COLORS.ink });
+      oddsBars(g, odds, s.claim!, x, 214, 300, false);
+      g.button('doubt', 'Doubt', 392, 214, 80, { color: 'red' });
+      g.button('believe', 'Believe', 392, 236, 80);
+    } else {
+      g.text(`You chose to ${s.responses[ME] ? 'DOUBT' : 'believe'} — waiting…`, x, 214, { size: 9, color: COLORS.gold });
+    }
+  } else if (s.phase === 'reveal' && last) {
+    if (last.actual) {
+      g.text('INSIDE THE BANK', x, 202, { size: 7, color: COLORS.muted });
+      let cx = x;
+      for (let i = 0; i < last.actual.black; i++) g.sprite('coins', 'coin_black', (cx += 13), 212);
+      cx += 8;
+      for (let i = 0; i < last.actual.white; i++) g.sprite('coins', 'coin_white', (cx += 13), 212);
+      g.text(`${last.actual.black} black · ${last.actual.white} white — asked: ${last.color}, said ${last.claim}`, x, 232, {
+        size: 8, color: COLORS.ink,
+      });
+    } else {
+      g.text('Nobody doubted, so nobody looks inside.', x, 214, { size: 8, color: COLORS.muted });
+    }
+    g.button('continue', s.players.some((p) => p.points >= s.config.target) || s.claims >= s.config.maxClaims ? 'Final result' : 'Continue', 392, 244, 80);
+  } else {
+    g.text(s.phase === 'add' ? `${nameOf(s, s.holder)} holds the bank` : '', x, 214, { size: 8, color: COLORS.muted });
+  }
+
+  if (s.phase === 'gameOver') {
+    const order = standings(s);
+    standingsPanel(
+      g,
+      order.map((p) => ({ name: p.name, detail: `${p.points} pts  ${p.wrongClaims} wrong` })),
+      order[0].id === ME ? 'You win the match!' : `${order[0].name} wins the match.`,
+    );
+  }
+}
+
+function status(s: GameState, id: string): string {
+  if (s.phase === 'add' && s.holder === id) return 'adding coins…';
+  if (s.phase === 'claim' && s.receiver === id) return 'counting…';
+  if (s.phase === 'doubt') {
+    if (s.receiver === id) return `said ${s.claim}`;
+    return id in s.responses ? 'decided' : 'thinking…';
+  }
+  if (s.phase === 'reveal') {
+    const last = s.history[s.history.length - 1];
+    if (last.claimer === id) return `said ${last.claim} ${last.correct === null ? '' : last.correct ? '✓' : '✗'}`;
+    return last.doubters.includes(id) ? 'DOUBTED' : 'believed';
+  }
+  return '';
+}
+
+function coinStepper(g: Gfx, color: Color, n: number, key: string, x: number, y: number) {
+  g.sprite('coins', `coin_${color}`, x, y, { scale: 2 });
+  g.button(`${key}-`, '−', x + 28, y + 4, 16);
+  g.text(`${n}`, x + 54, y + 7, { align: 'center', size: 10, color: COLORS.gold });
+  g.button(`${key}+`, '+', x + 64, y + 4, 16);
+}
+
+function oddsBars(g: Gfx, odds: number[], selected: number, x: number, y: number, maxW: number, clickable: boolean) {
+  const n = Math.min(odds.length, 21);
+  const bw = Math.max(8, Math.min(16, Math.floor(maxW / n)));
+  const peak = Math.max(...odds, 0.01);
+  for (let k = 0; k < n; k++) {
+    const bx = x + k * bw;
+    const h = Math.round((odds[k] / peak) * 22);
+    const sel = k === selected;
+    g.rect(bx + 1, y + 26 - h, bw - 2, h, sel ? COLORS.gold : '#51408f');
+    g.text(`${k}`, bx + bw / 2, y + 28, { align: 'center', size: 7, color: sel ? COLORS.gold : COLORS.muted, shadow: false });
+    if (clickable) g.hit(`n:${k}`, bx, y, bw, 38);
+  }
+}
+
+// ---------------------------------------------------------------- log (DOM)
+
+function ClaimLog({ state }: { state: GameState }) {
+  const name = (id: string) => nameOf(state, id);
+  return (
+    <aside className="log">
+      <h3>Claim log</h3>
+      {state.history.length === 0 && <p className="muted">Every claim and how it ended appears here.</p>}
+      <ol>
+        {[...state.history].reverse().map((r) => (
+          <li key={r.n}>
+            <b>#{r.n}</b> {name(r.claimer)}: {r.claim} {r.color}
+            <em className={r.opened ? (r.correct ? 'win' : 'tip') : ''}>
+              {r.opened
+                ? `${r.doubters.map(name).join(' & ')} doubted — there were ${r.actual![r.color]} → ${r.correct ? 'correct' : 'wrong'}`
+                : 'everyone believed'}
+            </em>
+          </li>
+        ))}
+      </ol>
+    </aside>
+  );
+}

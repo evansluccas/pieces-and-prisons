@@ -6,6 +6,8 @@ import { SandBid, RULES as SAND_RULES } from './games/sand-bid/SandBid';
 import { DiceTower, RULES as DICE_RULES } from './games/dice-tower/DiceTower';
 import { TippingScales, RULES as SCALES_RULES } from './games/tipping-scales/TippingScales';
 import { SixChambers, RULES as CHAMBER_RULES } from './games/six-chambers/SixChambers';
+import { WallsAndWards, RULES as WALL_RULES } from './games/walls-and-wards/WallsAndWards';
+import { PiggyBluff, RULES as PIGGY_RULES } from './games/piggy-bluff/PiggyBluff';
 import { Hub } from './ui/Hub';
 import { Panel } from './ui/Panel';
 
@@ -15,6 +17,8 @@ const GAME_VIEWS: Record<string, { rules: string[]; View: (p: { botCount: number
   'dice-tower': { rules: DICE_RULES, View: DiceTower },
   'tipping-scales': { rules: SCALES_RULES, View: TippingScales },
   'six-chambers': { rules: CHAMBER_RULES, View: SixChambers },
+  'walls-and-wards': { rules: WALL_RULES, View: WallsAndWards },
+  'piggy-bluff': { rules: PIGGY_RULES, View: PiggyBluff },
 };
 
 export function App() {
