@@ -21,7 +21,7 @@ export const GAMES: GameInfo[] = [
   { id: 'six-chambers', name: 'Six Chambers', tagline: 'Peek, spin and swap chambers before the cylinder fires.', stage: 'prison', players: '3–6', icon: ['items', 'revolver_loaded'], playable: true },
   { id: 'walls-and-wards', name: 'Walls & Wards', tagline: 'Move, build a wall, repeat. Claim the biggest territory.', stage: 'prison', players: '2–4', icon: ['board', 'counter_square_ruby'], playable: true },
   { id: 'piggy-bluff', name: 'Piggy Bluff', tagline: 'Pass the piggy bank and call the coin count — or doubt it.', stage: 'prison', players: '3–6', icon: ['items', 'piggy_bank'], playable: true },
-  { id: 'blind-bingo', name: 'Blind Bingo', tagline: 'Bid unbreakable coins for shapes. Nobody sees who won.', stage: 'main', players: '4–8', icon: ['board', 'shape_star'], playable: false },
+  { id: 'blind-bingo', name: 'Blind Bingo', tagline: 'Bid unbreakable coins for shapes. Nobody sees who won.', stage: 'main', players: '3–6', icon: ['board', 'shape_star'], playable: true },
   { id: 'smugglers-gems', name: "Smuggler's Gems", tagline: 'Swap gem cards, dodge bombs, and match the buyer.', stage: 'main', players: '4–8', icon: ['gems', 'diamond'], playable: false },
   { id: 'rumor-exchange', name: 'Rumor Exchange', tagline: 'Trade stocks whose hidden rules are revealed bit by bit.', stage: 'main', players: '4–12', icon: ['coins', 'coin_10'], playable: false },
   { id: 'color-doubt', name: 'Color Doubt', tagline: 'Bid on how many cards of a colour exist — or call the bluff.', stage: 'main', players: '3–6', icon: ['cards', 'color_ruby'], playable: false },

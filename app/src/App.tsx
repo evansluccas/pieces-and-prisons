@@ -8,6 +8,7 @@ import { TippingScales, RULES as SCALES_RULES } from './games/tipping-scales/Tip
 import { SixChambers, RULES as CHAMBER_RULES } from './games/six-chambers/SixChambers';
 import { WallsAndWards, RULES as WALL_RULES } from './games/walls-and-wards/WallsAndWards';
 import { PiggyBluff, RULES as PIGGY_RULES } from './games/piggy-bluff/PiggyBluff';
+import { BlindBingo, RULES as BINGO_RULES } from './games/blind-bingo/BlindBingo';
 import { Hub } from './ui/Hub';
 import { Panel } from './ui/Panel';
 
@@ -19,6 +20,7 @@ const GAME_VIEWS: Record<string, { rules: string[]; View: (p: { botCount: number
   'six-chambers': { rules: CHAMBER_RULES, View: SixChambers },
   'walls-and-wards': { rules: WALL_RULES, View: WallsAndWards },
   'piggy-bluff': { rules: PIGGY_RULES, View: PiggyBluff },
+  'blind-bingo': { rules: BINGO_RULES, View: BlindBingo },
 };
 
 export function App() {
