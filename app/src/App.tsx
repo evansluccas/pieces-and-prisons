@@ -19,6 +19,7 @@ import { FenceLoop, RULES as FENCE_RULES } from './games/fence-loop/FenceLoop';
 import { SecondGlance, RULES as GLANCE_RULES } from './games/second-glance/SecondGlance';
 import { DeadeyeHoldem, RULES as DEADEYE_RULES } from './games/deadeye-holdem/DeadeyeHoldem';
 import { SplitDecision, RULES as SPLIT_RULES } from './games/split-decision/SplitDecision';
+import { PieceTogether, RULES as PIECE_RULES } from './games/piece-together/PieceTogether';
 import { Hub } from './ui/Hub';
 import { Panel } from './ui/Panel';
 
@@ -40,6 +41,7 @@ const GAME_VIEWS: Record<string, { rules: string[]; View: (p: { botCount: number
   'second-glance': { rules: GLANCE_RULES, View: SecondGlance },
   'deadeye-holdem': { rules: DEADEYE_RULES, View: DeadeyeHoldem },
   'split-decision': { rules: SPLIT_RULES, View: SplitDecision },
+  'piece-together': { rules: PIECE_RULES, View: PieceTogether },
 };
 
 export function App() {
