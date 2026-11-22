@@ -9,6 +9,7 @@ import { SixChambers, RULES as CHAMBER_RULES } from './games/six-chambers/SixCha
 import { WallsAndWards, RULES as WALL_RULES } from './games/walls-and-wards/WallsAndWards';
 import { PiggyBluff, RULES as PIGGY_RULES } from './games/piggy-bluff/PiggyBluff';
 import { BlindBingo, RULES as BINGO_RULES } from './games/blind-bingo/BlindBingo';
+import { SmugglersGems, RULES as GEM_RULES } from './games/smugglers-gems/SmugglersGems';
 import { Hub } from './ui/Hub';
 import { Panel } from './ui/Panel';
 
@@ -21,6 +22,7 @@ const GAME_VIEWS: Record<string, { rules: string[]; View: (p: { botCount: number
   'walls-and-wards': { rules: WALL_RULES, View: WallsAndWards },
   'piggy-bluff': { rules: PIGGY_RULES, View: PiggyBluff },
   'blind-bingo': { rules: BINGO_RULES, View: BlindBingo },
+  'smugglers-gems': { rules: GEM_RULES, View: SmugglersGems },
 };
 
 export function App() {
