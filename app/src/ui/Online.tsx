@@ -1,6 +1,7 @@
 import { FormEvent, ReactElement, useEffect, useState } from 'react';
 import { GAMES } from '../games/registry';
 import { LonelyNumberOnline } from '../games/lonely-number/LonelyNumberOnline';
+import { SandBidOnline } from '../games/sand-bid/SandBidOnline';
 import { GameMessage, RoomView, useTable } from '../net/table';
 import { Me, account } from '../net/account';
 import { Panel, Sprite } from './Panel';
@@ -16,6 +17,7 @@ export interface OnlineGameProps {
 /** Games that can be played at an online table, and the view that plays them. */
 const ONLINE_VIEWS: Record<string, (p: OnlineGameProps) => ReactElement> = {
   'lonely-number': LonelyNumberOnline,
+  'sand-bid': SandBidOnline,
 };
 export const ONLINE_IDS = Object.keys(ONLINE_VIEWS);
 

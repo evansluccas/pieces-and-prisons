@@ -166,7 +166,12 @@ export function SandBid({ botCount = 3 }: { botCount?: number }) {
 
 // ---------------------------------------------------------------- drawing
 
-function drawScene(g: Gfx, s: GameState, r: LiveRound, meta: Record<string, string>) {
+export const PORTRAITS = ['citizen', 'officer', 'journalist', 'fanatic', 'researcher', 'terrorist'];
+
+/** Online play: where the clock stopped (rival holds are secret), a status line, and the button label. */
+export interface OnlineHud { clock?: number; sub?: string; nextLabel?: string }
+
+export function drawScene(g: Gfx, s: GameState, r: LiveRound, meta: Record<string, string>, hud?: OnlineHud) {
   const now = g.time;
   const last = s.history[s.history.length - 1];
   const showResult = s.phase === 'result' || s.phase === 'gameOver';
@@ -191,7 +196,7 @@ function drawScene(g: Gfx, s: GameState, r: LiveRound, meta: Record<string, stri
     g.text(p.name, cx, 68, { align: 'center', color: '#3a2216', shadow: false });
     starCount(g, cx, 80, p.tokens, '#5e3a24');
     if (won) g.text('WIN', cx + slot / 2 - 12, 36, { align: 'right', color: '#86192f', shadow: false, size: 8 });
-    if (p.bankMs <= 0) g.text('EMPTY', cx - slot / 2 + 12, 36, { color: '#86192f', shadow: false, size: 7 });
+    if (p.bankMs === 0) g.text('EMPTY', cx - slot / 2 + 12, 36, { color: '#86192f', shadow: false, size: 7 });
   });
 
   // centre: hourglass, button, round clock
@@ -206,7 +211,7 @@ function drawScene(g: Gfx, s: GameState, r: LiveRound, meta: Record<string, stri
     if (Math.floor(now / 500) % 2 === 0) g.frame(bx - 3, by + 30, 70, 37, COLORS.gold);
   }
 
-  const clock = bidding ? clockMs(r, now) : last ? Math.max(0, ...Object.values(last.bids)) : 0;
+  const clock = bidding ? clockMs(r, now) : hud?.clock ?? (last ? Math.max(0, ...Object.values(last.bids)) : 0);
   g.text('ROUND CLOCK', 344, 112, { color: COLORS.muted, size: 8 });
   g.text(formatMs(clock), 344, 124, { size: 14, color: running ? COLORS.ruby : COLORS.ink });
 
@@ -236,6 +241,7 @@ function drawScene(g: Gfx, s: GameState, r: LiveRound, meta: Record<string, stri
     const mineBid = last.bids[ME];
     sub = `clock stopped at ${formatMs(clock)}  ·  ${mineBid > 0 ? `you held ${formatMs(mineBid)}` : 'you sat out'}`;
   }
+  if (hud?.sub) sub = hud.sub;
   if (msg) g.text(msg, W / 2, 172, { align: 'center', size: 11, color: COLORS.gold });
   if (sub) g.text(sub, W / 2, 186, { align: 'center', size: 8, color: COLORS.muted });
 
@@ -258,7 +264,7 @@ function drawScene(g: Gfx, s: GameState, r: LiveRound, meta: Record<string, stri
   const shownHold = me.status === 'holding' ? myLiveHold : bidding ? me.bid : last?.bids[ME] ?? 0;
   g.text(formatMs(shownHold), 300, 220, { size: 12, color: me.status === 'holding' && running ? COLORS.ruby : COLORS.ink });
 
-  if (s.phase === 'result') g.button('next', s.round >= s.config.rounds ? 'Final result' : 'Next round', 396, 236, 72);
+  if (s.phase === 'result') g.button('next', hud?.nextLabel ?? (s.round >= s.config.rounds ? 'Final result' : 'Next round'), 396, 236, 72);
   if (s.phase === 'gameOver') {
     const order = standings(s);
     standingsPanel(
@@ -278,7 +284,8 @@ function drawFallingSand(g: Gfx, x: number, y: number, now: number) {
 
 // ---------------------------------------------------------------- log (DOM)
 
-function BidLog({ state }: { state: GameState }) {
+/** `clocks`: where the clock stopped each round, when rival holds are hidden (online). */
+export function BidLog({ state, clocks }: { state: GameState; clocks?: number[] }) {
   const over = state.phase === 'gameOver';
   const name = (id: string | null) => (id ? state.players.find((p) => p.id === id)?.name ?? id : 'nobody');
   return (
@@ -289,7 +296,7 @@ function BidLog({ state }: { state: GameState }) {
       </p>
       <ol reversed>
         {[...state.history].reverse().map((r) => {
-          const longest = Math.max(0, ...Object.values(r.bids));
+          const longest = clocks?.[r.round - 1] ?? Math.max(0, ...Object.values(r.bids));
           return (
             <li key={r.round}>
               <b>R{r.round}</b> <span className={r.winner === ME ? 'win' : ''}>{r.winner === ME ? 'You win' : r.winner ? `${name(r.winner)} wins` : 'tie'}</span>

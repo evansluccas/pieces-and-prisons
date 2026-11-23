@@ -137,6 +137,10 @@ export class Rooms {
     if (room.status === 'lobby') return this.removeUser(room, userId);
     seat.connected = false;
     if (!room.seats.some((s) => s.connected && !s.isBot)) room.emptySince = this.now();
+    if (room.status === 'playing' && room.game.realtime) {
+      room.state = room.game.realtime.dropped(room.state, seat.id, this.now());
+      return this.advance(room);
+    }
     this.broadcast(room);
   }
 
@@ -217,13 +221,17 @@ export class Rooms {
         seat.isBot = true;
         seat.connected = true;
         seat.name = `${seat.name} (bot)`;
+        if (room.game.realtime) {
+          const rt = room.game.realtime;
+          room.state = rt.takeover(rt.dropped(room.state, seat.id, this.now()), seat.id);
+        }
       } else room.seats.splice(room.seats.indexOf(seat), 1);
     }
     const humans = room.seats.filter((s) => s.userId !== null);
     if (!humans.length) return this.close(room);
     if (room.hostId === userId) room.hostId = humans[0].userId!;
-    this.broadcast(room);
-    if (room.status === 'playing') this.schedule(room);
+    if (room.status === 'playing') this.advance(room);
+    else this.broadcast(room);
   }
 
   private close(room: Room) {
@@ -261,7 +269,7 @@ export class Rooms {
     const room = this.mustHost(user);
     if (room.status !== 'lobby') throw new TableError('The game has already started.');
     if (room.seats.length < room.game.minPlayers) throw new TableError(`This game needs at least ${room.game.minPlayers} players — add bots to fill seats.`);
-    room.state = room.game.start(room.seats.map((s) => ({ id: s.id, name: s.name, isBot: s.isBot })), room.rng);
+    room.state = room.game.start(room.seats.map((s) => ({ id: s.id, name: s.name, isBot: s.isBot })), room.rng, this.now());
     room.status = 'playing';
     room.results = null;
     this.advance(room);
@@ -271,10 +279,19 @@ export class Rooms {
     const room = this.mustRoom(user);
     if (room.status !== 'playing') throw new TableError('The game isn’t running.');
     const seat = room.seats.find((s) => s.userId === user.id)!;
+    if (room.game.realtime) {
+      if (room.pauseUntil !== null) throw new TableError('Not your move right now.');
+      try {
+        room.state = room.game.act(room.state, seat.id, action, this.now());
+      } catch (e) {
+        throw new TableError(e instanceof Error ? e.message : 'That move isn’t allowed.');
+      }
+      return this.advance(room);
+    }
     const before = room.game.waitingOn(room.state);
     if (room.pauseUntil !== null || !before.includes(seat.id)) throw new TableError('Not your move right now.');
     try {
-      room.state = room.game.act(room.state, seat.id, action);
+      room.state = room.game.act(room.state, seat.id, action, this.now());
     } catch (e) {
       throw new TableError(e instanceof Error ? e.message : 'That move isn’t allowed.');
     }
@@ -331,6 +348,19 @@ export class Rooms {
       return this.broadcast(room);
     }
     room.pauseUntil = null;
+    if (game.realtime) {
+      // real-time: no move clock; wake the game when its timing needs it
+      room.deadline = null;
+      this.broadcast(room);
+      const at = game.realtime.wakeAt(room.state, this.now());
+      if (at !== null) {
+        this.timer(room, Math.max(0, at - this.now()), () => {
+          room.state = game.realtime!.tick(room.state, this.now());
+          this.advance(room);
+        });
+      }
+      return;
+    }
     room.deadline = this.now() + TURN_MS;
     this.broadcast(room);
     this.schedule(room);
@@ -339,7 +369,7 @@ export class Rooms {
   private endPause(room: Room) {
     const p = room.game.pause?.(room.state);
     if (!p) return;
-    room.state = p.next(room.state);
+    room.state = p.next(room.state, this.now());
     this.advance(room);
   }
 
@@ -368,7 +398,7 @@ export class Rooms {
     if (room.status !== 'playing' || room.pauseUntil !== null) return;
     const before = room.game.waitingOn(room.state);
     if (!before.includes(seatId)) return;
-    room.state = room.game.act(room.state, seatId, room.game.botAction(room.state, seatId, room.rng));
+    room.state = room.game.act(room.state, seatId, room.game.botAction(room.state, seatId, room.rng), this.now());
     if (timedOut) {
       const seat = room.seats.find((s) => s.id === seatId)!;
       if (seat.userId !== null) this.send(seat.userId, { type: 'error', message: 'Time ran out — a bot made that move for you.' });
@@ -436,7 +466,7 @@ export class Rooms {
       if (room.status !== 'lobby' && room.state !== null) {
         this.send(seat.userId, {
           type: 'game',
-          view: room.game.view(room.state, seat.id),
+          view: room.game.view(room.state, seat.id, this.now()),
           waiting: room.status === 'playing' && room.pauseUntil === null && room.game.waitingOn(room.state).includes(seat.id),
           deadline: room.deadline,
           pauseUntil: room.pauseUntil,
