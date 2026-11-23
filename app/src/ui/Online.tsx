@@ -21,6 +21,8 @@ import { HighOrLowOnline } from '../games/high-or-low/HighOrLowOnline';
 import { AskAndArrangeOnline } from '../games/ask-and-arrange/AskAndArrangeOnline';
 import { HexSumOnline } from '../games/hex-sum/HexSumOnline';
 import { BlindFiveOnline } from '../games/blind-five/BlindFiveOnline';
+import { NumberForgeOnline } from '../games/number-forge/NumberForgeOnline';
+import { SplitDecisionOnline } from '../games/split-decision/SplitDecisionOnline';
 import { GameMessage, RoomView, useTable } from '../net/table';
 import { Me, account } from '../net/account';
 import { Panel, Sprite } from './Panel';
@@ -56,6 +58,8 @@ const ONLINE_VIEWS: Record<string, (p: OnlineGameProps) => ReactElement> = {
   'ask-and-arrange': AskAndArrangeOnline,
   'hex-sum': HexSumOnline,
   'blind-five': BlindFiveOnline,
+  'number-forge': NumberForgeOnline,
+  'split-decision': SplitDecisionOnline,
 };
 export const ONLINE_IDS = Object.keys(ONLINE_VIEWS);
 

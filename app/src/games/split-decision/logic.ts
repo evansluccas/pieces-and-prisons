@@ -297,7 +297,7 @@ export function next(s: GameState): GameState {
   return { ...s, index, picks: {}, phase: s.questions[index].data.kind === 'memory' ? 'memorize' : 'answer' };
 }
 
-export function standings(s: GameState) {
+export function standings(s: { players: PlayerState[] }) {
   return s.players
     .map((p, seat) => ({ ...p, seat }))
     .sort((a, b) => b.points - a.points || a.timeMs - b.timeMs || a.seat - b.seat);

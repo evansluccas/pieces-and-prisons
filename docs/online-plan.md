@@ -2,7 +2,7 @@
 
 How Pieces & Prisons moves from solo play to online tables: what's done, what each game needs, and what's left on the server before we can host it. Tick items off as they land.
 
-**Status (2026-11-23):** 21 of 30 games online · live at https://pieces-and-prisons.fly.dev (Fly.io, Amsterdam).
+**Status (2026-11-23):** 23 of 30 games online · live at https://pieces-and-prisons.fly.dev (Fly.io, Amsterdam).
 
 ---
 
@@ -59,6 +59,8 @@ Grouped by how much work each needs. Within a group, the order is a suggestion �
 | [x] Ask & Arrange | duel; both arrange at once; the rival row and guess stay hidden until the end; 90 s decisions |
 | [x] Hex Sum | duel; the server times the 30 s study phase, then sends only flipped numbers |
 | [x] Blind Five | duel; no message names the owner of a face-down stone (not even your own); per-seat bot memory |
+| [x] Number Forge | real-time race; the server's arrival order decides who claims a forge; 60 s rounds; remaining answers hidden until a round ends |
+| [x] Split Decision | real-time; 30 s server clock per question, answer times measured by the server (1.5 s lag allowance); the right answer and others' picks hidden until it closes; the card grid sent only during the 8 s study |
 
 ### A. Simultaneous secret choices — done
 Both are online (see *Done*).
@@ -72,11 +74,8 @@ All five are online (see *Done*).
 ### D. Memory and private-information games — done
 All seven are online (see *Done*). Each view sends only what the solo screen shows at that moment, and each game's tests check that the secrets appear nowhere in what a player receives.
 
-### E. Timed races — need per-game clocks on the server (see §5)
-| Game | Notes |
-|---|---|
-| [ ] Number Forge | everyone forges at once; first valid claim wins, decided by server time |
-| [ ] Split Decision | 30-second answer clock; ties broken by answer time |
+### E. Timed races — done
+Both are online (see *Done*). They run on the real-time engine: the server owns every clock and decides arrival order and answer times.
 
 ### F. Solo puzzles — format to decide first
 Second Glance, Piece Together, Mirror Pieces, Fence Loop, Cipher Lock, Knight's Tour, Magic Squares.
@@ -118,5 +117,5 @@ Not tied to one game. Ordered by when they're needed.
 2. ~~Group C boards~~ — done.
 3. ~~Groups A and B~~ — done.
 4. ~~Development tool upgrades, hosting, first deploy~~ — done: https://pieces-and-prisons.fly.dev
-5. ~~Group D~~ — done. Group E next.
+5. ~~Groups D and E~~ — done.
 6. Decide on group F.

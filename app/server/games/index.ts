@@ -27,6 +27,8 @@ import * as d_high_or_low from '../../src/games/high-or-low/online';
 import * as d_ask_and_arrange from '../../src/games/ask-and-arrange/online';
 import * as d_hex_sum from '../../src/games/hex-sum/online';
 import * as d_blind_five from '../../src/games/blind-five/online';
+import * as e_number_forge from '../../src/games/number-forge/online';
+import * as e_split_decision from '../../src/games/split-decision/online';
 
 const lonelyNumber: OnlineGame<LonelyState> = {
   id: 'lonely-number',
@@ -242,6 +244,12 @@ const GROUP_D = [
   fromModule('blind-five', 2, 2, d_blind_five),
 ];
 
+/** Group E: timed races (real-time games). */
+const GROUP_E = [
+  fromModule('number-forge', 2, 6, e_number_forge),
+  fromModule('split-decision', 2, 6, e_split_decision),
+];
+
 export const ONLINE_GAMES: Record<string, OnlineGame<any>> = {
   [lonelyNumber.id]: lonelyNumber,
   [sandBid.id]: sandBid,
@@ -258,4 +266,5 @@ export const ONLINE_GAMES: Record<string, OnlineGame<any>> = {
   [deadeyeHoldem.id]: deadeyeHoldem,
   [highLowEquations.id]: highLowEquations,
   ...Object.fromEntries(GROUP_D.map((g) => [g.id, g])),
+  ...Object.fromEntries(GROUP_E.map((g) => [g.id, g])),
 };

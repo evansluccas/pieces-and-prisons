@@ -43,9 +43,41 @@ function setup(botCount: number) {
   return { state, bots, rng };
 }
 
+export type ForgeAction = { type: 'forge'; order: number[] } | { type: 'close' };
+
+/** What a click does (solo and online share this): the new pick, and a move once one is made. */
+export function forgeClick(id: string, s: GameState, pick: number[]): { pick: number[]; action?: ForgeAction } {
+  if (s.phase !== 'play') return { pick };
+  if (id.startsWith('tile:')) {
+    const i = Number(id.slice(5));
+    return { pick: pick.includes(i) ? pick.filter((x) => x !== i) : pick.length < 3 ? [...pick, i] : pick };
+  }
+  if (id === 'forge') return pick.length === 3 ? { pick: [], action: { type: 'forge', order: pick } } : { pick };
+  if (id === 'back') return { pick: pick.slice(0, -1) };
+  if (id === 'clear') return { pick: [] };
+  if (id === 'close') return { pick, action: { type: 'close' } };
+  return { pick };
+}
+
+/** Typing: A–J pick tiles, Enter forges, Backspace undoes, Escape clears (null = not ours). */
+export function keyHit(key: string): string | null {
+  const i = LETTERS.indexOf(key.toUpperCase());
+  if (key.length === 1 && i >= 0) return `tile:${i}`;
+  if (key === 'Enter') return 'forge';
+  if (key === 'Backspace') return 'back';
+  if (key === 'Escape') return 'clear';
+  return null;
+}
+
 export function NumberForge({ botCount = 3 }: { botCount?: number }) {
   const [game, setGame] = useState(() => setup(botCount));
-  const [pick, setPick] = useState<number[]>([]);
+  const [pick, setPickState] = useState<number[]>([]);
+  // the latest pick, so fast typing never works from a stale one
+  const pickRef = useRef<number[]>([]);
+  const setPick = (p: number[]) => {
+    pickRef.current = p;
+    setPickState(p);
+  };
   const roundStart = useRef(performance.now());
   const nextAt = useRef<Record<string, number>>({});
   const s = game.state;
@@ -83,40 +115,28 @@ export function NumberForge({ botCount = 3 }: { botCount?: number }) {
   }, [s.phase, s.round]);
 
   const act = (fn: (st: GameState) => GameState) => setGame((g) => (g.state.phase === 'play' ? { ...g, state: fn(g.state) } : g));
-  const submit = () => {
-    if (pick.length !== 3) return;
-    const order = pick;
-    act((st) => forge(st, ME, order, elapsed()));
-    setPick([]);
-  };
-  const toggle = (i: number) => setPick((p) => (p.includes(i) ? p.filter((x) => x !== i) : p.length < 3 ? [...p, i] : p));
 
-  // typing: A–J pick tiles, Enter forges, Backspace undoes, Escape clears
+  const onHit = (id: string) => {
+    if (id === 'again') return setGame(setup(botCount));
+    if (id === 'next') return setGame((g) => ({ ...g, state: nextRound(g.state, g.rng) }));
+    const r = forgeClick(id, s, pickRef.current);
+    setPick(r.pick);
+    const a = r.action;
+    if (a?.type === 'forge') act((st) => forge(st, ME, a.order, elapsed()));
+    if (a?.type === 'close') act((st) => close(st, ME, elapsed()));
+  };
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (s.phase !== 'play' || e.target instanceof HTMLSelectElement) return;
-      const k = e.key.toUpperCase();
-      const i = LETTERS.indexOf(k);
-      if (k.length === 1 && i >= 0) toggle(i);
-      else if (e.key === 'Enter') submit();
-      else if (e.key === 'Backspace') setPick((p) => p.slice(0, -1));
-      else if (e.key === 'Escape') setPick([]);
-      else return;
+      const id = keyHit(e.key);
+      if (!id) return;
+      onHit(id);
       e.preventDefault();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   });
-
-  const onHit = (id: string) => {
-    if (id === 'again') return setGame(setup(botCount));
-    if (id === 'next') return setGame((g) => ({ ...g, state: nextRound(g.state, g.rng) }));
-    if (s.phase !== 'play') return;
-    if (id.startsWith('tile:')) toggle(Number(id.slice(5)));
-    if (id === 'forge') submit();
-    if (id === 'clear') setPick([]);
-    if (id === 'close') act((st) => close(st, ME, elapsed()));
-  };
 
   return (
     <div className="game-layout">
@@ -147,7 +167,11 @@ function claimText(s: GameState, c: Claim, tiles: Tile[] = s.tiles): string {
   return `${who}: ${eq} — ${c.repeat ? 'already claimed' : 'wrong'} −1`;
 }
 
-function drawScene(g: Gfx, s: GameState, pick: number[], now: number) {
+/** Extras for an online table: who the bench's latest line is about, a waiting note, and the Ready button. */
+export interface OnlineHud { latest?: Claim; pending?: string; sub?: string; nextLabel?: string }
+
+/** `now` = ms since the round started. */
+export function drawScene(g: Gfx, s: GameState, pick: number[], now: number, hud?: OnlineHud) {
   const playing = s.phase === 'play';
   const last = s.history[s.history.length - 1];
   const tiles = playing ? s.tiles : last?.tiles ?? s.tiles;
@@ -230,8 +254,9 @@ function drawScene(g: Gfx, s: GameState, pick: number[], now: number) {
     g.button('forge', 'Forge! (Enter)', 236, 216, 82, { disabled: pick.length !== 3 });
     g.button('clear', 'Clear', 236, 234, 82, { disabled: !pick.length });
     g.button('close', 'Close the forge (+3/−1)', 324, 216, 144, { color: 'red' });
-    const latest = claims[claims.length - 1];
-    if (latest) {
+    const latest = hud?.latest ?? claims[claims.length - 1];
+    if (hud?.pending) g.text(hud.pending, 324, 238, { size: 7, color: COLORS.muted });
+    else if (latest) {
       const ok = latest.ok;
       g.text(claimText(s, latest, tiles), 324, 238, { size: 7, color: ok ? COLORS.emerald : COLORS.ruby });
     }
@@ -241,7 +266,8 @@ function drawScene(g: Gfx, s: GameState, pick: number[], now: number) {
     const mine = last.claims.filter((c) => c.player === ME);
     const pts = mine.reduce((n, c) => n + (c.ok ? (c.kind === 'close' ? s.config.closeBonus : 1) : -1), 0);
     g.text(`Your round: ${pts >= 0 ? '+' : ''}${pts}`, 14, 238, { size: 9, color: pts < 0 ? COLORS.ruby : COLORS.ink });
-    if (s.phase === 'result') g.button('next', s.round >= s.config.rounds ? 'Final result' : 'Next round', 388, 244, 80);
+    if (s.phase === 'result') g.button('next', hud?.nextLabel ?? (s.round >= s.config.rounds ? 'Final result' : 'Next round'), 388, 244, 80);
+    if (s.phase === 'result' && hud?.sub) g.text(hud.sub, 468, 234, { align: 'right', size: 6, color: COLORS.muted });
   }
 
   if (s.phase === 'gameOver') {
@@ -256,7 +282,7 @@ function drawScene(g: Gfx, s: GameState, pick: number[], now: number) {
 
 // ---------------------------------------------------------------- log (DOM)
 
-function ForgeLog({ state }: { state: GameState }) {
+export function ForgeLog({ state }: { state: GameState }) {
   const rounds = [
     ...(state.phase === 'play' ? [{ round: state.round, target: state.target, tiles: state.tiles, claims: state.claims }] : []),
     ...[...state.history].reverse().map((r) => ({ round: r.round, target: r.target, tiles: r.tiles, claims: r.claims })),

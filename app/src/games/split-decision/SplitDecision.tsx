@@ -5,7 +5,8 @@ import { seededRng } from '../shared/rng';
 import { standingsPanel, topBar } from '../shared/draw';
 import { cardSprite } from '../deadeye-holdem/cards';
 import { Persona, botAnswer } from './bots';
-import { DEFAULT_CONFIG, Data, GameState, KIND_NAME, choose, newGame, next, question, standings, startAnswering, timeUp } from './logic';
+import { DEFAULT_CONFIG, KIND_NAME, choose, newGame, next, standings, startAnswering, timeUp } from './logic';
+import type { SeenData, SeenState } from './online';
 
 const W = 480;
 const H = 270;
@@ -67,12 +68,10 @@ export function SplitDecision({ botCount = 3 }: { botCount?: number }) {
   }, [s.index, s.phase]);
 
   const onHit = (id: string) => {
-    if (id === 'again') return setGame(setup(botCount));
-    if (id === 'next') return setGame((g) => ({ ...g, state: next(g.state) }));
-    if (id.startsWith('opt:') && s.phase === 'answer' && !(ME in s.picks)) {
-      const choice = Number(id.slice(4)) as 0 | 1;
-      setGame((g) => ({ ...g, state: choose(g.state, ME, choice, since()) }));
-    }
+    const m = decisionClick(id, s);
+    if (m?.type === 'again') return setGame(setup(botCount));
+    if (m?.type === 'next') return setGame((g) => ({ ...g, state: next(g.state) }));
+    if (m?.type === 'answer') setGame((g) => ({ ...g, state: choose(g.state, ME, m.choice, since()) }));
   };
 
   return (
@@ -83,9 +82,19 @@ export function SplitDecision({ botCount = 3 }: { botCount?: number }) {
   );
 }
 
+export type DecisionMove = { type: 'again' } | { type: 'next' } | { type: 'answer'; choice: 0 | 1 };
+
+/** What a click does (solo and online share this): play again, go on, or answer the open question. */
+export function decisionClick(id: string, s: SeenState): DecisionMove | null {
+  if (id === 'again') return { type: 'again' };
+  if (id === 'next') return s.phase === 'reveal' ? { type: 'next' } : null;
+  if ((id === 'opt:0' || id === 'opt:1') && s.phase === 'answer' && !(ME in s.picks)) return { type: 'answer', choice: id === 'opt:0' ? 0 : 1 };
+  return null;
+}
+
 // ---------------------------------------------------------------- drawing
 
-const nameOf = (s: GameState, id: string) => (id === ME ? 'You' : s.players.find((p) => p.id === id)?.name ?? id);
+const nameOf = (s: SeenState, id: string) => (id === ME ? 'You' : s.players.find((p) => p.id === id)?.name ?? id);
 const SX = 6;
 const SY = 44;
 const SW = 314;
@@ -103,7 +112,7 @@ function poly(g: Gfx, pts: [number, number][], fill: string, stroke = '#1b1233')
   c.stroke();
 }
 
-function drawCubes(g: Gfx, d: Extract<Data, { kind: 'cubes' }>) {
+function drawCubes(g: Gfx, d: Extract<SeenData, { kind: 'cubes' }>) {
   const hw = 16; // half width of a cube's top
   const hh = 8;  // half height of a cube's top
   const ch = 18; // cube side height
@@ -129,7 +138,7 @@ function drawCubes(g: Gfx, d: Extract<Data, { kind: 'cubes' }>) {
     }
 }
 
-function drawBlocks(g: Gfx, d: Extract<Data, { kind: 'blocks' }>) {
+function drawBlocks(g: Gfx, d: Extract<SeenData, { kind: 'blocks' }>) {
   const cw = 46;
   const chh = 40;
   const x0 = SX + (SW - cw * 4) / 2;
@@ -143,7 +152,7 @@ function drawBlocks(g: Gfx, d: Extract<Data, { kind: 'blocks' }>) {
 
 const PIECE_INK = ['#6edd8c', '#70adf2', '#f5cd5b'];
 
-function drawGrass(g: Gfx, d: Extract<Data, { kind: 'grass' }>) {
+function drawGrass(g: Gfx, d: Extract<SeenData, { kind: 'grass' }>) {
   const cs = 22;
   const fx = SX + 12;
   const fy = SY + 16;
@@ -167,7 +176,7 @@ function drawGrass(g: Gfx, d: Extract<Data, { kind: 'grass' }>) {
   });
 }
 
-function drawMemory(g: Gfx, d: Extract<Data, { kind: 'memory' }>, show: boolean, reveal: boolean) {
+function drawMemory(g: Gfx, d: Extract<SeenData, { kind: 'memory' }>, show: boolean, reveal: boolean) {
   const cw = 36;
   const chh = 42;
   const x0 = SX + (SW - cw * 4) / 2;
@@ -175,8 +184,8 @@ function drawMemory(g: Gfx, d: Extract<Data, { kind: 'memory' }>, show: boolean,
   d.cards.forEach((c, i) => {
     const x = x0 + (i % 4) * cw;
     const y = y0 + Math.floor(i / 4) * chh;
-    const spot = d.spots.indexOf(i);
-    const open = show || (reveal && spot >= 0);
+    const spot = d.spots?.indexOf(i) ?? -1;
+    const open = c !== null && (show || (reveal && spot >= 0));
     g.sprite('cards', open ? cardSprite(c) : 'back', x, y, { alpha: !show && !open && spot < 0 ? 0.6 : 1 });
     if (spot >= 0 && !show) {
       g.frame(x - 1, y - 1, 34, 46, COLORS.gold, 2);
@@ -187,12 +196,15 @@ function drawMemory(g: Gfx, d: Extract<Data, { kind: 'memory' }>, show: boolean,
   });
 }
 
-function drawScene(g: Gfx, s: GameState, since: number) {
+/** Online play: the server's clock (ms left) and the label on the "next" button. */
+export interface DecisionHud { left?: number; nextLabel?: string; sub?: string }
+
+export function drawScene(g: Gfx, s: SeenState, since: number, hud?: DecisionHud) {
   const over = s.phase === 'gameOver';
-  const q = over ? s.results[s.results.length - 1].question : question(s);
+  const q = over ? s.results[s.results.length - 1].question : s.questions[s.index]!;
   const reveal = s.phase === 'reveal' || over;
   const picks = reveal ? s.results[s.results.length - 1].picks : s.picks;
-  const left = s.phase === 'memorize' ? s.config.memorizeMs - since : s.config.answerMs - since;
+  const left = hud?.left ?? (s.phase === 'memorize' ? s.config.memorizeMs - since : s.config.answerMs - since);
 
   g.tile('board', 'tile_night', 0, 0, W, H);
   topBar(g, [
@@ -245,7 +257,8 @@ function drawScene(g: Gfx, s: GameState, since: number) {
     } else if (s.phase === 'answer') st = pk ? 'answered' : 'thinking…';
     g.text(st, px + 8, y + 10, { size: 7, color: col });
   });
-  if (s.phase === 'reveal') g.button('next', s.index + 1 >= s.questions.length ? 'Final result' : 'Next question', px + 8, 246, W - px - 20);
+  if (s.phase === 'reveal') g.button('next', hud?.nextLabel ?? (s.index + 1 >= s.questions.length ? 'Final result' : 'Next question'), px + 8, 246, W - px - 20);
+  if (s.phase === 'reveal' && hud?.sub) g.text(hud.sub, px + 8, 236, { size: 7, color: COLORS.muted });
   if (s.phase === 'answer' && mine) g.text('waiting for the others…', px + 8, 236, { size: 7, color: COLORS.muted });
 
   if (over) {
@@ -260,7 +273,7 @@ function drawScene(g: Gfx, s: GameState, since: number) {
 
 // ---------------------------------------------------------------- log (DOM)
 
-function DecisionLog({ state }: { state: GameState }) {
+export function DecisionLog({ state }: { state: SeenState }) {
   const name = (id: string) => nameOf(state, id);
   return (
     <aside className="log">
