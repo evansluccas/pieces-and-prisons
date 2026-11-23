@@ -17,6 +17,9 @@ import * as tigers from '../../src/games/tigers-and-goats/online';
 import * as scales from '../../src/games/tipping-scales/online';
 import type { GameState as ScalesState } from '../../src/games/tipping-scales/logic';
 import * as rumor from '../../src/games/rumor-exchange/online';
+import * as doubt from '../../src/games/color-doubt/online';
+import * as deadeye from '../../src/games/deadeye-holdem/online';
+import * as hilo from '../../src/games/high-low-equations/online';
 
 const lonelyNumber: OnlineGame<LonelyState> = {
   id: 'lonely-number',
@@ -169,6 +172,49 @@ const rumorExchange: OnlineGame<rumor.OnlineState> = {
   results: rumor.results,
 };
 
+const colorDoubt: OnlineGame<doubt.OnlineState> = {
+  id: 'color-doubt',
+  minPlayers: 3,
+  maxPlayers: 6,
+  start: doubt.start,
+  act: doubt.act,
+  view: doubt.view,
+  waitingOn: doubt.waitingOn,
+  botAction: doubt.botAction,
+  pause: doubt.pause,
+  over: doubt.over,
+  results: doubt.results,
+};
+
+const deadeyeHoldem: OnlineGame<deadeye.OnlineState> = {
+  id: 'deadeye-holdem',
+  minPlayers: 2,
+  maxPlayers: 6,
+  start: deadeye.start,
+  act: deadeye.act,
+  view: deadeye.view,
+  waitingOn: deadeye.waitingOn,
+  botAction: deadeye.botAction,
+  pause: deadeye.pause,
+  over: deadeye.over,
+  results: deadeye.results,
+};
+
+const highLowEquations: OnlineGame<hilo.OnlineState> = {
+  id: 'high-low-equations',
+  minPlayers: 3,
+  maxPlayers: 6,
+  start: hilo.start,
+  act: hilo.act,
+  view: hilo.view,
+  waitingOn: hilo.waitingOn,
+  turnMs: hilo.turnMs,
+  botAction: hilo.botAction,
+  pause: hilo.pause,
+  over: hilo.over,
+  results: hilo.results,
+};
+
 export const ONLINE_GAMES: Record<string, OnlineGame<any>> = {
   [lonelyNumber.id]: lonelyNumber,
   [sandBid.id]: sandBid,
@@ -181,4 +227,7 @@ export const ONLINE_GAMES: Record<string, OnlineGame<any>> = {
   [tigersAndGoats.id]: tigersAndGoats,
   [tippingScales.id]: tippingScales,
   [rumorExchange.id]: rumorExchange,
+  [colorDoubt.id]: colorDoubt,
+  [deadeyeHoldem.id]: deadeyeHoldem,
+  [highLowEquations.id]: highLowEquations,
 };

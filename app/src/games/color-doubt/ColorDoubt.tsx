@@ -46,7 +46,41 @@ function setup(botCount: number) {
   return { state, bots, rng };
 }
 
-interface Draft { color: Color; count: number }
+export interface Draft { color: Color; count: number }
+export type DoubtAction = { type: 'raise'; count: number; color: Color } | { type: 'doubt' } | { type: 'back'; side: 'bid' | 'doubt' };
+
+/** What a click does (solo and online share this): the new draft bid, and a move once one is chosen. */
+export function doubtClick(id: string, s: GameState, draft: Draft): { draft: Draft; action?: DoubtAction } {
+  if (s.phase === 'back' && backers(s).includes(ME)) {
+    if (id === 'backBid') return { draft, action: { type: 'back', side: 'bid' } };
+    if (id === 'backDoubt') return { draft, action: { type: 'back', side: 'doubt' } };
+    return { draft };
+  }
+  if (s.phase !== 'bid' || s.turn !== ME) return { draft };
+  if (id.startsWith('col:')) {
+    const color = id.slice(4) as Color;
+    const min = minRaise(s, color);
+    return { draft: min !== null ? { color, count: Math.max(min, draft.count) } : draft };
+  }
+  if (id === 'n-') return { draft: { ...draft, count: Math.max(minRaise(s, draft.color) ?? 1, draft.count - 1) } };
+  if (id === 'n+') return { draft: { ...draft, count: Math.min(cardsInPlay(s), draft.count + 1) } };
+  if (id === 'raise' && isRaise(s, draft.count, draft.color)) return { draft, action: { type: 'raise', count: draft.count, color: draft.color } };
+  if (id === 'doubt' && canDoubt(s, ME)) return { draft, action: { type: 'doubt' } };
+  return { draft };
+}
+
+/** When your turn starts: your most common colour at the smallest legal count. */
+export function startingDraft(s: GameState): Draft {
+  const hand = s.players.find((p) => p.id === ME)!.hand;
+  const byCount = [...COLOR_ORDER].sort((a, b) => hand.filter((c) => c === b).length - hand.filter((c) => c === a).length);
+  const color = byCount.find((c) => minRaise(s, c) !== null) ?? 'amethyst';
+  return { color, count: minRaise(s, color) ?? 1 };
+}
+
+export const PORTRAITS = ['citizen', 'officer', 'journalist', 'fanatic', 'researcher', 'terrorist'];
+
+/** Online play: the move clock, a hint line and the label on the "next" button. */
+export interface OnlineHud { clock?: string; sub?: string; nextLabel?: string }
 
 export function ColorDoubt({ botCount = 3 }: { botCount?: number }) {
   const [game, setGame] = useState(() => setup(botCount));
@@ -79,30 +113,17 @@ export function ColorDoubt({ botCount = 3 }: { botCount?: number }) {
   // when my turn starts, pick my most common colour at the smallest legal count
   useEffect(() => {
     if (s.phase !== 'bid' || s.turn !== ME) return;
-    const hand = s.players.find((p) => p.id === ME)!.hand;
-    const byCount = [...COLOR_ORDER].sort((a, b) => hand.filter((c) => c === b).length - hand.filter((c) => c === a).length);
-    const color = byCount.find((c) => minRaise(s, c) !== null) ?? 'amethyst';
-    setDraft({ color, count: minRaise(s, color) ?? 1 });
+    setDraft(startingDraft(s));
   }, [s.phase, s.turn, s.bids.length]);
 
   const onHit = (id: string) => {
     if (id === 'again') return setGame(setup(botCount));
     if (id === 'next') return set(nextRound(s, game.rng));
-    if (s.phase === 'back' && backers(s).includes(ME)) {
-      if (id === 'backBid') set(back(s, ME, 'bid'));
-      if (id === 'backDoubt') set(back(s, ME, 'doubt'));
-      return;
-    }
-    if (s.phase !== 'bid' || s.turn !== ME) return;
-    if (id.startsWith('col:')) {
-      const color = id.slice(4) as Color;
-      const min = minRaise(s, color);
-      if (min !== null) setDraft({ color, count: Math.max(min, draft.count) });
-    }
-    if (id === 'n-') setDraft((d) => ({ ...d, count: Math.max(minRaise(s, d.color) ?? 1, d.count - 1) }));
-    if (id === 'n+') setDraft((d) => ({ ...d, count: Math.min(cardsInPlay(s), d.count + 1) }));
-    if (id === 'raise' && isRaise(s, draft.count, draft.color)) set(raise(s, ME, draft.count, draft.color));
-    if (id === 'doubt' && canDoubt(s, ME)) set(doubt(s, ME));
+    const r = doubtClick(id, s, draft);
+    setDraft(r.draft);
+    if (r.action?.type === 'raise') set(raise(s, ME, r.action.count, r.action.color));
+    if (r.action?.type === 'doubt') set(doubt(s, ME));
+    if (r.action?.type === 'back') set(back(s, ME, r.action.side));
   };
 
   const meta: Record<string, string> = { [ME]: 'citizen' };
@@ -128,7 +149,7 @@ function miniCard(g: Gfx, x: number, y: number, color: Color | null, lit = true)
   if (!color) g.rect(x + 3, y + 5, 4, 4, '#7d6bc4');
 }
 
-function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, draft: Draft) {
+export function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, draft: Draft, hud?: OnlineHud) {
   const reveal = s.phase === 'reveal' || s.phase === 'gameOver';
   const last = s.history[s.history.length - 1];
   const bid = reveal && last ? last.bids[last.bids.length - 1] : currentBid(s);
@@ -140,7 +161,7 @@ function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, draft: Dr
   g.tile('board', 'tile_night', 0, 0, W, H);
   topBar(g, [
     { text: `ROUND ${s.round}/${s.config.rounds}`, color: COLORS.gold },
-    { text: `${cardsInPlay(s)} cards in play · 7 of each colour exist`, color: COLORS.muted },
+    hud?.clock ? { text: hud.clock, color: COLORS.ruby } : { text: `${cardsInPlay(s)} cards in play · 7 of each colour exist`, color: COLORS.muted },
   ], 'COLOR DOUBT');
 
   // opponents
@@ -234,7 +255,8 @@ function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, draft: Dr
     g.button('backBid', 'Back the bid', bx, 236, 120);
     g.button('backDoubt', 'Back the doubt', bx + 128, 236, 120, { color: 'red' });
   } else if (s.phase === 'reveal') {
-    g.button('next', isOver(s) ? 'Final result' : 'Next round', 352, 244, 116);
+    g.button('next', hud?.nextLabel ?? (isOver(s) ? 'Final result' : 'Next round'), 352, 244, 116);
+    if (hud?.sub) g.text(hud.sub, 352, 236, { size: 6, color: COLORS.muted });
   }
 
   if (s.phase === 'gameOver') {
@@ -272,7 +294,7 @@ function status(s: GameState, id: string): string {
 
 // ---------------------------------------------------------------- log (DOM)
 
-function BidLog({ state }: { state: GameState }) {
+export function BidLog({ state }: { state: GameState }) {
   const name = (id: string) => nameOf(state, id);
   return (
     <aside className="log">

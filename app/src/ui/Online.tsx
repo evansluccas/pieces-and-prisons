@@ -11,6 +11,9 @@ import { NineMensMorrisOnline } from '../games/nine-mens-morris/NineMensMorrisOn
 import { TigersAndGoatsOnline } from '../games/tigers-and-goats/TigersAndGoatsOnline';
 import { TippingScalesOnline } from '../games/tipping-scales/TippingScalesOnline';
 import { RumorExchangeOnline } from '../games/rumor-exchange/RumorExchangeOnline';
+import { ColorDoubtOnline } from '../games/color-doubt/ColorDoubtOnline';
+import { DeadeyeHoldemOnline } from '../games/deadeye-holdem/DeadeyeHoldemOnline';
+import { HighLowEquationsOnline } from '../games/high-low-equations/HighLowEquationsOnline';
 import { GameMessage, RoomView, useTable } from '../net/table';
 import { Me, account } from '../net/account';
 import { Panel, Sprite } from './Panel';
@@ -36,6 +39,9 @@ const ONLINE_VIEWS: Record<string, (p: OnlineGameProps) => ReactElement> = {
   'tigers-and-goats': TigersAndGoatsOnline,
   'tipping-scales': TippingScalesOnline,
   'rumor-exchange': RumorExchangeOnline,
+  'color-doubt': ColorDoubtOnline,
+  'deadeye-holdem': DeadeyeHoldemOnline,
+  'high-low-equations': HighLowEquationsOnline,
 };
 export const ONLINE_IDS = Object.keys(ONLINE_VIEWS);
 

@@ -102,7 +102,10 @@ function card(g: Gfx, c: Card | null, x: number, y: number, dim = false) {
   g.sprite('cards', c ? cardSprite(c) : 'back', x, y, { alpha: dim ? 0.45 : 1 });
 }
 
-function drawScene(g: Gfx, s: GameState, aim: Snipe) {
+/** Online play: the move clock, a hint line and the label on the "next" button. */
+export interface OnlineHud { clock?: string; sub?: string; nextLabel?: string }
+
+export function drawScene(g: Gfx, s: GameState, aim: Snipe, hud?: OnlineHud) {
   const res = s.phase === 'result' || s.phase === 'gameOver' ? s.results[s.results.length - 1] : null;
   const board = res ? res.board : s.board;
   const me = s.players.find((p) => p.id === ME)!;
@@ -115,6 +118,7 @@ function drawScene(g: Gfx, s: GameState, aim: Snipe) {
     { text: `HAND ${s.hand}/${s.config.hands}`, color: COLORS.gold },
     { text: res ? 'showdown' : s.phase === 'snipe' ? 'SNIPE' : STREET[s.street], color: s.phase === 'snipe' ? COLORS.ruby : COLORS.muted },
     { text: `pot ${res ? Object.values(res.winnings).reduce((a, b) => a + b, 0) + res.carried : pot(s)}`, color: COLORS.ink },
+    ...(hud?.clock ? [{ text: hud.clock, color: COLORS.ruby }] : []),
   ], "DEADEYE HOLD'EM");
 
   // opponents
@@ -203,7 +207,8 @@ function drawScene(g: Gfx, s: GameState, aim: Snipe) {
     });
     if (!shots.length && !res.foldWin) g.text('Nobody sniped.', px, 200, { size: 7, color: COLORS.muted });
     if (res.carried) g.text(`${res.carried} carried to the next hand`, px, 252, { size: 7, color: COLORS.muted });
-    if (s.phase === 'result') g.button('next', s.hand >= s.config.hands ? 'Final result' : 'Next hand', W - 96, 248, 84);
+    if (s.phase === 'result') g.button('next', hud?.nextLabel ?? (s.hand >= s.config.hands ? 'Final result' : 'Next hand'), W - 96, 248, 84);
+    if (s.phase === 'result' && hud?.sub) g.text(hud.sub, W - 96, 240, { size: 6, color: COLORS.muted });
   }
 
   if (s.phase === 'gameOver') {
@@ -220,7 +225,7 @@ const cap = (t: string) => t[0].toUpperCase() + t.slice(1);
 
 // ---------------------------------------------------------------- log (DOM)
 
-function HandLog({ state }: { state: GameState }) {
+export function HandLog({ state }: { state: GameState }) {
   const name = (id: string) => nameOf(state, id);
   return (
     <aside className="log">

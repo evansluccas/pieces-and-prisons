@@ -2,7 +2,7 @@
 
 How Pieces & Prisons moves from solo play to online tables: what's done, what each game needs, and what's left on the server before we can host it. Tick items off as they land.
 
-**Status (2026-11-23):** 11 of 30 games online · accounts, guests and tables working locally · not hosted yet.
+**Status (2026-11-23):** 14 of 30 games online · accounts, guests and tables working locally · not hosted yet.
 
 ---
 
@@ -49,16 +49,15 @@ Grouped by how much work each needs. Within a group, the order is a suggestion �
 | [x] Tigers & Goats | duel of two games with sides swapped, Ready between games |
 | [x] Tipping Scales | simultaneous card + chip; rival plays hidden until all are in |
 | [x] Rumor Exchange | simultaneous orders; rules, rumors and rival holdings hidden until the end; a rumor doesn't restart the clock (`decisionKey`) |
+| [x] Color Doubt | bids in turn, backing at once; rival hands face down until the reveal |
+| [x] Deadeye Hold'em | the deck and rival hole cards are never sent before a showdown; snipes hidden until all are in |
+| [x] High-Low Equations | the deck and rival hidden cards stay hidden; declaring gets 90 s (`turnMs`) |
 
 ### A. Simultaneous secret choices — done
 Both are online (see *Done*).
 
-### B. Turn-based with hidden hands
-| Game | Notes |
-|---|---|
-| [ ] Color Doubt | hidden hands; bid/doubt in turn, then simultaneous backing |
-| [ ] Deadeye Hold'em | betting rounds, side pots, secret snipes |
-| [ ] High-Low Equations | betting + a secret equation and high/low/swing declaration |
+### B. Turn-based with hidden hands — done
+All three are online (see *Done*).
 
 ### C. Open-information boards — done
 All five are online (see *Done*).
@@ -117,7 +116,7 @@ Not tied to one game. Ordered by when they're needed.
 
 1. ~~Per-game clocks and the lobby-reload fix~~ — done.
 2. ~~Group C boards~~ — done.
-3. ~~Group A~~ — done. Group B next.
+3. ~~Groups A and B~~ — done.
 4. Development tool upgrades + hosting decision → first public deploy.
 5. Group D, then E.
 6. Decide on group F.

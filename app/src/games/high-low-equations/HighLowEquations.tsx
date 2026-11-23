@@ -6,7 +6,7 @@ import { pace } from '../shared/pace';
 import { standingsPanel, topBar } from '../shared/draw';
 import { Persona, botAct, botDeclare } from './bots';
 import {
-  Action, Card, DEFAULT_CONFIG, Equation, GameState, Op, Side, TARGET, act, betSize, cardsOf, currentTurn, declare, declarers, equationText,
+  Action, Card, DEFAULT_CONFIG, Declaration, Equation, GameState, Op, Side, TARGET, act, betSize, cardsOf, currentTurn, declare, declarers, equationText,
   evaluate, fmt, legalActions, newGame, nextHand, pot, standings,
 } from './logic';
 
@@ -50,8 +50,37 @@ function setup(botCount: number) {
 
 /** One piece of the equation being built: a card from your hand (by index) or one of +, −, ÷. */
 type Token = { t: 'num' | 'root' | 'times'; idx: number } | { t: 'op'; op: Op };
-interface Builder { side: Side; editing: 'high' | 'low'; high: Token[]; low: Token[] }
-const emptyBuilder = (): Builder => ({ side: 'high', editing: 'high', high: [], low: [] });
+export interface Builder { side: Side; editing: 'high' | 'low'; high: Token[]; low: Token[] }
+export const emptyBuilder = (): Builder => ({ side: 'high', editing: 'high', high: [], low: [] });
+
+/** What a click does while declaring (solo and online share this): the new builder, and the declaration once made. */
+export function builderClick(id: string, s: GameState, b: Builder): { b: Builder; declaration?: Declaration } {
+  if (s.phase !== 'declare') return { b };
+  const cards = cardsOf(s.players.find((p) => p.id === ME)!);
+  const tokens = b[b.editing];
+  const put = (next: Token[]) => ({ b: { ...b, [b.editing]: next } });
+  if (id.startsWith('side:')) {
+    const side = id.slice(5) as Side;
+    return { b: { ...b, side, editing: side === 'low' ? 'low' : 'high' } };
+  }
+  if (id === 'edit:high' || id === 'edit:low') return { b: { ...b, editing: id.slice(5) as 'high' | 'low' } };
+  if (id === 'undo') return put(tokens.slice(0, -1));
+  if (id === 'clear') return put([]);
+  if (id.startsWith('tk:')) {
+    const [, kind, v] = id.split(':');
+    const tk: Token = kind === 'op' ? { t: 'op', op: v as Op } : { t: kind as 'num' | 'root' | 'times', idx: Number(v) };
+    return canAdd(tokens, tk, cards) ? put([...tokens, tk]) : { b };
+  }
+  if (id === 'declare') {
+    const high = b.side !== 'low' ? toEquation(b.high, cards) : null;
+    const low = b.side !== 'high' ? toEquation(b.low, cards) : null;
+    return { b, declaration: { side: b.side, high, low } };
+  }
+  return { b };
+}
+
+/** Online play: the move clock, a hint line and the label on the "next" button. */
+export interface OnlineHud { clock?: string; sub?: string; nextLabel?: string }
 
 /** Turn tokens into an equation, or null if it isn't complete yet. */
 function toEquation(tokens: Token[], cards: Card[]): Equation | null {
@@ -139,27 +168,9 @@ export function HighLowEquations({ botCount = 3 }: { botCount?: number }) {
     }
     if (id === 'next') return set((st) => nextHand(st, game.rng));
     if (id.startsWith('act:')) return set((st) => act(st, ME, id.slice(4) as Action));
-    if (s.phase !== 'declare') return;
-    const tokens = b[b.editing];
-    const put = (next: Token[]) => setB({ ...b, [b.editing]: next });
-    if (id.startsWith('side:')) {
-      const side = id.slice(5) as Side;
-      return setB({ ...b, side, editing: side === 'low' ? 'low' : 'high' });
-    }
-    if (id === 'edit:high' || id === 'edit:low') return setB({ ...b, editing: id.slice(5) as 'high' | 'low' });
-    if (id === 'undo') return put(tokens.slice(0, -1));
-    if (id === 'clear') return put([]);
-    if (id.startsWith('tk:')) {
-      const [, kind, v] = id.split(':');
-      const tk: Token = kind === 'op' ? { t: 'op', op: v as Op } : { t: kind as 'num' | 'root' | 'times', idx: Number(v) };
-      if (canAdd(tokens, tk, cards)) put([...tokens, tk]);
-      return;
-    }
-    if (id === 'declare') {
-      const high = b.side !== 'low' ? toEquation(b.high, cards) : null;
-      const low = b.side !== 'high' ? toEquation(b.low, cards) : null;
-      set((st) => declare(st, ME, { side: b.side, high, low }));
-    }
+    const r = builderClick(id, s, b);
+    setB(r.b);
+    if (r.declaration) set((st) => declare(st, ME, r.declaration!));
   };
 
   return (
@@ -204,7 +215,7 @@ function miniCard(g: Gfx, c: Card | null, x: number, y: number) {
   if (c.kind === 'num') g.rect(x + 2, y + 13, 9, 2, METAL_COLOR[c.metal]);
 }
 
-function drawScene(g: Gfx, s: GameState, b: Builder) {
+export function drawScene(g: Gfx, s: GameState, b: Builder, hud?: OnlineHud) {
   const res = s.phase === 'result' || s.phase === 'gameOver' ? s.results[s.results.length - 1] : null;
   const me = s.players.find((p) => p.id === ME)!;
   const cards = cardsOf(me);
@@ -216,7 +227,7 @@ function drawScene(g: Gfx, s: GameState, b: Builder) {
     { text: `HAND ${s.hand}/${s.config.hands}`, color: COLORS.gold },
     { text: res ? 'showdown' : s.phase === 'declare' ? 'DECLARE' : STREET[s.street], color: s.phase === 'declare' ? COLORS.ruby : COLORS.muted },
     { text: `pot ${res ? Object.values(res.winnings).reduce((a, c) => a + c, 0) : pot(s)}`, color: COLORS.ink },
-    { text: 'HIGH = 20 · LOW = 1', color: COLORS.emerald },
+    hud?.clock ? { text: hud.clock, color: COLORS.ruby } : { text: 'HIGH = 20 · LOW = 1', color: COLORS.emerald },
   ], 'HIGH-LOW EQUATIONS');
 
   // opponents
@@ -321,7 +332,8 @@ function drawScene(g: Gfx, s: GameState, b: Builder) {
     const mine = res.showings[ME];
     if (mine) g.text(`You went ${mine.declared.side.toUpperCase()}${res.failedSwing.includes(ME) ? ' — but lost a side' : ''}`, px, 226, { size: 8, color: COLORS.ink });
     if (res.winnings[ME]) g.text(`+${res.winnings[ME]} chips`, px, 238, { size: 9, color: COLORS.emerald });
-    if (s.phase === 'result') g.button('next', s.hand >= s.config.hands ? 'Final result' : 'Next hand', W - 96, 246, 84);
+    if (s.phase === 'result') g.button('next', hud?.nextLabel ?? (s.hand >= s.config.hands ? 'Final result' : 'Next hand'), W - 96, 246, 84);
+    if (s.phase === 'result' && hud?.sub) g.text(hud.sub, W - 96, 238, { size: 6, color: COLORS.muted });
   }
 
   if (s.phase === 'gameOver') {
@@ -393,7 +405,7 @@ const cap = (t: string) => t[0].toUpperCase() + t.slice(1);
 
 // ---------------------------------------------------------------- log (DOM)
 
-function HandLog({ state }: { state: GameState }) {
+export function HandLog({ state }: { state: GameState }) {
   const name = (id: string) => nameOf(state, id);
   return (
     <aside className="log">
