@@ -196,7 +196,7 @@ function TourLog({ state }: { state: GameState }) {
       <ol>
         {state.results.map((r, i) => (
           <li key={i}>
-            <b>{r.n}×{r.n}</b> · You {clock(r.timeMs)}{r.hints ? ` (${r.hints} hints)` : ''}
+            <b>{r.n}×{r.n}</b> · You {clock(r.timeMs)}{r.hints ? ` (${r.hints} hint${r.hints > 1 ? 's' : ''})` : ''}
             <em>{state.ghosts.map((gh) => `${gh.name} ${clock(gh.times[i])}`).join(' · ')}</em>
           </li>
         ))}

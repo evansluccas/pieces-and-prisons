@@ -28,6 +28,7 @@ import { TigersAndGoats, RULES as TIGER_RULES } from './games/tigers-and-goats/T
 import { AskAndArrange, RULES as ASK_RULES } from './games/ask-and-arrange/AskAndArrange';
 import { KnightsTour, RULES as KNIGHT_RULES } from './games/knights-tour/KnightsTour';
 import { BlindFive, RULES as BLIND_FIVE_RULES } from './games/blind-five/BlindFive';
+import { MagicSquares, RULES as MAGIC_RULES } from './games/magic-squares/MagicSquares';
 import { Hub } from './ui/Hub';
 import { Panel } from './ui/Panel';
 
@@ -58,6 +59,7 @@ const GAME_VIEWS: Record<string, { rules: string[]; View: (p: { botCount: number
   'ask-and-arrange': { rules: ASK_RULES, View: AskAndArrange },
   'knights-tour': { rules: KNIGHT_RULES, View: KnightsTour },
   'blind-five': { rules: BLIND_FIVE_RULES, View: BlindFive },
+  'magic-squares': { rules: MAGIC_RULES, View: MagicSquares },
 };
 
 export function App() {

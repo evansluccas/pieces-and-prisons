@@ -45,7 +45,7 @@ export const GAMES: GameInfo[] = [
   { id: 'ask-and-arrange', name: 'Ask & Arrange', tagline: "Spend ten tokens on questions to uncover your rival's eight-card row.", stage: 'final', players: '2', icon: ['icons', 'question'], playable: true, paced: true },
   { id: 'knights-tour', name: "Knight's Tour", tagline: 'Visit every square of the board exactly once with a knight.', stage: 'hidden', players: '1+', icon: ['icons', 'shield'], playable: true },
   { id: 'blind-five', name: 'Blind Five', tagline: 'Five in a row with face-down stones — remember which are yours.', stage: 'hidden', players: '2', icon: ['coins', 'coin_black'], playable: true, paced: true, memory: true },
-  { id: 'magic-squares', name: 'Magic Squares', tagline: 'Fill ever-bigger magic squares so every line adds up.', stage: 'hidden', players: '1+', icon: ['icons', 'crown'], playable: false },
+  { id: 'magic-squares', name: 'Magic Squares', tagline: 'Fill ever-bigger magic squares so every line adds up.', stage: 'hidden', players: '1+', icon: ['icons', 'crown'], playable: true },
   { id: 'fence-loop', name: 'Fence Loop', tagline: 'Draw one closed fence that satisfies every number.', stage: 'exile', players: '1+', icon: ['board', 'tree'], playable: true },
   { id: 'cipher-lock', name: 'Cipher Lock', tagline: 'Deduce the four-letter code from its clues.', stage: 'exile', players: '1+', icon: ['icons', 'lock'], playable: true },
 ];
