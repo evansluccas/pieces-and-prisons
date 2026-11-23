@@ -30,6 +30,7 @@ import { KnightsTour, RULES as KNIGHT_RULES } from './games/knights-tour/Knights
 import { BlindFive, RULES as BLIND_FIVE_RULES } from './games/blind-five/BlindFive';
 import { MagicSquares, RULES as MAGIC_RULES } from './games/magic-squares/MagicSquares';
 import { HighLowEquations, RULES as HLE_RULES } from './games/high-low-equations/HighLowEquations';
+import { TurfWar, RULES as TURF_RULES } from './games/turf-war/TurfWar';
 import { Hub } from './ui/Hub';
 import { Panel } from './ui/Panel';
 
@@ -62,6 +63,7 @@ const GAME_VIEWS: Record<string, { rules: string[]; View: (p: { botCount: number
   'blind-five': { rules: BLIND_FIVE_RULES, View: BlindFive },
   'magic-squares': { rules: MAGIC_RULES, View: MagicSquares },
   'high-low-equations': { rules: HLE_RULES, View: HighLowEquations },
+  'turf-war': { rules: TURF_RULES, View: TurfWar },
 };
 
 export function App() {
