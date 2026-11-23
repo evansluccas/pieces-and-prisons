@@ -14,6 +14,9 @@ import * as mancala from '../../src/games/tri-mancala/online';
 import type { GameState as MancalaState } from '../../src/games/tri-mancala/logic';
 import * as morris from '../../src/games/nine-mens-morris/online';
 import * as tigers from '../../src/games/tigers-and-goats/online';
+import * as scales from '../../src/games/tipping-scales/online';
+import type { GameState as ScalesState } from '../../src/games/tipping-scales/logic';
+import * as rumor from '../../src/games/rumor-exchange/online';
 
 const lonelyNumber: OnlineGame<LonelyState> = {
   id: 'lonely-number',
@@ -138,6 +141,34 @@ const tigersAndGoats: OnlineGame<tigers.OnlineState> = {
   results: tigers.results,
 };
 
+const tippingScales: OnlineGame<ScalesState> = {
+  id: 'tipping-scales',
+  minPlayers: 3,
+  maxPlayers: 7,
+  start: scales.start,
+  act: scales.act,
+  view: scales.view,
+  waitingOn: scales.waitingOn,
+  botAction: scales.botAction,
+  pause: scales.pause,
+  over: scales.over,
+  results: scales.results,
+};
+
+const rumorExchange: OnlineGame<rumor.OnlineState> = {
+  id: 'rumor-exchange',
+  minPlayers: 2,
+  maxPlayers: 6,
+  start: rumor.start,
+  act: rumor.act,
+  view: rumor.view,
+  waitingOn: rumor.waitingOn,
+  decisionKey: rumor.decisionKey,
+  botAction: rumor.botAction,
+  over: rumor.over,
+  results: rumor.results,
+};
+
 export const ONLINE_GAMES: Record<string, OnlineGame<any>> = {
   [lonelyNumber.id]: lonelyNumber,
   [sandBid.id]: sandBid,
@@ -148,4 +179,6 @@ export const ONLINE_GAMES: Record<string, OnlineGame<any>> = {
   [triMancala.id]: triMancala,
   [nineMensMorris.id]: nineMensMorris,
   [tigersAndGoats.id]: tigersAndGoats,
+  [tippingScales.id]: tippingScales,
+  [rumorExchange.id]: rumorExchange,
 };

@@ -146,7 +146,7 @@ function spark(g: Gfx, series: number[], x: number, y: number, w: number, h: num
   }
 }
 
-function drawScene(g: Gfx, s: GameState, sel: number, orders: Orders, after: number | null) {
+export function drawScene(g: Gfx, s: GameState, sel: number, orders: Orders, after: number | null, hud?: { clock?: string }) {
   const me = s.players.find((p) => p.id === ME)!;
   const over = s.phase === 'gameOver';
   const nextPublish = s.config.publishAfter.find((r) => r >= s.round);
@@ -156,8 +156,10 @@ function drawScene(g: Gfx, s: GameState, sel: number, orders: Orders, after: num
   topBar(g, [
     { text: `ROUND ${s.round}/${s.config.rounds}`, color: COLORS.gold },
     { text: nextPublish ? `rumors published after round ${nextPublish}` : 'all scheduled rumors are out', color: COLORS.muted },
-    { text: `worth ${money(worth(s, me))}`, color: COLORS.ink },
+    hud?.clock ? { text: hud.clock, color: COLORS.ruby } : { text: `worth ${money(worth(s, me))}`, color: COLORS.ink },
   ], 'RUMOR EXCHANGE');
+  // once your orders are in (online, while others decide) the desk is closed
+  const placed = !over && !!me.orders;
 
   // market table
   g.panel('panel_night', 4, 30, 316, 176, 4);
@@ -200,11 +202,11 @@ function drawScene(g: Gfx, s: GameState, sel: number, orders: Orders, after: num
   } else {
     g.text('RULE unknown', 332, 68, { size: 7, color: COLORS.muted });
     wrap(g, 'Read the chart, wait for the public rumors, or buy one now.', 332, 78, 138, COLORS.muted, 7, 3);
-    if (!over) {
+    if (!over && !placed) {
       g.button('rumor', `Buy rumor (${money(s.config.rumorCost)})`, 332, 106, 136, { disabled: me.cash < s.config.rumorCost });
     }
   }
-  if (!over) {
+  if (!over && !placed) {
     const q = orders[sel] ?? 0;
     g.text('YOUR ORDER', 332, 126, { size: 7, color: COLORS.muted });
     g.button('q-10', '−10', 332, 136, 26);
@@ -221,15 +223,19 @@ function drawScene(g: Gfx, s: GameState, sel: number, orders: Orders, after: num
   // your desk
   g.panel('panel_night', 4, 210, W - 8, 56, 4);
   g.text(`Cash ${money(me.cash)}`, 12, 216, { size: 10, color: COLORS.gold });
-  if (!over) {
+  const others = s.players.filter((p) => p.id !== ME && !p.orders).length;
+  if (placed) {
+    const list = Object.entries(me.orders!).filter(([, q]) => q).map(([i, q]) => `${COMPANIES[Number(i)].name} ${q > 0 ? '+' : ''}${q}`);
+    g.text(list.length ? `Your orders: ${list.join(' · ')}` : 'You are holding this round', 12, 232, { size: 7, color: COLORS.ink });
+    g.text(`waiting for ${others} more player${others === 1 ? '' : 's'}…`, 12, 244, { size: 7, color: COLORS.gold });
+  } else if (!over) {
     const list = Object.entries(orders).filter(([, q]) => q).map(([i, q]) => `${COMPANIES[Number(i)].name} ${q > 0 ? '+' : ''}${q}`);
     g.text(list.length ? `Orders: ${list.join(' · ')}` : 'No orders — End trading to just hold', 12, 232, { size: 7, color: COLORS.ink });
     g.text(after === null ? 'You can’t afford these orders' : `cash after orders: ${money(after)}`, 12, 244, {
       size: 7, color: after === null ? COLORS.ruby : COLORS.muted,
     });
     g.button('end', s.round === s.config.rounds ? 'Final trades' : 'End trading', 388, 244, 80, { disabled: after === null });
-    const waiting = s.players.filter((p) => p.isBot && !p.orders).length;
-    g.text(waiting ? 'others are deciding…' : 'others are ready', 468, 232, { align: 'right', size: 7, color: COLORS.muted });
+    g.text(others ? 'others are deciding…' : 'others are ready', 468, 232, { align: 'right', size: 7, color: COLORS.muted });
   }
   if (last && !over) {
     const pub = last.published.length ? `Published: ${last.published.map((i) => COMPANIES[i].name).join(' & ')}` : '';
@@ -248,7 +254,7 @@ function drawScene(g: Gfx, s: GameState, sel: number, orders: Orders, after: num
 
 // ---------------------------------------------------------------- log (DOM)
 
-function MarketLog({ state }: { state: GameState }) {
+export function MarketLog({ state }: { state: GameState }) {
   return (
     <aside className="log">
       <h3>Market log</h3>

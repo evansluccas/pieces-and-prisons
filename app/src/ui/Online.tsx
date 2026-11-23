@@ -9,6 +9,8 @@ import { TurfWarOnline } from '../games/turf-war/TurfWarOnline';
 import { TriMancalaOnline } from '../games/tri-mancala/TriMancalaOnline';
 import { NineMensMorrisOnline } from '../games/nine-mens-morris/NineMensMorrisOnline';
 import { TigersAndGoatsOnline } from '../games/tigers-and-goats/TigersAndGoatsOnline';
+import { TippingScalesOnline } from '../games/tipping-scales/TippingScalesOnline';
+import { RumorExchangeOnline } from '../games/rumor-exchange/RumorExchangeOnline';
 import { GameMessage, RoomView, useTable } from '../net/table';
 import { Me, account } from '../net/account';
 import { Panel, Sprite } from './Panel';
@@ -32,6 +34,8 @@ const ONLINE_VIEWS: Record<string, (p: OnlineGameProps) => ReactElement> = {
   'tri-mancala': TriMancalaOnline,
   'nine-mens-morris': NineMensMorrisOnline,
   'tigers-and-goats': TigersAndGoatsOnline,
+  'tipping-scales': TippingScalesOnline,
+  'rumor-exchange': RumorExchangeOnline,
 };
 export const ONLINE_IDS = Object.keys(ONLINE_VIEWS);
 

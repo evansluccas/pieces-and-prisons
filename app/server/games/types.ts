@@ -26,6 +26,13 @@ export interface OnlineGame<S = unknown> {
    * question, a duel for longer.
    */
   turnMs?(state: S): number;
+  /**
+   * Optional: which decision the game is on. When given, the move clock only
+   * restarts when this changes — for games where a player can make several
+   * moves within one decision (e.g. buying a rumor before placing orders).
+   * Without it, any seat being newly asked starts a new decision.
+   */
+  decisionKey?(state: S): string;
   /** A bot's move for `seat` (only called for seats in waitingOn). */
   botAction(state: S, seat: string, rng: Rng): unknown;
   /**

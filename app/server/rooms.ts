@@ -53,6 +53,7 @@ interface Room {
   emptySince: number | null;
   nextSeat: number;
   decision: number;               // bumps each time a new decision begins
+  decisionKey: string | null;     // the game's own name for the current decision, if it gives one
 }
 
 export interface SeatView { name: string; bot: boolean; connected: boolean; you: boolean; host: boolean }
@@ -196,7 +197,7 @@ export class Rooms {
     const room: Room = {
       code: this.newCode(), gameId, game, hostId: user.id, seats: [], status: 'lobby', state: null,
       rng: seededRng(randomInt(1 << 30)), results: null, deadline: null, pauseUntil: null, ready: new Set(),
-      timers: new Set(), emptySince: null, nextSeat: 0, decision: 0,
+      timers: new Set(), emptySince: null, nextSeat: 0, decision: 0, decisionKey: null,
     };
     this.rooms.set(room.code, room);
     this.seat(room, user);
@@ -333,7 +334,8 @@ export class Rooms {
   private moved(room: Room, before: string[], actor: string) {
     const still = new Set(before.filter((id) => id !== actor));
     const now = room.game.waitingOn(room.state);
-    const fresh = now.some((id) => !still.has(id));
+    const key = room.game.decisionKey?.(room.state);
+    const fresh = key !== undefined ? key !== room.decisionKey : now.some((id) => !still.has(id));
     if (fresh || !now.length || room.game.over(room.state) || room.game.pause?.(room.state)) this.advance(room);
     else this.broadcast(room);
   }
@@ -364,6 +366,7 @@ export class Rooms {
   private advance(room: Room) {
     this.clearTimers(room);
     room.decision++;
+    room.decisionKey = room.game.decisionKey?.(room.state) ?? null;
     const { game } = room;
     if (game.over(room.state)) return this.finish(room);
     const p = game.pause?.(room.state);

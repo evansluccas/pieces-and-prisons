@@ -2,7 +2,7 @@
 
 How Pieces & Prisons moves from solo play to online tables: what's done, what each game needs, and what's left on the server before we can host it. Tick items off as they land.
 
-**Status (2026-11-23):** 9 of 30 games online · accounts, guests and tables working locally · not hosted yet.
+**Status (2026-11-23):** 11 of 30 games online · accounts, guests and tables working locally · not hosted yet.
 
 ---
 
@@ -12,7 +12,7 @@ How Pieces & Prisons moves from solo play to online tables: what's done, what ea
 - [x] Accounts (username + password) and guests (name only); a guest can upgrade and keep their history. No email, no recovery.
 - [x] Online tables: 4-letter codes, lobby, host controls, bots in empty seats
 - [x] The server runs the rules and sends each seat only what it may see
-- [x] A time limit per decision (60 s unless the game sets its own with `turnMs`); a bot moves when it runs out
+- [x] A time limit per decision (60 s unless the game sets its own with `turnMs`); a bot moves when it runs out. A game can name its decisions (`decisionKey`) so moves within one decision don't restart the clock
 - [x] Reconnect keeps your seat; leaving mid-game hands the seat to a bot
 - [x] A reload in the lobby keeps your seat (shown as away) for 45 s
 - [x] Rejoin prompt on the hub
@@ -47,12 +47,11 @@ Grouped by how much work each needs. Within a group, the order is a suggestion �
 | [x] Tri-Mancala | open board, 2–4 players; the ring is turned so your pits are at the bottom |
 | [x] Nine Men's Morris | duel; the second seat sees the sides swapped (you are always blue) |
 | [x] Tigers & Goats | duel of two games with sides swapped, Ready between games |
+| [x] Tipping Scales | simultaneous card + chip; rival plays hidden until all are in |
+| [x] Rumor Exchange | simultaneous orders; rules, rumors and rival holdings hidden until the end; a rumor doesn't restart the clock (`decisionKey`) |
 
-### A. Simultaneous secret choices — same pattern as Lonely Number / Blind Bingo
-| Game | Notes |
-|---|---|
-| [ ] Tipping Scales | secret card + chip each round; placing order resolved by the server |
-| [ ] Rumor Exchange | secret orders each round; **private rumors** must only reach the buyer |
+### A. Simultaneous secret choices — done
+Both are online (see *Done*).
 
 ### B. Turn-based with hidden hands
 | Game | Notes |
@@ -118,7 +117,7 @@ Not tied to one game. Ordered by when they're needed.
 
 1. ~~Per-game clocks and the lobby-reload fix~~ — done.
 2. ~~Group C boards~~ — done.
-3. Groups A and B.
+3. ~~Group A~~ — done. Group B next.
 4. Development tool upgrades + hosting decision → first public deploy.
 5. Group D, then E.
 6. Decide on group F.

@@ -93,9 +93,14 @@ export function TippingScales({ botCount = 3 }: { botCount?: number }) {
 
 // ---------------------------------------------------------------- drawing
 
-interface Sel { card: number | null; chip: Chip | null; rainbowScale: Color }
+export interface Sel { card: number | null; chip: Chip | null; rainbowScale: Color }
 
-function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, sel: Sel, since: number) {
+export const PORTRAITS = ['citizen', 'officer', 'journalist', 'fanatic', 'researcher', 'terrorist'];
+
+/** Online play: who has played, the move clock, a hint line and the label on the "next" button. */
+export interface OnlineHud { chosen: string[]; clock?: string; sub?: string; nextLabel?: string }
+
+export function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, sel: Sel, since: number, hud?: OnlineHud) {
   const last = s.history[s.history.length - 1];
   const inResult = s.phase === 'result' || s.phase === 'gameOver';
   const steps = inResult && last ? last.events.length : 0;
@@ -116,6 +121,7 @@ function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, sel: Sel,
   topBar(g, [
     { text: `ROUND ${s.round}/${s.config.rounds}`, color: UI.gold },
     { text: `HAND ${hand}/${Math.ceil(s.config.rounds / s.config.handRounds)}`, color: UI.muted },
+    ...(hud?.clock ? [{ text: hud.clock, color: UI.ruby }] : []),
   ], 'TIPPING SCALES');
 
   // opponents
@@ -142,7 +148,7 @@ function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, sel: Sel,
     // remaining cards (public)
     const cardsLeft = inResult && last && !revealDone ? [...p.cards, last.plays[p.id].card].sort() : p.cards;
     g.text(cardsLeft.length ? cardsLeft.join(' ') : '—', tx, 70, { size: 7, color: '#3a2216', shadow: false });
-    if (s.phase === 'choose') g.text('choosing…', tx, 80, { size: 7, color: '#5e3a24', shadow: false });
+    if (s.phase === 'choose') g.text(hud?.chosen.includes(p.id) ? 'played ✓' : 'choosing…', tx, 80, { size: 7, color: '#5e3a24', shadow: false });
     else if (last) {
       const pl = last.plays[p.id];
       const idx = last.order.indexOf(p.id);
@@ -166,7 +172,12 @@ function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, sel: Sel,
   // message line
   let msg = '';
   let sub = '';
-  if (s.phase === 'choose') {
+  const placed = s.phase === 'choose' ? s.plays[ME] : undefined;
+  if (placed) {
+    const waiting = s.players.length - (hud?.chosen.length ?? 0);
+    msg = `You played ${placed.card} → ${SCALE_NAME[placed.scale]}${placed.chip === 'rainbow' ? ' ★' : ''}`;
+    sub = `waiting for ${waiting} more player${waiting === 1 ? '' : 's'}…`;
+  } else if (s.phase === 'choose') {
     msg = 'Play 1 stone card + 1 chip';
     sub = 'chip colour = scale · rainbow = any scale & you place first';
   } else if (current) {
@@ -180,6 +191,7 @@ function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, sel: Sel,
     const mine = tips.filter((e) => e.player === ME).reduce((t, e) => t + e.penalty, 0);
     sub = mine ? `You took ${mine} penalt${mine === 1 ? 'y' : 'ies'} this round` : 'You stayed safe this round';
   }
+  if (hud?.sub && s.phase === 'result' && revealDone) sub = hud.sub;
   if (msg) g.text(msg, W / 2, 169, { align: 'center', size: 10, color: current?.tipped ? UI.ruby : UI.gold });
   if (sub) g.text(sub, W / 2, 180, { align: 'center', size: 7, color: UI.muted });
 
@@ -190,7 +202,7 @@ function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, sel: Sel,
   g.sprite('icons', 'skull', 12, 236);
   g.text(`${shownPenalty[ME]}`, 30, 240, { color: UI.ruby });
 
-  const choosing = s.phase === 'choose';
+  const choosing = s.phase === 'choose' && !placed;
   me.cards.forEach((c, i) => {
     const x = 52 + i * 34;
     const id = `card:${c}`;
@@ -231,7 +243,7 @@ function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, sel: Sel,
   } else if (!revealDone) {
     g.button('skip', 'Skip ▸▸', 400, 248, 72);
   } else if (s.phase === 'result') {
-    g.button('next', s.round >= s.config.rounds ? 'Final result' : 'Next round', 400, 248, 72);
+    g.button('next', hud?.nextLabel ?? (s.round >= s.config.rounds ? 'Final result' : 'Next round'), 400, 248, 72);
   }
 
   if (s.phase === 'gameOver' && revealDone) {
@@ -282,7 +294,7 @@ function drawScale(
 
 // ---------------------------------------------------------------- log (DOM)
 
-function ScaleLog({ state }: { state: GameState }) {
+export function ScaleLog({ state }: { state: GameState }) {
   const name = (id: string) => state.players.find((p) => p.id === id)?.name ?? id;
   return (
     <aside className="log">
