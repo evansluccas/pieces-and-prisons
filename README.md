@@ -51,6 +51,8 @@ npm install
 npm run dev      # http://localhost:5173
 npm run server   # game server for online play, http://localhost:8787 (needs Node 24+)
 npm test         # game-logic and server tests
+npm run build    # type-check everything and build the web app into dist/
+npm start        # production: the game server also serves dist/ (run build first)
 ```
 
 Solo play needs only `npm run dev`. For accounts and online tables, run `npm run server` as well; Vite forwards `/api` to it.
@@ -75,13 +77,64 @@ Signed-in players (accounts or guests) choose **Play online**, start a table and
 - Losing connection keeps your seat; opening Play online again puts you back. In the lobby the seat waits 45 seconds for you. Leaving mid-game hands your seat to a bot.
 - Finished tables are saved to the database (`matches`, `match_players`).
 
-Games go online one at a time: so far **Lonely Number**, **Dice Tower**, **Blind Bingo**, **Walls & Wards**, **Turf War**, **Tri-Mancala**, **Nine Men's Morris**, **Tigers & Goats**, **Tipping Scales**, **Rumor Exchange**, **Color Doubt**, **Deadeye Hold'em** and **High-Low Equations** (turn-based) and **Sand Bid** (real-time: the server times every hold, forgiving up to 1.5 s of connection lag but never crediting a hold longer than it saw). Each game adds an `online.ts` (its actions and per-player view) and an online view. What's next is in [docs/online-plan.md](docs/online-plan.md).
+Games go online one at a time: so far **Lonely Number**, **Dice Tower**, **Blind Bingo**, **Walls & Wards**, **Turf War**, **Tri-Mancala**, **Nine Men's Morris**, **Tigers & Goats**, **Tipping Scales**, **Rumor Exchange**, **Color Doubt**, **Deadeye Hold'em**, **High-Low Equations**, **Smuggler's Gems**, **Piggy Bluff**, **Six Chambers**, **High or Low**, **Ask & Arrange**, **Hex Sum** and **Blind Five** (turn-based) and **Sand Bid** (real-time: the server times every hold, forgiving up to 1.5 s of connection lag but never crediting a hold longer than it saw). Each game adds an `online.ts` (its actions and per-player view) and an online view. What's next is in [docs/online-plan.md](docs/online-plan.md).
 
 ### Accounts
 
 Players never give personal details. An **account** is a username and a password; a **guest** is just a name, and can later add a username and password to keep their history. Because no email is stored, a forgotten password can't be recovered.
 
 Passwords are stored as salted scrypt hashes, and sessions use a random token in an HttpOnly cookie (only its hash is kept in the database). The database is one SQLite file at `app/data/pieces.db` (set `DB_PATH` to move it); it isn't committed.
+
+## Hosting on Fly.io
+
+Live at **https://pieces-and-prisons.fly.dev** (app `pieces-and-prisons`, region Amsterdam).
+
+The game runs as **one container on one always-on machine**: the game server answers `/api` and `/ws` and also serves the built app, so everything shares one HTTPS origin. Open tables live in the server's memory, so the app must never sleep or run on more than one machine. The SQLite database sits on a Fly volume so it survives restarts and deploys.
+
+Files: `Dockerfile` and `.dockerignore` (built from the repo root, because the app needs `assets/`), and `fly.toml` (settings). Fly builds the image on its own servers, so you don't need Docker locally.
+
+**First deploy**
+
+```bash
+brew install flyctl
+```
+
+```bash
+fly auth signup
+```
+
+From the repository root, create the app without deploying yet. Keep the existing `fly.toml`, choose a unique app name and the region nearest your players, and say no to any databases it offers:
+
+```bash
+fly launch --no-deploy --copy-config
+```
+
+Create the 1 GB volume for the database, in the same region you picked (shown in `fly.toml` as `primary_region`). `--yes` skips Fly's warning about having a single volume — one machine with one volume is what this game needs. (If you skip this step, the first `fly deploy` creates the volume itself.)
+
+```bash
+fly volumes create pieces_data --size 1 --region ams --yes
+```
+
+```bash
+fly deploy
+```
+
+Make sure exactly one machine runs (Fly sometimes starts two for redundancy; two would split the tables):
+
+```bash
+fly scale count 1
+```
+
+Then open `https://<your-app-name>.fly.dev`.
+
+**Later**
+
+- Deploy changes: `fly deploy` (open tables are lost on each deploy; accounts and finished matches are kept).
+- Logs: `fly logs`. Health: `fly status`. The server answers `GET /api/health`.
+- `npm ci` in the image is strict about the lockfile. If a deploy fails with "package.json and package-lock.json … are not in sync", regenerate it with the same npm version the image uses (shown in the build log), e.g. `npx npm@11.19.1 install --package-lock-only` in `app/`.
+- Backups: Fly snapshots the volume daily and keeps the snapshots for a few days (`fly volumes snapshots list pieces_data`). For an extra copy, `fly ssh sftp get /data/pieces.db`.
+
+**Settings** (in `fly.toml` under `[env]`): `NODE_ENV=production` marks the sign-in cookie Secure and serves the built app; `DB_PATH` is the database file on the volume; `CLIENT_IP_HEADER=fly-client-ip` lets the sign-in limits see each player's real address behind Fly's proxy. Only set that header name when a proxy you trust always sets it.
 
 ## Rebuild the assets
 

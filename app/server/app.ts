@@ -24,6 +24,19 @@ export interface AppOptions {
   now?: () => number;
   /** The online table someone is seated at (from the room manager). */
   tableOf?: (userId: number) => TableInfo | null;
+  /**
+   * Header that carries the player's real address when the server sits
+   * behind a proxy (on Fly.io: 'fly-client-ip'). Only set this when a proxy
+   * you trust always sets it — otherwise anyone could fake their address.
+   */
+  clientIpHeader?: string;
+}
+
+/** The address a request came from (used for rate limits). */
+export function clientIp(req: IncomingMessage, header?: string): string {
+  const v = header ? req.headers[header.toLowerCase()] : undefined;
+  const fromProxy = (Array.isArray(v) ? v[0] : v)?.split(',')[0].trim();
+  return fromProxy || req.socket.remoteAddress || '?';
 }
 
 /** Counts attempts per key in a sliding window; used to slow down password guessing. */
@@ -95,9 +108,10 @@ export function createApp(db: Db, opts: AppOptions) {
   return async function handle(req: IncomingMessage, res: ServerResponse) {
     const url = new URL(req.url ?? '/', 'http://local');
     const path = url.pathname;
-    const ip = req.socket.remoteAddress ?? '?';
+    const ip = clientIp(req, opts.clientIpHeader);
     try {
       if (!path.startsWith('/api/')) return send(res, 404, { error: 'Not found.' });
+      if (path === '/api/health') return send(res, 200, { ok: true });
       const token = cookies(req)[COOKIE];
       if (req.method === 'GET' && path === '/api/me') {
         const me = sessionUser(db, token, now());

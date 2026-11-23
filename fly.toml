@@ -1,0 +1,49 @@
+# fly.toml app configuration file generated for pieces-and-prisons on 2026-11-23T15:52:45-03:00
+#
+# See https://docs.fly.io/reference/configuration for information about how to use this file.
+# Setup and deploy steps: README → "Hosting on Fly.io".
+#
+# One always-on machine: open tables live in the server's memory, so the app
+# must never be put to sleep or split across several machines. The SQLite
+# database lives on the pieces_data volume. CLIENT_IP_HEADER lets the sign-in
+# limits see each player's real address behind Fly's proxy.
+#
+
+app = 'pieces-and-prisons'
+primary_region = 'ams'
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[env]
+  CLIENT_IP_HEADER = 'fly-client-ip'
+  DB_PATH = '/data/pieces.db'
+  NODE_ENV = 'production'
+  PORT = '8080'
+
+[[mounts]]
+  source = 'pieces_data'
+  destination = '/data'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'off'
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = 'connections'
+    hard_limit = 1000
+    soft_limit = 500
+
+  [[http_service.checks]]
+    interval = '30s'
+    timeout = '5s'
+    grace_period = '15s'
+    method = 'GET'
+    path = '/api/health'
+
+[[vm]]
+  size = 'shared-cpu-1x'
+  memory = '512mb'

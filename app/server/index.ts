@@ -6,14 +6,20 @@
  * DB_PATH sets where the SQLite file lives (default app/data/pieces.db).
  * In development Vite forwards /api to this server, so the page and the API
  * share one origin and the session cookie just works.
+ *
+ * Production (`npm start`, NODE_ENV=production): the session cookie is marked
+ * Secure (HTTPS only), and the built app in app/dist (or STATIC_DIR) is served
+ * from here too. CLIENT_IP_HEADER names the header a trusted proxy puts the
+ * player's real address in (Fly.io: fly-client-ip), for the sign-in limits.
  */
-import { mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { sweep } from './auth';
 import { createApp } from './app';
 import { openDb } from './db';
+import { staticFiles } from './static';
 import { attachSockets } from './ws';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -24,14 +30,37 @@ const db = openDb(dbPath);
 const production = process.env.NODE_ENV === 'production';
 // the room manager is created with the sockets below; /api/me asks it where each player is seated
 let rooms: ReturnType<typeof attachSockets> | null = null;
-const handle = createApp(db, { secureCookies: production, tableOf: (id) => rooms?.tableOf(id) ?? null });
+const handle = createApp(db, {
+  secureCookies: production,
+  tableOf: (id) => rooms?.tableOf(id) ?? null,
+  clientIpHeader: process.env.CLIENT_IP_HEADER || undefined,
+});
+
+// in production the web app itself is served from here as well
+const staticDir = process.env.STATIC_DIR ?? (production ? resolve(here, '../dist') : null);
+if (staticDir && !existsSync(resolve(staticDir, 'index.html'))) {
+  throw new Error(`No built app in ${staticDir} — run npm run build first.`);
+}
+const files = staticDir ? staticFiles(staticDir) : null;
 
 sweep(db);
 setInterval(() => sweep(db), 60 * 60 * 1000).unref();
 
 const port = Number(process.env.PORT ?? 8787);
-const server = createServer((req, res) => void handle(req, res));
+const server = createServer((req, res) => {
+  const isApi = (req.url ?? '/').startsWith('/api/');
+  void (isApi || !files ? handle(req, res) : files(req, res));
+});
 rooms = attachSockets(server, db);
 server.listen(port, () => {
-  console.log(`Pieces & Prisons server on http://localhost:${port} (db: ${dbPath})`);
+  console.log(`Pieces & Prisons server on http://localhost:${port} (db: ${dbPath}${staticDir ? `, app: ${staticDir}` : ''})`);
 });
+
+// the host stops the machine with SIGTERM (e.g. on a deploy): close the database cleanly
+for (const sig of ['SIGTERM', 'SIGINT'] as const) {
+  process.once(sig, () => {
+    server.close();
+    db.close();
+    process.exit(0);
+  });
+}

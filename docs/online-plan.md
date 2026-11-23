@@ -2,7 +2,7 @@
 
 How Pieces & Prisons moves from solo play to online tables: what's done, what each game needs, and what's left on the server before we can host it. Tick items off as they land.
 
-**Status (2026-11-23):** 14 of 30 games online · accounts, guests and tables working locally · not hosted yet.
+**Status (2026-11-23):** 21 of 30 games online · live at https://pieces-and-prisons.fly.dev (Fly.io, Amsterdam).
 
 ---
 
@@ -52,6 +52,13 @@ Grouped by how much work each needs. Within a group, the order is a suggestion �
 | [x] Color Doubt | bids in turn, backing at once; rival hands face down until the reveal |
 | [x] Deadeye Hold'em | the deck and rival hole cards are never sent before a showdown; snipes hidden until all are in |
 | [x] High-Low Equations | the deck and rival hidden cards stay hidden; declaring gets 90 s (`turnMs`) |
+| [x] Smuggler's Gems | only your own card; a swap shows its cards to the two sides only, once; peeks reach only the peeker |
+| [x] Piggy Bluff | coin colours and bank contents never sent (not even to the adder); rival choices show only as "decided" |
+| [x] Six Chambers | chamber layout sent only when the cylinder fires; private peeks and secret swaps reach only the mover; 40 s turns |
+| [x] High or Low | duel; the face-down card goes only to the dealer; 8 s reveal pause; first dealer drawn at random |
+| [x] Ask & Arrange | duel; both arrange at once; the rival row and guess stay hidden until the end; 90 s decisions |
+| [x] Hex Sum | duel; the server times the 30 s study phase, then sends only flipped numbers |
+| [x] Blind Five | duel; no message names the owner of a face-down stone (not even your own); per-seat bot memory |
 
 ### A. Simultaneous secret choices — done
 Both are online (see *Done*).
@@ -62,16 +69,8 @@ All three are online (see *Done*).
 ### C. Open-information boards — done
 All five are online (see *Done*).
 
-### D. Memory and private-information games — need the most care (see §4)
-| Game | Notes |
-|---|---|
-| [ ] Smuggler's Gems | blind swaps; only your own card, once, as solo shows it |
-| [ ] Piggy Bluff | only the adder knows the colours they added |
-| [ ] Six Chambers | private peeks must reach only the peeker |
-| [ ] High or Low | duel; one card shown, one hidden |
-| [ ] Ask & Arrange | duel; answers go only to the asker |
-| [ ] Hex Sum | duel; numbers shown only during the memorise phase |
-| [ ] Blind Five | duel; the client must **not** be told which face-down stones are yours |
+### D. Memory and private-information games — done
+All seven are online (see *Done*). Each view sends only what the solo screen shows at that moment, and each game's tests check that the secrets appear nowhere in what a player receives.
 
 ### E. Timed races — need per-game clocks on the server (see §5)
 | Game | Notes |
@@ -101,9 +100,10 @@ Not tied to one game. Ordered by when they're needed.
 - [ ] **README**: keep the list of online games current (ongoing).
 
 **Before hosting**
-- [ ] **Upgrade development tools** flagged by `npm audit` (Vite, Vitest, esbuild, tsx). Only dev tools are affected, but clear it before going public.
-- [ ] **Choose hosting** (deferred so far). Needs: one Node 24 process serving the built app, `/api` and `/ws`; HTTPS; a persistent disk for the SQLite file; a daily backup of it.
-- [ ] **Production server mode**: serve `dist/` from the game server, secure cookies over HTTPS, set `DB_PATH`.
+- [x] **Upgrade development tools**: Vite 8, Vitest 5, tsx 4.23 — `npm audit` finds 0 vulnerabilities.
+- [x] **Choose hosting**: Fly.io — one always-on machine, a 1 GB volume for SQLite (daily snapshots), HTTPS. See README → *Hosting on Fly.io*.
+- [x] **Production server mode**: `npm start` serves `dist/` from the game server, Secure cookies, `DB_PATH`, the real client address behind the proxy (`CLIENT_IP_HEADER`), `/api/health`, clean shutdown. `Dockerfile` + `fly.toml` added.
+- [x] **First deploy**: live at https://pieces-and-prisons.fly.dev — one machine in Amsterdam, health check passing, database on an encrypted 1 GB volume, server running as an unprivileged user.
 - [ ] **Tables survive a restart** — today they live in memory and are lost on deploy. At minimum, warn players and finish/record what we can; later, save running tables.
 - [ ] **Load check**: a scripted run with many tables and bots at once.
 
@@ -117,6 +117,6 @@ Not tied to one game. Ordered by when they're needed.
 1. ~~Per-game clocks and the lobby-reload fix~~ — done.
 2. ~~Group C boards~~ — done.
 3. ~~Groups A and B~~ — done.
-4. Development tool upgrades + hosting decision → first public deploy.
-5. Group D, then E.
+4. ~~Development tool upgrades, hosting, first deploy~~ — done: https://pieces-and-prisons.fly.dev
+5. ~~Group D~~ — done. Group E next.
 6. Decide on group F.
