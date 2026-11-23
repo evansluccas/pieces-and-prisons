@@ -20,6 +20,12 @@ export interface OnlineGame<S = unknown> {
   view(state: S, seat: string | null, now: number): unknown;
   /** Seats the game is waiting on right now (turn-based games; real-time games may return []). */
   waitingOn(state: S): string[];
+  /**
+   * How long people get for the current decision (ms). Optional: tables use
+   * TURN_MS (60 s) when a game doesn't say — e.g. a quiz can ask for 30 s per
+   * question, a duel for longer.
+   */
+  turnMs?(state: S): number;
   /** A bot's move for `seat` (only called for seats in waitingOn). */
   botAction(state: S, seat: string, rng: Rng): unknown;
   /**

@@ -14,6 +14,8 @@
  *   for the player, so one absent person can't stall everyone.
  * - Leaving mid-game hands your seat to a bot. Losing connection keeps it:
  *   come back (same account or guest session) and you're in again.
+ * - In the lobby a lost connection (a page reload, a flaky network) keeps the
+ *   seat, marked away, for LOBBY_GRACE_MS before it's given up.
  */
 import { randomInt } from 'node:crypto';
 import { seededRng, type Rng } from '../src/games/shared/rng';
@@ -23,6 +25,7 @@ import { ONLINE_GAMES } from './games';
 import type { OnlineGame, Result } from './games/types';
 
 export const TURN_MS = 60_000;
+export const LOBBY_GRACE_MS = 45_000;
 export const BOT_MIN_MS = 500;
 export const BOT_MAX_MS = 1400;
 export const IDLE_ROOM_MS = 10 * 60_000;
@@ -89,6 +92,7 @@ class TableError extends Error {}
 export class Rooms {
   private rooms = new Map<string, Room>();
   private where = new Map<number, string>(); // user id -> room code
+  private grace = new Map<number, ReturnType<typeof setTimeout>>(); // lobby seats waiting for their owner to come back
 
   constructor(
     private send: (userId: number, msg: ServerMessage) => void,
@@ -120,6 +124,7 @@ export class Rooms {
 
   /** A connection opened: if this person is seated somewhere, put them back. */
   private hello(user: User) {
+    this.endGrace(user.id);
     const room = this.roomOf(user.id);
     if (!room) return;
     const seat = room.seats.find((s) => s.userId === user.id);
@@ -134,14 +139,30 @@ export class Rooms {
     if (!room) return;
     const seat = room.seats.find((s) => s.userId === userId);
     if (!seat) return;
-    if (room.status === 'lobby') return this.removeUser(room, userId);
     seat.connected = false;
     if (!room.seats.some((s) => s.connected && !s.isBot)) room.emptySince = this.now();
+    if (room.status === 'lobby') {
+      // keep the seat for a while: a reload shouldn't cost you your place
+      this.endGrace(userId);
+      this.grace.set(userId, setTimeout(() => {
+        this.grace.delete(userId);
+        const r = this.roomOf(userId);
+        const s = r?.seats.find((x) => x.userId === userId);
+        if (r && s && r.status === 'lobby' && !s.connected) this.removeUser(r, userId);
+      }, LOBBY_GRACE_MS));
+      return this.broadcast(room);
+    }
     if (room.status === 'playing' && room.game.realtime) {
       room.state = room.game.realtime.dropped(room.state, seat.id, this.now());
       return this.advance(room);
     }
     this.broadcast(room);
+  }
+
+  private endGrace(userId: number) {
+    const t = this.grace.get(userId);
+    if (t) clearTimeout(t);
+    this.grace.delete(userId);
   }
 
   private roomOf(userId: number) {
@@ -212,6 +233,7 @@ export class Rooms {
   }
 
   private removeUser(room: Room, userId: number) {
+    this.endGrace(userId);
     this.where.delete(userId);
     const seat = room.seats.find((s) => s.userId === userId);
     if (seat) {
@@ -236,7 +258,11 @@ export class Rooms {
 
   private close(room: Room) {
     for (const t of room.timers) clearTimeout(t);
-    for (const s of room.seats) if (s.userId !== null) this.where.delete(s.userId);
+    for (const s of room.seats) {
+      if (s.userId === null) continue;
+      this.where.delete(s.userId);
+      this.endGrace(s.userId);
+    }
     this.rooms.delete(room.code);
   }
 
@@ -259,6 +285,7 @@ export class Rooms {
     room.seats.splice(index, 1);
     if (seat.userId !== null) {
       this.where.delete(seat.userId);
+      this.endGrace(seat.userId);
       this.send(seat.userId, { type: 'left' });
       this.send(seat.userId, { type: 'error', message: 'The host removed you from the table.' });
     }
@@ -361,7 +388,7 @@ export class Rooms {
       }
       return;
     }
-    room.deadline = this.now() + TURN_MS;
+    room.deadline = this.now() + (game.turnMs?.(room.state) ?? TURN_MS);
     this.broadcast(room);
     this.schedule(room);
   }
@@ -373,7 +400,7 @@ export class Rooms {
     this.advance(room);
   }
 
-  /** Bots move after a short think; people get TURN_MS before a bot moves for them. */
+  /** Bots move after a short think; people get the decision's time limit before a bot moves for them. */
   private schedule(room: Room) {
     if (room.status !== 'playing' || room.pauseUntil !== null) return;
     const waiting = room.game.waitingOn(room.state);

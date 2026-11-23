@@ -71,8 +71,8 @@ Each game keeps its rules in pure TypeScript, separate from rendering. That way 
 
 Signed-in players (accounts or guests) choose **Play online**, start a table and share its four-letter code. The host fills empty seats with bots and starts the game. The server runs the real rules and sends each player only what they may see, so nobody can peek at hidden cards from their browser.
 
-- Each decision has a 60-second limit; if it runs out, a bot makes that move.
-- Losing connection keeps your seat; opening Play online again puts you back. Leaving mid-game hands your seat to a bot.
+- Each decision has a time limit (60 seconds unless a game sets its own); if it runs out, a bot makes that move.
+- Losing connection keeps your seat; opening Play online again puts you back. In the lobby the seat waits 45 seconds for you. Leaving mid-game hands your seat to a bot.
 - Finished tables are saved to the database (`matches`, `match_players`).
 
 Games go online one at a time: so far **Lonely Number**, **Dice Tower** and **Blind Bingo** (turn-based) and **Sand Bid** (real-time: the server times every hold, forgiving up to 1.5 s of connection lag but never crediting a hold longer than it saw). Each game adds an `online.ts` (its actions and per-player view) and an online view. What's next is in [docs/online-plan.md](docs/online-plan.md).

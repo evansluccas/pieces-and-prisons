@@ -3,7 +3,8 @@ import type { GameState } from '../src/games/lonely-number/logic';
 import { RESULT_MS } from '../src/games/lonely-number/online';
 import { User, guest } from './auth';
 import { Db, openDb } from './db';
-import { BOT_MAX_MS, ClientMessage, RoomView, Rooms, ServerMessage, TURN_MS } from './rooms';
+import { ONLINE_GAMES } from './games';
+import { BOT_MAX_MS, ClientMessage, LOBBY_GRACE_MS, RoomView, Rooms, ServerMessage, TURN_MS } from './rooms';
 
 let db: Db;
 let inbox: Map<number, ServerMessage[]>;
@@ -91,6 +92,76 @@ describe('lobby', () => {
     expect(last(a, 'left')).toBeTruthy();
     expect(room(b).seats.map((s) => s.name)).toEqual(['Ben']);
     expect(room(b).host).toBe(true);
+  });
+
+  it('a reload in the lobby keeps your seat (marked away) and you come straight back', () => {
+    const [a, b] = users;
+    table();
+    rooms.disconnected(b.id);
+    expect(room(a).seats.map((s) => [s.name, s.connected])).toEqual([['Ana', true], ['Ben', false]]);
+    vi.advanceTimersByTime(LOBBY_GRACE_MS - 1000);
+    say(b, { type: 'hello' });
+    expect(room(a).seats.map((s) => [s.name, s.connected])).toEqual([['Ana', true], ['Ben', true]]);
+    // the old grace timer is gone: Ben stays
+    vi.advanceTimersByTime(LOBBY_GRACE_MS);
+    expect(room(a).seats.map((s) => s.name)).toEqual(['Ana', 'Ben']);
+  });
+
+  it('a lobby seat whose owner never comes back is given up', () => {
+    const [a, b] = users;
+    table();
+    rooms.disconnected(a.id); // the host goes away for good
+    vi.advanceTimersByTime(LOBBY_GRACE_MS + 10);
+    expect(room(b).seats.map((s) => s.name)).toEqual(['Ben']);
+    expect(room(b).host).toBe(true);
+    expect(rooms.tableOf(a.id)).toBeNull();
+  });
+
+  it('if the game starts while you are away, you keep the seat in the game', () => {
+    const [a, b] = users;
+    table();
+    rooms.disconnected(b.id);
+    say(a, { type: 'addBot' });
+    say(a, { type: 'start' });
+    vi.advanceTimersByTime(LOBBY_GRACE_MS + 10);
+    expect(rooms.tableOf(b.id)?.status).toBe('playing');
+    say(b, { type: 'hello' });
+    expect(game(b).view.players.some((p) => p.id === 'you')).toBe(true);
+  });
+
+  it('the last person drifting away closes the table only after the grace period', () => {
+    const [a] = users;
+    say(a, { type: 'create', gameId: 'lonely-number' });
+    rooms.disconnected(a.id);
+    expect(rooms.count()).toBe(1);
+    vi.advanceTimersByTime(LOBBY_GRACE_MS + 10);
+    expect(rooms.count()).toBe(0);
+  });
+});
+
+describe('decision clocks', () => {
+  afterEach(() => {
+    delete ONLINE_GAMES['quick-lonely'];
+  });
+
+  it('a game can set its own time per decision; others use the default', () => {
+    const [a, b] = users;
+    ONLINE_GAMES['quick-lonely'] = { ...ONLINE_GAMES['lonely-number'], id: 'quick-lonely', turnMs: () => 30_000 };
+    say(a, { type: 'create', gameId: 'quick-lonely' });
+    say(b, { type: 'join', code: room(a).code });
+    say(a, { type: 'addBot' });
+    say(a, { type: 'start' });
+    const sent = last(a, 'game')!;
+    expect(sent.deadline! - Date.now()).toBe(30_000);
+    vi.advanceTimersByTime(30_000 + 10);
+    expect(error(a)).toMatch(/Time ran out/);
+
+    say(a, { type: 'leave' });
+    say(b, { type: 'leave' });
+    table();
+    say(a, { type: 'addBot' });
+    say(a, { type: 'start' });
+    expect(last(a, 'game')!.deadline! - Date.now()).toBe(TURN_MS);
   });
 });
 

@@ -12,8 +12,9 @@ How Pieces & Prisons moves from solo play to online tables: what's done, what ea
 - [x] Accounts (username + password) and guests (name only); a guest can upgrade and keep their history. No email, no recovery.
 - [x] Online tables: 4-letter codes, lobby, host controls, bots in empty seats
 - [x] The server runs the rules and sends each seat only what it may see
-- [x] 60-second limit per decision; a bot moves when it runs out
+- [x] A time limit per decision (60 s unless the game sets its own with `turnMs`); a bot moves when it runs out
 - [x] Reconnect keeps your seat; leaving mid-game hands the seat to a bot
+- [x] A reload in the lobby keeps your seat (shown as away) for 45 s
 - [x] Rejoin prompt on the hub
 - [x] Turn-based and real-time games both supported (`realtime` adapter)
 - [x] Finished tables saved to `matches` / `match_players`
@@ -98,9 +99,9 @@ Solo memory games already hide the log and deduction aids. Online adds a new ris
 Not tied to one game. Ordered by when they're needed.
 
 **Before more games**
-- [ ] **Per-game clocks**: let a game set its own decision time (Split Decision needs 30 s; duels may want longer than 60 s). Today `TURN_MS` is fixed.
-- [ ] **Reload in the lobby**: reloading the page before the game starts drops you from the lobby. Keep the seat for a short grace period like in-game seats.
-- [ ] **README**: keep the list of online games current.
+- [x] **Per-game clocks**: a game may set `turnMs(state)` for the current decision (Split Decision needs 30 s; duels may want longer). Otherwise 60 s.
+- [x] **Reload in the lobby**: the seat is kept, marked away, for 45 s (`LOBBY_GRACE_MS`); the hub offers *Rejoin table*. If the game starts meanwhile, you keep the seat in the game.
+- [ ] **README**: keep the list of online games current (ongoing).
 
 **Before hosting**
 - [ ] **Upgrade development tools** flagged by `npm audit` (Vite, Vitest, esbuild, tsx). Only dev tools are affected, but clear it before going public.
@@ -116,7 +117,7 @@ Not tied to one game. Ordered by when they're needed.
 
 ## 6. Suggested next steps
 
-1. Per-game clocks and the lobby-reload fix (small, unblock later games).
+1. ~~Per-game clocks and the lobby-reload fix~~ — done.
 2. Group C boards — fast wins, five games with nothing to hide.
 3. Groups A and B.
 4. Development tool upgrades + hosting decision → first public deploy.
