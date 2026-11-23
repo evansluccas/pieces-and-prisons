@@ -100,14 +100,20 @@ export function LonelyNumber({ botCount = 3 }: { botCount?: number }) {
 
 // ---------------------------------------------------------------- drawing
 
-function drawScene(
-  g: Gfx, s: GameState, selected: Card[], meta: Record<string, { portrait: string }>, since: number,
+export const PORTRAITS = ['citizen', 'officer', 'journalist', 'fanatic', 'researcher', 'terrorist'];
+
+/** Online play: replace the centre message, hide buttons while waiting, show the move clock. */
+export interface OnlineHud { msg?: string; sub?: string; canAct: boolean; clock?: string }
+
+export function drawScene(
+  g: Gfx, s: GameState, selected: Card[], meta: Record<string, { portrait: string }>, since: number, online?: OnlineHud,
 ) {
   g.tile('board', 'tile_night', 0, 0, W, H);
   topBar(g, [
     { text: `CYCLE ${cycleOf(s)}/${s.config.cycles}`, color: COLORS.gold },
     { text: `ROUND ${roundInCycle(s)}/${s.config.roundsPerCycle}` },
     { text: `(${s.round}/${totalRounds(s)})`, color: COLORS.muted },
+    ...(online?.clock ? [{ text: online.clock, color: COLORS.ruby }] : []),
   ], 'LONELY NUMBER');
 
   const opponents = s.players.filter((p) => p.id !== ME);
@@ -151,6 +157,8 @@ function drawScene(
     msg = w ? `${w.id === ME ? 'You keep' : `${w.name} keeps`} the lonely ${result.card}!  +${result.card}★` : 'No lonely number — nobody scores';
     sub = roundInCycle(s) === s.config.roundsPerCycle && s.round < totalRounds(s) ? 'Cycle over — hands refill next round' : '';
   }
+  if (online?.msg) msg = online.msg;
+  if (online?.sub) sub = online.sub;
   if (msg) {
     g.text(msg, W / 2, 146, { align: 'center', size: 12, color: COLORS.gold });
     if (sub) g.text(sub, W / 2, 162, { align: 'center', size: 8, color: COLORS.muted });
@@ -184,8 +192,9 @@ function drawScene(
     if (result.winner === ME) winnerGlow(g, 400, 198, since);
   }
 
-  if (s.phase === 'pick') g.button('confirm', 'Show pair', 400, 246, 70, { disabled: selected.length !== 2 });
-  if (s.phase === 'result') g.button('next', s.round >= totalRounds(s) ? 'Final result' : 'Next round', 400, 246, 70);
+  const canAct = !online || online.canAct;
+  if (s.phase === 'pick' && canAct) g.button('confirm', 'Show pair', 400, 246, 70, { disabled: selected.length !== 2 });
+  if (s.phase === 'result' && canAct) g.button('next', online ? 'Ready' : s.round >= totalRounds(s) ? 'Final result' : 'Next round', 400, 246, 70);
   if (s.phase === 'gameOver') drawGameOver(g, s);
 }
 
@@ -217,7 +226,7 @@ function drawGameOver(g: Gfx, s: GameState) {
 
 // ---------------------------------------------------------------- log (DOM)
 
-function RoundLog({ state }: { state: GameState }) {
+export function RoundLog({ state }: { state: GameState }) {
   const name = (id: string) => state.players.find((p) => p.id === id)?.name ?? id;
   return (
     <aside className="log">

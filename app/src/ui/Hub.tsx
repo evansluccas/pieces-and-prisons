@@ -1,8 +1,9 @@
 import { GAMES, STAGE_LABEL, Stage } from '../games/registry';
 import { AccountPanel } from './AccountPanel';
+import { ONLINE_IDS } from './Online';
 import { Panel, Sprite } from './Panel';
 
-export function Hub({ onPlay }: { onPlay: (id: string) => void }) {
+export function Hub({ onPlay, onOnline }: { onPlay: (id: string) => void; onOnline: () => void }) {
   const stages: Stage[] = ['prison', 'main', 'exile', 'final', 'hidden'];
   return (
     <div className="hub">
@@ -13,7 +14,7 @@ export function Hub({ onPlay }: { onPlay: (id: string) => void }) {
           <p className="muted">Strategy, deduction and bluffing games. Earn Pieces. Stay out of prison.</p>
         </div>
       </header>
-      <AccountPanel />
+      <AccountPanel onOnline={onOnline} />
       {stages.map((stage) => (
         <section key={stage}>
           <h2>{STAGE_LABEL[stage]}</h2>
@@ -31,7 +32,7 @@ export function Hub({ onPlay }: { onPlay: (id: string) => void }) {
                   <div className="game-card-text">
                     <strong>{g.name}</strong>
                     <span>{g.tagline}</span>
-                    <small>{g.players} players · {g.playable ? 'Play now' : 'Coming soon'}</small>
+                    <small>{g.players} players · {g.playable ? 'Play now' : 'Coming soon'}{ONLINE_IDS.includes(g.id) ? ' · Online' : ''}</small>
                   </div>
                 </Panel>
               </button>

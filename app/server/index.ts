@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { sweep } from './auth';
 import { createApp } from './app';
 import { openDb } from './db';
+import { attachSockets } from './ws';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const dbPath = process.env.DB_PATH ?? resolve(here, '../data/pieces.db');
@@ -27,6 +28,8 @@ sweep(db);
 setInterval(() => sweep(db), 60 * 60 * 1000).unref();
 
 const port = Number(process.env.PORT ?? 8787);
-createServer((req, res) => void handle(req, res)).listen(port, () => {
+const server = createServer((req, res) => void handle(req, res));
+attachSockets(server, db);
+server.listen(port, () => {
   console.log(`Pieces & Prisons server on http://localhost:${port} (db: ${dbPath})`);
 });

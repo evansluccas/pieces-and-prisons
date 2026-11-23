@@ -8,7 +8,7 @@ type Mode = 'guest' | 'login' | 'signup' | 'upgrade' | 'delete';
  * Who you are for online play: a guest (just a name) or an account
  * (username + password). Nothing else is asked for. Solo games never need it.
  */
-export function AccountPanel() {
+export function AccountPanel({ onOnline }: { onOnline: () => void }) {
   const [me, setMe] = useState<Me | null | undefined>(undefined); // undefined = still loading
   const [offline, setOffline] = useState(false);
   const [mode, setMode] = useState<Mode>('guest');
@@ -114,6 +114,7 @@ export function AccountPanel() {
             Playing as <b className="gold">{me.name}</b>{me.guest ? <span className="muted"> (guest)</span> : null}
           </span>
           <span className="account-links">
+            <button className="btn go" onClick={onOnline}>Play online</button>
             {me.guest
               ? <button className="link" onClick={() => go(mode === 'upgrade' ? 'guest' : 'upgrade')}>Create account</button>
               : <button className="link" onClick={() => go(mode === 'delete' ? 'guest' : 'delete')}>Delete account</button>}

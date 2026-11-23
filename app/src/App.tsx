@@ -33,6 +33,7 @@ import { HighLowEquations, RULES as HLE_RULES } from './games/high-low-equations
 import { TurfWar, RULES as TURF_RULES } from './games/turf-war/TurfWar';
 import { TriMancala, RULES as MANCALA_RULES } from './games/tri-mancala/TriMancala';
 import { Hub } from './ui/Hub';
+import { Online } from './ui/Online';
 import { Panel } from './ui/Panel';
 
 const GAME_VIEWS: Record<string, { rules: string[]; View: (p: { botCount: number }) => JSX.Element }> = {
@@ -98,7 +99,8 @@ export function App() {
 
   if (error) return <p className="center">Could not load assets: {error}</p>;
   if (!ready) return <p className="center muted">Loading…</p>;
-  if (!current) return <Hub onPlay={(id) => { setCurrent(id); setShowRules(true); }} />;
+  if (current === 'online') return <Online onExit={() => setCurrent(null)} />;
+  if (!current) return <Hub onPlay={(id) => { setCurrent(id); setShowRules(true); }} onOnline={() => setCurrent('online')} />;
 
   const info = GAMES.find((g) => g.id === current)!;
   const { rules, View } = GAME_VIEWS[current];

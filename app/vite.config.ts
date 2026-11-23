@@ -7,6 +7,6 @@ export default defineConfig({
   publicDir: '../assets',
   base: './',
   // the game server (npm run server) answers /api; in development Vite forwards to it
-  server: { proxy: { '/api': 'http://localhost:8787' } },
+  server: { proxy: { '/api': 'http://localhost:8787', '/ws': { target: 'ws://localhost:8787', ws: true } } },
   test: { environment: 'node' },
 } as any);

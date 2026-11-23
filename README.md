@@ -62,9 +62,20 @@ Solo play needs only `npm run dev`. For accounts and (soon) online tables, run `
 | `app/src/games/<game>/logic.ts` | Rules as pure, unit-tested functions |
 | `app/src/games/<game>/bots.ts` | Computer opponents |
 | `app/src/ui/` | Hub and DOM panels drawn with the UI sprites |
-| `app/server/` | Game server: SQLite database (`db.ts`), accounts and guests (`auth.ts`), HTTP API (`app.ts`) |
+| `app/server/` | Game server: SQLite database (`db.ts`), accounts and guests (`auth.ts`), HTTP API (`app.ts`), online tables (`rooms.ts`, `ws.ts`) |
+| `app/server/games/` | Which games can be played online, and how each plugs into a table |
 
 Each game keeps its rules in pure TypeScript, separate from rendering. That way the bots, the tests and a future online mode can all share the same rules.
+
+### Online tables
+
+Signed-in players (accounts or guests) choose **Play online**, start a table and share its four-letter code. The host fills empty seats with bots and starts the game. The server runs the real rules and sends each player only what they may see, so nobody can peek at hidden cards from their browser.
+
+- Each decision has a 60-second limit; if it runs out, a bot makes that move.
+- Losing connection keeps your seat; opening Play online again puts you back. Leaving mid-game hands your seat to a bot.
+- Finished tables are saved to the database (`matches`, `match_players`).
+
+Games go online one at a time. Lonely Number is first; each game adds an `online.ts` (its actions and per-player view) and an online view.
 
 ### Accounts
 
