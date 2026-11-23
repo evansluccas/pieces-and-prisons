@@ -2,7 +2,7 @@
 
 How Pieces & Prisons moves from solo play to online tables: what's done, what each game needs, and what's left on the server before we can host it. Tick items off as they land.
 
-**Status (2026-11-23):** 5 of 30 games online · accounts, guests and tables working locally · not hosted yet.
+**Status (2026-11-23):** 9 of 30 games online · accounts, guests and tables working locally · not hosted yet.
 
 ---
 
@@ -43,6 +43,10 @@ Grouped by how much work each needs. Within a group, the order is a suggestion �
 | [x] Dice Tower | turn-based draft + simultaneous bets |
 | [x] Blind Bingo | simultaneous choices and bids |
 | [x] Walls & Wards | open board, turn-based, 2–4 players |
+| [x] Turf War | open board, 2–4 players; each viewer is player 0 (always blue) |
+| [x] Tri-Mancala | open board, 2–4 players; the ring is turned so your pits are at the bottom |
+| [x] Nine Men's Morris | duel; the second seat sees the sides swapped (you are always blue) |
+| [x] Tigers & Goats | duel of two games with sides swapped, Ready between games |
 
 ### A. Simultaneous secret choices — same pattern as Lonely Number / Blind Bingo
 | Game | Notes |
@@ -57,13 +61,8 @@ Grouped by how much work each needs. Within a group, the order is a suggestion �
 | [ ] Deadeye Hold'em | betting rounds, side pots, secret snipes |
 | [ ] High-Low Equations | betting + a secret equation and high/low/swing declaration |
 
-### C. Open-information boards — nothing to hide, quickest to convert
-| Game | Notes |
-|---|---|
-| [ ] Turf War | 2–4 players; piece placement needs turn/flip controls online |
-| [ ] Tri-Mancala | 2–4 players; extra turns |
-| [ ] Nine Men's Morris | duel |
-| [ ] Tigers & Goats | duel |
+### C. Open-information boards — done
+All five are online (see *Done*).
 
 ### D. Memory and private-information games — need the most care (see §4)
 | Game | Notes |
@@ -118,7 +117,7 @@ Not tied to one game. Ordered by when they're needed.
 ## 6. Suggested next steps
 
 1. ~~Per-game clocks and the lobby-reload fix~~ — done.
-2. Group C boards — fast wins, five games with nothing to hide.
+2. ~~Group C boards~~ — done.
 3. Groups A and B.
 4. Development tool upgrades + hosting decision → first public deploy.
 5. Group D, then E.

@@ -44,7 +44,7 @@ function setup(botCount: number) {
 }
 
 /** What you're holding: one of the offered pieces (in its current turn), or a patch. */
-type Held = { kind: 'piece'; pick: number; shape: Cell[] } | { kind: 'patch' } | null;
+export type Held = { kind: 'piece'; pick: number; shape: Cell[] } | { kind: 'patch' } | null;
 
 /** The square of a shape that sits under the mouse: the one nearest its middle. */
 function anchor(shape: Cell[]): Cell {
@@ -102,24 +102,9 @@ export function TurfWar({ botCount = 3 }: { botCount?: number }) {
       return setGame(setup(botCount));
     }
     if (!myTurn) return;
-    const set = (next: GameState) => setGame((g) => ({ ...g, state: next }));
-    if (s.phase === 'rock') {
-      if (id.startsWith('cell:') && canRock(s, Number(id.slice(5)))) set(dropRock(s, ME, Number(id.slice(5))));
-      return;
-    }
-    if (id.startsWith('pick:')) {
-      const pick = Number(id.slice(5));
-      return setHeld(held?.kind === 'piece' && held.pick === pick ? null : { kind: 'piece', pick, shape: norm(offered(s)[pick]) });
-    }
-    if (id === 'patch') return setHeld(held?.kind === 'patch' ? null : { kind: 'patch' });
-    if (id === 'turn') return turn(rotate);
-    if (id === 'flip') return turn(flip);
-    if (id === 'pass') return set(pass(s, ME));
-    if (id.startsWith('cell:') && held) {
-      const cells = ghost(held, Number(id.slice(5)));
-      if (!cells || !canLay(s, ME, cells)) return;
-      set(held.kind === 'patch' ? usePatch(s, ME, cells[0]) : takePiece(s, ME, held.pick, cells));
-    }
+    const r = turfClick(id, s, held);
+    setHeld(r.held);
+    if (r.action) setGame((g) => ({ ...g, state: applyTurf(g.state, ME, r.action!) }));
   };
 
   return (
@@ -128,6 +113,39 @@ export function TurfWar({ botCount = 3 }: { botCount?: number }) {
       <TurfLog state={s} />
     </div>
   );
+}
+
+export type TurfAction = { type: 'piece'; pick: number; cells: number[] } | { type: 'patch'; cell: number } | { type: 'pass' } | { type: 'rock'; cell: number };
+
+/** Make a move (solo play). */
+function applyTurf(s: GameState, me: number, a: TurfAction): GameState {
+  if (a.type === 'piece') return takePiece(s, me, a.pick, a.cells);
+  if (a.type === 'patch') return usePatch(s, me, a.cell);
+  if (a.type === 'rock') return dropRock(s, me, a.cell);
+  return pass(s, me);
+}
+
+/** What a click does on your turn (solo and online share this): the new held piece, and a move once one is complete. */
+export function turfClick(id: string, s: GameState, held: Held): { held: Held; action?: TurfAction } {
+  if (s.phase === 'rock') {
+    const c = Number(id.slice(5));
+    return id.startsWith('cell:') && canRock(s, c) ? { held, action: { type: 'rock', cell: c } } : { held };
+  }
+  const turned = (fn: (c: Cell[]) => Cell[]): Held => (held?.kind === 'piece' ? { ...held, shape: fn(held.shape) } : held);
+  if (id.startsWith('pick:')) {
+    const pick = Number(id.slice(5));
+    return { held: held?.kind === 'piece' && held.pick === pick ? null : { kind: 'piece', pick, shape: norm(offered(s)[pick]) } };
+  }
+  if (id === 'patch') return { held: held?.kind === 'patch' ? null : { kind: 'patch' } };
+  if (id === 'turn') return { held: turned(rotate) };
+  if (id === 'flip') return { held: turned(flip) };
+  if (id === 'pass') return { held, action: { type: 'pass' } };
+  if (id.startsWith('cell:') && held) {
+    const cells = ghost(held, Number(id.slice(5)));
+    if (!cells || !canLay(s, ME, cells)) return { held };
+    return { held, action: held.kind === 'patch' ? { type: 'patch', cell: cells[0] } : { type: 'piece', pick: held.pick, cells } };
+  }
+  return { held };
 }
 
 /** Board cells the held piece would cover with the mouse over `c`. */
@@ -147,7 +165,7 @@ function drawShape(g: Gfx, shape: Cell[], x: number, y: number, size: number, co
   for (const [cx, cy] of shape) g.rect(x + cx * size, y + cy * size, size - 1, size - 1, color, alpha);
 }
 
-function drawScene(g: Gfx, s: GameState, held: Held) {
+export function drawScene(g: Gfx, s: GameState, held: Held, hud?: { clock?: string }) {
   const over = s.phase === 'gameOver';
   const myTurn = s.turn === ME && !over;
   const last = s.history[s.history.length - 1];
@@ -157,7 +175,7 @@ function drawScene(g: Gfx, s: GameState, held: Held) {
   topBar(g, [
     { text: over ? 'GAME OVER' : `ROUND ${s.round}/${s.rounds}`, color: COLORS.gold },
     { text: over ? '' : myTurn ? (s.phase === 'rock' ? 'DROP YOUR ROCK' : 'YOUR TURN') : `${nameOf(s, s.turn)}'s turn`, color: myTurn ? COLORS.emerald : COLORS.muted },
-    { text: 'score = biggest square', color: COLORS.muted },
+    { text: hud?.clock ?? 'score = biggest square', color: hud?.clock ? COLORS.ruby : COLORS.muted },
   ], 'TURF WAR');
 
   // field
@@ -268,7 +286,7 @@ function describe(s: GameState, m: Move) {
   return `${who} laid a ${m.cells.length}-square piece${gains}`;
 }
 
-function TurfLog({ state }: { state: GameState }) {
+export function TurfLog({ state }: { state: GameState }) {
   return (
     <aside className="log">
       <h3>Turf log</h3>

@@ -40,7 +40,27 @@ function setup(botCount: number) {
 }
 
 /** You're sowing: the pit picked, and the order chosen so far. */
-interface Hand { pit: number; order: Colour[] }
+export interface Hand { pit: number; order: Colour[] }
+
+/** What a click does on your turn (solo and online share this): the new hand, and the sowing once it's complete. */
+export function handClick(id: string, s: GameState, hand: Hand | null): { hand: Hand | null; sow?: Hand } {
+  if (id.startsWith('slot:')) {
+    const slot = Number(id.slice(5));
+    if (ownerOf(slot) === ME && !isStore(slot) && s.slots[slot].length) return { hand: hand?.pit === slot ? null : { pit: slot, order: [] } };
+    return { hand };
+  }
+  if (!hand) return { hand };
+  const left = remaining(s.slots[hand.pit], hand.order);
+  if (id.startsWith('stone:')) {
+    const c = Number(id.slice(6)) as Colour;
+    return { hand: left.includes(c) ? { ...hand, order: [...hand.order, c] } : hand };
+  }
+  if (id === 'undo') return { hand: { ...hand, order: hand.order.slice(0, -1) } };
+  if (id === 'cancel') return { hand: null };
+  if (id === 'asis') return { hand: { ...hand, order: [...hand.order, ...left] } };
+  if (id === 'sow' && !left.length) return { hand, sow: hand };
+  return { hand };
+}
 
 export function TriMancala({ botCount = 3 }: { botCount?: number }) {
   const [game, setGame] = useState(() => setup(botCount));
@@ -69,22 +89,9 @@ export function TriMancala({ botCount = 3 }: { botCount?: number }) {
       return setGame(setup(botCount));
     }
     if (!myTurn) return;
-    if (id.startsWith('slot:')) {
-      const slot = Number(id.slice(5));
-      if (ownerOf(slot) === ME && !isStore(slot) && s.slots[slot].length) setHand(hand?.pit === slot ? null : { pit: slot, order: [] });
-      return;
-    }
-    if (!hand) return;
-    const left = remaining(s.slots[hand.pit], hand.order);
-    if (id.startsWith('stone:')) {
-      const c = Number(id.slice(6)) as Colour;
-      if (left.includes(c)) setHand({ ...hand, order: [...hand.order, c] });
-      return;
-    }
-    if (id === 'undo') return setHand({ ...hand, order: hand.order.slice(0, -1) });
-    if (id === 'cancel') return setHand(null);
-    if (id === 'asis') return setHand({ ...hand, order: [...hand.order, ...left] });
-    if (id === 'sow' && !left.length) setGame((g) => ({ ...g, state: sow(g.state, ME, hand.pit, hand.order) }));
+    const r = handClick(id, s, hand);
+    setHand(r.hand);
+    if (r.sow) setGame((g) => ({ ...g, state: sow(g.state, ME, r.sow!.pit, r.sow!.order) }));
   };
 
   return (
@@ -129,7 +136,7 @@ function drawStones(g: Gfx, stones: Colour[], x: number, y: number) {
 
 // ---------------------------------------------------------------- drawing
 
-function drawScene(g: Gfx, s: GameState, hand: Hand | null) {
+export function drawScene(g: Gfx, s: GameState, hand: Hand | null, hud?: { clock?: string }) {
   const n = s.players.length;
   const myTurn = !s.over && s.turn === ME;
   const last: Sow | undefined = s.history[s.history.length - 1];
@@ -139,7 +146,7 @@ function drawScene(g: Gfx, s: GameState, hand: Hand | null) {
   topBar(g, [
     { text: s.over ? 'GAME OVER' : `ROUND ${s.round}/${s.rounds}`, color: COLORS.gold },
     { text: s.over ? '' : myTurn ? 'YOUR TURN' : `${s.players[s.turn].name}'s turn`, color: myTurn ? COLORS.emerald : COLORS.muted },
-    { text: 'score = weakest colour', color: COLORS.muted },
+    { text: hud?.clock ?? 'score = weakest colour', color: hud?.clock ? COLORS.ruby : COLORS.muted },
   ], 'TRI-MANCALA');
 
   g.panel('panel_parchment', 4, 30, 278, 236, 4);
@@ -245,7 +252,7 @@ function drawScene(g: Gfx, s: GameState, hand: Hand | null) {
 
 // ---------------------------------------------------------------- log (DOM)
 
-function SowLog({ state }: { state: GameState }) {
+export function SowLog({ state }: { state: GameState }) {
   return (
     <aside className="log">
       <h3>Sowing log</h3>

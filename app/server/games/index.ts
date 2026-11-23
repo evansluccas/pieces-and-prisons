@@ -8,6 +8,12 @@ import * as bingo from '../../src/games/blind-bingo/online';
 import type { GameState as BingoState } from '../../src/games/blind-bingo/logic';
 import * as walls from '../../src/games/walls-and-wards/online';
 import type { GameState as WallsState } from '../../src/games/walls-and-wards/logic';
+import * as turf from '../../src/games/turf-war/online';
+import type { GameState as TurfState } from '../../src/games/turf-war/logic';
+import * as mancala from '../../src/games/tri-mancala/online';
+import type { GameState as MancalaState } from '../../src/games/tri-mancala/logic';
+import * as morris from '../../src/games/nine-mens-morris/online';
+import * as tigers from '../../src/games/tigers-and-goats/online';
 
 const lonelyNumber: OnlineGame<LonelyState> = {
   id: 'lonely-number',
@@ -79,10 +85,67 @@ const wallsAndWards: OnlineGame<WallsState> = {
   results: walls.results,
 };
 
+const turfWar: OnlineGame<TurfState> = {
+  id: 'turf-war',
+  minPlayers: 2,
+  maxPlayers: 4,
+  start: turf.start,
+  act: turf.act,
+  view: turf.view,
+  waitingOn: turf.waitingOn,
+  botAction: turf.botAction,
+  over: turf.over,
+  results: turf.results,
+};
+
+const triMancala: OnlineGame<MancalaState> = {
+  id: 'tri-mancala',
+  minPlayers: 2,
+  maxPlayers: 4,
+  start: mancala.start,
+  act: mancala.act,
+  view: mancala.view,
+  waitingOn: mancala.waitingOn,
+  botAction: mancala.botAction,
+  over: mancala.over,
+  results: mancala.results,
+};
+
+const nineMensMorris: OnlineGame<morris.OnlineState> = {
+  id: 'nine-mens-morris',
+  minPlayers: 2,
+  maxPlayers: 2,
+  start: morris.start,
+  act: morris.act,
+  view: morris.view,
+  waitingOn: morris.waitingOn,
+  botAction: morris.botAction,
+  over: morris.over,
+  results: morris.results,
+};
+
+const tigersAndGoats: OnlineGame<tigers.OnlineState> = {
+  id: 'tigers-and-goats',
+  minPlayers: 2,
+  maxPlayers: 2,
+  start: tigers.start,
+  act: tigers.act,
+  view: tigers.view,
+  waitingOn: tigers.waitingOn,
+  botAction: tigers.botAction,
+  pause: tigers.pause,
+  over: tigers.over,
+  results: tigers.results,
+};
+
 export const ONLINE_GAMES: Record<string, OnlineGame<any>> = {
   [lonelyNumber.id]: lonelyNumber,
   [sandBid.id]: sandBid,
   [diceTower.id]: diceTower,
   [blindBingo.id]: blindBingo,
   [wallsAndWards.id]: wallsAndWards,
+  [turfWar.id]: turfWar,
+  [triMancala.id]: triMancala,
+  [nineMensMorris.id]: nineMensMorris,
+  [tigersAndGoats.id]: tigersAndGoats,
 };

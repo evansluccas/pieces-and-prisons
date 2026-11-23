@@ -31,6 +31,22 @@ export const RULES = [
   'Most games won takes the match; at 1–1, whoever captured more goats as the tigers wins.',
 ];
 
+/** What a click on a point does on your turn (solo and online share this): the new selection, and the move once it's complete. */
+export function pointClick(id: string, s: GameState, mine: Role, sel: number | null): { sel: number | null; move?: Move } {
+  if (!id.startsWith('pt:')) return { sel };
+  const p = Number(id.slice(3));
+  const moves = legalMoves(s);
+  if (mine === 'G' && s.toPlace > 0) {
+    const m = moves.find((x) => x.to === p);
+    return m ? { sel, move: m } : { sel };
+  }
+  if (s.board[p] === mine && moves.some((m) => m.from === p)) return { sel: p };
+  const m = moves.find((x) => x.from === sel && x.to === p);
+  return m ? { sel: null, move: m } : { sel };
+}
+
+const cap = (x: string) => x[0].toUpperCase() + x.slice(1);
+
 const px = (p: number) => BX + xy(p)[0] * SP;
 const py = (p: number) => BY + xy(p)[1] * SP;
 
@@ -71,26 +87,16 @@ export function TigersAndGoats() {
       setS(newGame());
       return setSel(null);
     }
-    if (!id.startsWith('pt:') || s.turn !== mine || s.winner !== null) return;
-    const p = Number(id.slice(3));
-    const moves = legalMoves(s);
-    if (mine === 'G' && s.toPlace > 0) {
-      const m = moves.find((x) => x.to === p);
-      if (m) setS(play(s, m));
-      return;
-    }
-    if (s.board[p] === mine && moves.some((m) => m.from === p)) return setSel(p);
-    const m = moves.find((x) => x.from === sel && x.to === p);
-    if (m) {
-      setSel(null);
-      setS(play(s, m));
-    }
+    if (s.turn !== mine || s.winner !== null) return;
+    const r = pointClick(id, s, mine, sel);
+    setSel(r.sel);
+    if (r.move) setS(play(s, r.move));
   };
 
   return (
     <div className="game-layout">
-      <PixelStage width={W} height={H} draw={(g) => (level ? drawScene(g, s, mine, sel, level, game, results) : drawIntro(g))} onHit={onHit} />
-      <MoveLog state={s} mine={mine} results={results} />
+      <PixelStage width={W} height={H} draw={(g) => (level ? drawScene(g, s, mine, sel, `${cap(level)} bot`, game, results) : drawIntro(g))} onHit={onHit} />
+      <MoveLog state={s} mine={mine} results={results} opponent={level ? `${cap(level)} bot` : 'Bot'} />
     </div>
   );
 }
@@ -121,7 +127,12 @@ function seg(g: Gfx, x0: number, y0: number, x1: number, y1: number) {
   g.ctx.stroke();
 }
 
-function drawScene(g: Gfx, s: GameState, mine: Role, sel: number | null, level: Level, game: number, results: MatchResult[]) {
+/** Online play: the move clock, and the between-games button and note. */
+export interface OnlineHud { clock?: string; nextLabel?: string; note?: string }
+
+export function drawScene(
+  g: Gfx, s: GameState, mine: Role, sel: number | null, opponent: string, game: number, results: MatchResult[], hud?: OnlineHud,
+) {
   const myTurn = s.turn === mine && s.winner === null;
   const last = s.history[s.history.length - 1];
   const between = s.winner !== null && game === 0;
@@ -131,7 +142,7 @@ function drawScene(g: Gfx, s: GameState, mine: Role, sel: number | null, level: 
   topBar(g, [
     { text: `GAME ${game + 1}/2`, color: COLORS.gold },
     { text: `you are the ${ROLE_NAME[mine]}`, color: mine === 'T' ? '#e89a5e' : COLORS.ink },
-    { text: `vs ${level} bot`, color: COLORS.muted },
+    hud?.clock ? { text: hud.clock, color: COLORS.ruby } : { text: `vs ${opponent}`, color: COLORS.muted },
   ], 'TIGERS & GOATS');
 
   // board
@@ -185,8 +196,8 @@ function drawScene(g: Gfx, s: GameState, mine: Role, sel: number | null, level: 
   g.panel('panel_night', sx, 30, W - sx - 4, 236, 4);
   let title = '';
   let hint = '';
-  if (s.winner !== null) title = s.winner === 'draw' ? 'Draw' : s.winner === mine ? 'You win this game!' : 'The bot wins this game';
-  else if (!myTurn) title = `The bot's ${ROLE_NAME[s.turn].toLowerCase()} are thinking…`;
+  if (s.winner !== null) title = s.winner === 'draw' ? 'Draw' : s.winner === mine ? 'You win this game!' : `${opponent} wins this game`;
+  else if (!myTurn) title = `${opponent}'s ${ROLE_NAME[s.turn].toLowerCase()} are thinking…`;
   else if (placing) { title = 'Place a goat'; hint = 'click any empty point'; }
   else if (sel === null) { title = mine === 'T' ? 'Move a tiger' : 'Move a goat'; hint = 'pick one of yours (blinking)'; }
   else { title = 'Where to?'; hint = mine === 'T' ? 'gold = slide · red = jump and capture' : 'click a gold point'; }
@@ -202,13 +213,13 @@ function drawScene(g: Gfx, s: GameState, mine: Role, sel: number | null, level: 
 
   if (results[0]) {
     const r = results[0];
-    g.text(`Game 1 (you goats): ${r.winner === 'draw' ? 'draw' : r.winner === 'G' ? 'you won' : 'bot won'} · ${r.captured} taken`, sx + 10, 120, { size: 7, color: COLORS.muted });
+    g.text(`Game 1 (you goats): ${r.winner === 'draw' ? 'draw' : r.winner === 'G' ? 'you won' : `${opponent} won`} · ${r.captured} taken`, sx + 10, 120, { size: 7, color: COLORS.muted });
   }
 
   g.text('LAST MOVES', sx + 10, 136, { size: 7, color: COLORS.muted });
   s.history.slice(-8).reverse().forEach((h, i) => {
     const you = h.role === mine;
-    g.text(`${you ? 'You' : 'Bot'}: ${describe(h.role, h.move, you).replace('capturing the goat on', '✗')}`, sx + 10, 147 + i * 11, {
+    g.text(`${you ? 'You' : opponent.slice(0, 10)}: ${describe(h.role, h.move, you).replace('capturing the goat on', '✗')}`, sx + 10, 147 + i * 11, {
       size: 7, color: h.move.jumped !== null ? COLORS.ruby : i === 0 ? COLORS.ink : COLORS.muted,
     });
   });
@@ -222,7 +233,8 @@ function drawScene(g: Gfx, s: GameState, mine: Role, sel: number | null, level: 
       align: 'center', size: 9, color: '#3a2216', shadow: false,
     });
     g.text('Now swap: you play the TIGERS.', 240, 124, { align: 'center', size: 9, color: '#86192f', shadow: false });
-    g.button('game2', 'Start game 2', 190, 156, 100);
+    if (hud?.note) g.text(hud.note, 240, 140, { align: 'center', size: 7, color: '#5e3a24', shadow: false });
+    g.button('game2', hud?.nextLabel ?? 'Start game 2', 190, 156, 100);
   }
 
   if (over && results.length === 2) {
@@ -231,21 +243,21 @@ function drawScene(g: Gfx, s: GameState, mine: Role, sel: number | null, level: 
     const botWins = results.filter((r) => r.winner !== 'draw' && r.winner !== r.youAs).length;
     const rows = [
       { name: 'You', detail: `${youWins} won · ${results[1].captured} taken as tigers` },
-      { name: `${level[0].toUpperCase()}${level.slice(1)} bot`, detail: `${botWins} won · ${results[0].captured} taken as tigers` },
+      { name: opponent, detail: `${botWins} won · ${results[0].captured} taken as tigers` },
     ];
-    standingsPanel(g, w === 'bot' ? rows.reverse() : rows, w === 'draw' ? 'The match is a draw!' : w === 'you' ? 'You win the match!' : 'The bot wins the match.');
+    standingsPanel(g, w === 'bot' ? rows.reverse() : rows, w === 'draw' ? 'The match is a draw!' : w === 'you' ? 'You win the match!' : `${opponent} wins the match.`);
   }
 }
 
 // ---------------------------------------------------------------- log (DOM)
 
-function MoveLog({ state, mine, results }: { state: GameState; mine: Role; results: MatchResult[] }) {
+export function MoveLog({ state, mine, results, opponent }: { state: GameState; mine: Role; results: MatchResult[]; opponent: string }) {
   return (
     <aside className="log">
       <h3>Move log</h3>
       {results.map((r, i) => (
         <p key={i} className="muted">
-          Game {i + 1} (you {r.youAs === 'G' ? 'goats' : 'tigers'}): {r.winner === 'draw' ? 'draw' : r.winner === r.youAs ? 'you won' : 'bot won'}, {r.captured} goats taken, {r.moves} moves
+          Game {i + 1} (you {r.youAs === 'G' ? 'goats' : 'tigers'}): {r.winner === 'draw' ? 'draw' : r.winner === r.youAs ? 'you won' : `${opponent} won`}, {r.captured} goats taken, {r.moves} moves
         </p>
       ))}
       {!state.history.length && <p className="muted">Points are named by column a–e and row 1–5 from the bottom.</p>}
@@ -253,7 +265,7 @@ function MoveLog({ state, mine, results }: { state: GameState; mine: Role; resul
         {[...state.history].reverse().map((h, i) => (
           <li key={state.history.length - i}>
             <em className={h.move.jumped !== null ? (h.role === mine ? 'win' : 'tip') : ''}>
-              {state.history.length - i}. {h.role === mine ? 'You' : 'Bot'} {describe(h.role, h.move, h.role === mine)}
+              {state.history.length - i}. {h.role === mine ? 'You' : opponent} {describe(h.role, h.move, h.role === mine)}
             </em>
           </li>
         ))}

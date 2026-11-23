@@ -75,7 +75,7 @@ Signed-in players (accounts or guests) choose **Play online**, start a table and
 - Losing connection keeps your seat; opening Play online again puts you back. In the lobby the seat waits 45 seconds for you. Leaving mid-game hands your seat to a bot.
 - Finished tables are saved to the database (`matches`, `match_players`).
 
-Games go online one at a time: so far **Lonely Number**, **Dice Tower**, **Blind Bingo** and **Walls & Wards** (turn-based) and **Sand Bid** (real-time: the server times every hold, forgiving up to 1.5 s of connection lag but never crediting a hold longer than it saw). Each game adds an `online.ts` (its actions and per-player view) and an online view. What's next is in [docs/online-plan.md](docs/online-plan.md).
+Games go online one at a time: so far **Lonely Number**, **Dice Tower**, **Blind Bingo**, **Walls & Wards**, **Turf War**, **Tri-Mancala**, **Nine Men's Morris** and **Tigers & Goats** (turn-based) and **Sand Bid** (real-time: the server times every hold, forgiving up to 1.5 s of connection lag but never crediting a hold longer than it saw). Each game adds an `online.ts` (its actions and per-player view) and an online view. What's next is in [docs/online-plan.md](docs/online-plan.md).
 
 ### Accounts
 

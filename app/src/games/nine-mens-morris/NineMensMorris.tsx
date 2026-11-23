@@ -36,7 +36,28 @@ const px = (p: number) => BX + POINTS[p][0] * SP;
 const py = (p: number) => BY + POINTS[p][1] * SP;
 
 /** A turn being built: chosen man (moving), chosen point, waiting for a removal. */
-interface Pick { from: number | null; to: number | null }
+export interface Pick { from: number | null; to: number | null }
+
+/** What a click on a point does on your turn (solo and online share this): the new pick, and the turn once it's complete. */
+export function pointClick(id: string, s: GameState, pick: Pick): { pick: Pick; turn?: Turn } {
+  if (!id.startsWith('pt:')) return { pick };
+  const none: Pick = { from: null, to: null };
+  const p = Number(id.slice(3));
+  // waiting for a removal after a mill
+  if (pick.to !== null) {
+    const b = [...s.board];
+    if (pick.from !== null) b[pick.from] = null;
+    b[pick.to] = ME;
+    return removable(b, ME).includes(p) ? { pick: none, turn: { from: pick.from, to: pick.to, remove: p } } : { pick };
+  }
+  const options = steps(s, ME);
+  const go = (from: number | null, to: number) =>
+    makesMill(s.board, ME, from, to) ? { pick: { from, to } } : { pick: none, turn: { from, to, remove: null } };
+  if (placing(s, ME)) return s.board[p] === null ? go(null, p) : { pick };
+  if (s.board[p] === ME && options.some((o) => o.from === p)) return { pick: { from: p, to: null } };
+  if (pick.from !== null && options.some((o) => o.from === pick.from && o.to === p)) return go(pick.from, p);
+  return { pick };
+}
 
 export function NineMensMorris() {
   const [level, setLevel] = useState<Level | null>(null);
@@ -62,27 +83,10 @@ export function NineMensMorris() {
       return setPick({ from: null, to: null });
     }
     if (id === 'again') return setLevel(null);
-    if (!id.startsWith('pt:') || s.turn !== ME || s.winner !== null) return;
-    const p = Number(id.slice(3));
-    // waiting for a removal after a mill
-    if (pick.to !== null) {
-      const b = [...s.board];
-      if (pick.from !== null) b[pick.from] = null;
-      b[pick.to] = ME;
-      if (removable(b, ME).includes(p)) commit({ from: pick.from, to: pick.to, remove: p });
-      return;
-    }
-    const options = steps(s, ME);
-    const go = (from: number | null, to: number) => {
-      if (makesMill(s.board, ME, from, to)) setPick({ from, to });
-      else commit({ from, to, remove: null });
-    };
-    if (placing(s, ME)) {
-      if (s.board[p] === null) go(null, p);
-      return;
-    }
-    if (s.board[p] === ME && options.some((o) => o.from === p)) return setPick({ from: p, to: null });
-    if (pick.from !== null && options.some((o) => o.from === pick.from && o.to === p)) go(pick.from, p);
+    if (s.turn !== ME || s.winner !== null) return;
+    const r = pointClick(id, s, pick);
+    setPick(r.pick);
+    if (r.turn) commit(r.turn);
   };
 
   return (
@@ -116,15 +120,19 @@ function line(g: Gfx, a: number, b: number) {
   else g.rect(x0 - 1, Math.min(y0, y1), 3, Math.abs(y1 - y0), '#c9a35c');
 }
 
-function drawScene(g: Gfx, s: GameState, pick: Pick, level: Level) {
+/** Online play: the opponent's name (instead of "Easy bot"), and the move clock. */
+export interface OnlineHud { opponent: string; clock?: string }
+
+export function drawScene(g: Gfx, s: GameState, pick: Pick, level: Level | null, hud?: OnlineHud) {
+  const rival = hud?.opponent ?? `${level![0].toUpperCase()}${level!.slice(1)} bot`;
   const myTurn = s.turn === ME && s.winner === null;
   const last = s.history[s.history.length - 1];
 
   g.tile('board', 'tile_night', 0, 0, W, H);
   topBar(g, [
     { text: s.winner !== null ? 'GAME OVER' : placing(s, s.turn) ? 'PLACING' : flying(s, s.turn) ? 'FLYING' : 'MOVING', color: COLORS.gold },
-    { text: `vs ${level} bot`, color: COLORS.muted },
-    { text: `${s.quiet} moves since a mill`, color: s.quiet > 40 ? COLORS.ruby : COLORS.muted },
+    { text: `vs ${hud ? hud.opponent : `${level} bot`}`, color: COLORS.muted },
+    hud?.clock ? { text: hud.clock, color: COLORS.ruby } : { text: `${s.quiet} moves since a mill`, color: s.quiet > 40 ? COLORS.ruby : COLORS.muted },
   ], "NINE MEN'S MORRIS");
 
   // board
@@ -169,7 +177,7 @@ function drawScene(g: Gfx, s: GameState, pick: Pick, level: Level) {
   let title = '';
   let hint = '';
   if (s.winner !== null) title = s.winner === 'draw' ? 'Draw' : s.winner === ME ? 'You win!' : 'You lose';
-  else if (!myTurn) title = 'Opponent is thinking…';
+  else if (!myTurn) title = hud ? `${hud.opponent} is thinking…` : 'Opponent is thinking…';
   else if (removing) { title = 'MILL! Take one of theirs'; hint = 'flashing red men can be taken'; }
   else if (placing(s, ME)) { title = 'Place a man'; hint = 'click any empty point'; }
   else if (pick.from === null) { title = flying(s, ME) ? 'You can FLY' : 'Move a man'; hint = flying(s, ME) ? 'pick a man, then ANY empty point' : 'pick a man, then a gold spot next to it'; }
@@ -179,7 +187,7 @@ function drawScene(g: Gfx, s: GameState, pick: Pick, level: Level) {
 
   const row = (side: Side, y: number) => {
     g.sprite('board', SPRITE[side], sx + 10, y - 4);
-    g.text(side === ME ? 'You' : 'Opponent', sx + 30, y, { size: 9, color: s.turn === side && s.winner === null ? COLORS.gold : COLORS.ink });
+    g.text(side === ME ? 'You' : hud?.opponent ?? 'Opponent', sx + 30, y, { size: 9, color: s.turn === side && s.winner === null ? COLORS.gold : COLORS.ink });
     g.text(`${count(s, side)} on board · ${s.inHand[side]} in hand`, sx + 30, y + 11, { size: 7, color: COLORS.muted });
     for (let i = 0; i < s.inHand[side]; i++) g.rect(sx + 112 + (i % 9) * 8, y + 2, 6, 6, side === ME ? COLORS.sapphire : COLORS.ruby);
   };
@@ -188,7 +196,7 @@ function drawScene(g: Gfx, s: GameState, pick: Pick, level: Level) {
 
   g.text('LAST MOVES', sx + 10, 136, { size: 7, color: COLORS.muted });
   s.history.slice(-8).reverse().forEach((h, i) => {
-    g.text(`${h.side === ME ? 'You' : 'Opp'}: ${describe(h.turn, h.side === ME)}`, sx + 10, 147 + i * 11, {
+    g.text(`${h.side === ME ? 'You' : hud ? hud.opponent.slice(0, 10) : 'Opp'}: ${describe(h.turn, h.side === ME)}`, sx + 10, 147 + i * 11, {
       size: 7, color: h.turn.remove !== null ? COLORS.ruby : i === 0 ? COLORS.ink : COLORS.muted,
     });
   });
@@ -198,17 +206,17 @@ function drawScene(g: Gfx, s: GameState, pick: Pick, level: Level) {
     standingsPanel(
       g,
       [ME, BOT].sort((a, c) => (s.winner === c ? 1 : s.winner === a ? -1 : 0)).map((side) => ({
-        name: side === ME ? 'You' : `${level[0].toUpperCase()}${level.slice(1)} bot`,
+        name: side === ME ? 'You' : rival,
         detail: `${count(s, side as Side) + s.inHand[side as Side]} men left`,
       })),
-      s.winner === 'draw' ? 'A draw — 50 moves without a mill.' : youWin ? 'You win the duel!' : 'The bot wins the duel.',
+      s.winner === 'draw' ? 'A draw — 50 moves without a mill.' : youWin ? 'You win the duel!' : hud ? `${hud.opponent} wins the duel.` : 'The bot wins the duel.',
     );
   }
 }
 
 // ---------------------------------------------------------------- log (DOM)
 
-function MoveLog({ state }: { state: GameState }) {
+export function MoveLog({ state, opponent = 'Opponent' }: { state: GameState; opponent?: string }) {
   return (
     <aside className="log">
       <h3>Move log</h3>
@@ -217,7 +225,7 @@ function MoveLog({ state }: { state: GameState }) {
         {[...state.history].reverse().map((h, i) => (
           <li key={state.history.length - i}>
             <em className={h.turn.remove !== null ? (h.side === ME ? 'win' : 'tip') : ''}>
-              {state.history.length - i}. {h.side === ME ? 'You' : 'Opponent'} {describe(h.turn, h.side === ME)}
+              {state.history.length - i}. {h.side === ME ? 'You' : opponent} {describe(h.turn, h.side === ME)}
             </em>
           </li>
         ))}
