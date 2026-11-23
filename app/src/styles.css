@@ -138,3 +138,5 @@ canvas.stage { image-rendering: pixelated; display: block; max-width: 100%; }
 .lobby-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .lobby-results ol { padding-left: 0; list-style: none; }
 .lobby-results li.you { color: var(--gold); }
+
+.rejoin { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-top: 10px; padding: 8px 10px; border: 1px solid var(--gold); background: #2a2050; }

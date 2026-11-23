@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
+import { GAMES } from '../games/registry';
 import { ApiError, Me, Offline, account } from '../net/account';
 import { Panel } from './Panel';
 
@@ -121,6 +122,15 @@ export function AccountPanel({ onOnline }: { onOnline: () => void }) {
             <button className="link" onClick={signOut}>Sign out</button>
           </span>
         </div>
+        {me.table && (
+          <div className="rejoin" role="status">
+            <span>
+              You’re still seated at <b>{GAMES.find((g) => g.id === me.table!.gameId)?.name ?? 'a table'}</b> (table <b className="code">{me.table.code}</b>
+              {me.table.status === 'playing' ? ', game in progress' : me.table.status === 'over' ? ', game finished' : ', in the lobby'}).
+            </span>
+            <button className="btn go" onClick={onOnline}>Rejoin table</button>
+          </div>
+        )}
         {(mode === 'upgrade' || mode === 'delete') && form}
       </Panel>
     );

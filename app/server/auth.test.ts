@@ -102,7 +102,7 @@ describe('HTTP API', () => {
     expect(set).toContain('SameSite=Lax');
     let cookie = cookieOf(r);
     r = await fetch(`${base}/api/me`, { headers: { cookie } });
-    expect(await r.json()).toEqual({ user: { name: 'Hana', username: null, guest: true } });
+    expect(await r.json()).toEqual({ user: { name: 'Hana', username: null, guest: true, table: null } });
     r = await post('/api/upgrade', { username: 'hana', password: 'password123' }, cookie);
     expect(((await r.json()) as { user: unknown }).user).toEqual({ name: 'hana', username: 'hana', guest: false });
     cookie = cookieOf(r);
@@ -110,6 +110,16 @@ describe('HTTP API', () => {
     expect(r.headers.get('set-cookie')).toContain('Max-Age=0');
     r = await fetch(`${base}/api/me`, { headers: { cookie } });
     expect(await r.json()).toEqual({ user: null });
+  });
+
+  it('/api/me says which table you are seated at', async () => {
+    server.close();
+    server = createServer(createApp(db, { secureCookies: false, tableOf: () => ({ code: 'TTHZ', gameId: 'lonely-number', status: 'playing' }) }));
+    await new Promise<void>((r) => server.listen(0, r));
+    base = `http://localhost:${(server.address() as AddressInfo).port}`;
+    const cookie = cookieOf(await post('/api/guest', { name: 'Hana' }));
+    const r = await fetch(`${base}/api/me`, { headers: { cookie } });
+    expect(((await r.json()) as { user: { table: unknown } }).user.table).toEqual({ code: 'TTHZ', gameId: 'lonely-number', status: 'playing' });
   });
 
   it('refuses non-JSON posts, bad input, and too many wrong passwords', async () => {

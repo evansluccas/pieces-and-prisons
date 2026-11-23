@@ -75,6 +75,15 @@ describe('lobby', () => {
     expect(room(c).seats).toHaveLength(6);
   });
 
+  it('knows which table each person is at', () => {
+    const [a, , c] = users;
+    const code = table();
+    expect(rooms.tableOf(a.id)).toEqual({ code, gameId: 'lonely-number', status: 'lobby' });
+    expect(rooms.tableOf(c.id)).toBeNull();
+    say(a, { type: 'leave' });
+    expect(rooms.tableOf(a.id)).toBeNull();
+  });
+
   it('leaving the lobby frees the seat and hands over the host', () => {
     const [a, b] = users;
     table();

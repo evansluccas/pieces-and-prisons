@@ -1,6 +1,9 @@
 /** Talks to the game server's account API (same origin; the session lives in an HttpOnly cookie). */
 
-export interface Me { name: string; username: string | null; guest: boolean }
+/** The online table someone is seated at (only reported by `me`). */
+export interface TableInfo { code: string; gameId: string; status: 'lobby' | 'playing' | 'over' }
+
+export interface Me { name: string; username: string | null; guest: boolean; table?: TableInfo | null }
 
 export class ApiError extends Error {}
 /** The server isn't running or can't be reached — single-player still works. */

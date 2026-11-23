@@ -22,14 +22,16 @@ mkdirSync(dirname(dbPath), { recursive: true });
 
 const db = openDb(dbPath);
 const production = process.env.NODE_ENV === 'production';
-const handle = createApp(db, { secureCookies: production });
+// the room manager is created with the sockets below; /api/me asks it where each player is seated
+let rooms: ReturnType<typeof attachSockets> | null = null;
+const handle = createApp(db, { secureCookies: production, tableOf: (id) => rooms?.tableOf(id) ?? null });
 
 sweep(db);
 setInterval(() => sweep(db), 60 * 60 * 1000).unref();
 
 const port = Number(process.env.PORT ?? 8787);
 const server = createServer((req, res) => void handle(req, res));
-attachSockets(server, db);
+rooms = attachSockets(server, db);
 server.listen(port, () => {
   console.log(`Pieces & Prisons server on http://localhost:${port} (db: ${dbPath})`);
 });

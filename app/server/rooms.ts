@@ -64,6 +64,8 @@ export interface RoomView {
   results: { name: string; place: number; detail: string; you: boolean }[] | null;
 }
 
+export interface TableInfo { code: string; gameId: string; status: Status }
+
 export type ServerMessage =
   | { type: 'room'; room: RoomView }
   | { type: 'game'; view: unknown; waiting: boolean; deadline: number | null; pauseUntil: number | null }
@@ -448,6 +450,12 @@ export class Rooms {
     for (const room of [...this.rooms.values()]) {
       if (room.emptySince !== null && this.now() - room.emptySince > IDLE_ROOM_MS) this.close(room);
     }
+  }
+
+  /** The table this person is seated at, if any — so the hub can offer to rejoin it. */
+  tableOf(userId: number): TableInfo | null {
+    const room = this.roomOf(userId);
+    return room ? { code: room.code, gameId: room.gameId, status: room.status } : null;
   }
 
   /** For tests and the admin log. */
