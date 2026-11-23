@@ -3,6 +3,7 @@ import type { OnlineGame } from './types';
 import * as lonely from '../../src/games/lonely-number/online';
 import type { GameState as LonelyState } from '../../src/games/lonely-number/logic';
 import * as sand from '../../src/games/sand-bid/online';
+import * as dice from '../../src/games/dice-tower/online';
 
 const lonelyNumber: OnlineGame<LonelyState> = {
   id: 'lonely-number',
@@ -33,7 +34,22 @@ const sandBid: OnlineGame<sand.OnlineState> = {
   realtime: { wakeAt: sand.wakeAt, tick: sand.tick, dropped: sand.dropped, takeover: sand.takeover },
 };
 
+const diceTower: OnlineGame<dice.OnlineState> = {
+  id: 'dice-tower',
+  minPlayers: 3,
+  maxPlayers: 6,
+  start: dice.start,
+  act: dice.act,
+  view: dice.view,
+  waitingOn: dice.waitingOn,
+  botAction: dice.botAction,
+  pause: dice.pause,
+  over: dice.over,
+  results: dice.results,
+};
+
 export const ONLINE_GAMES: Record<string, OnlineGame<any>> = {
   [lonelyNumber.id]: lonelyNumber,
   [sandBid.id]: sandBid,
+  [diceTower.id]: diceTower,
 };

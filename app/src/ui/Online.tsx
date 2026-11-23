@@ -1,6 +1,7 @@
 import { FormEvent, ReactElement, useEffect, useState } from 'react';
 import { GAMES } from '../games/registry';
 import { LonelyNumberOnline } from '../games/lonely-number/LonelyNumberOnline';
+import { DiceTowerOnline } from '../games/dice-tower/DiceTowerOnline';
 import { SandBidOnline } from '../games/sand-bid/SandBidOnline';
 import { GameMessage, RoomView, useTable } from '../net/table';
 import { Me, account } from '../net/account';
@@ -18,6 +19,7 @@ export interface OnlineGameProps {
 const ONLINE_VIEWS: Record<string, (p: OnlineGameProps) => ReactElement> = {
   'lonely-number': LonelyNumberOnline,
   'sand-bid': SandBidOnline,
+  'dice-tower': DiceTowerOnline,
 };
 export const ONLINE_IDS = Object.keys(ONLINE_VIEWS);
 

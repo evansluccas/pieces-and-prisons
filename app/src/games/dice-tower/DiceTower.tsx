@@ -112,7 +112,12 @@ function drawDice(g: Gfx, dice: { name: string; alpha?: number }[], cx: number, 
   dice.forEach((d, i) => g.sprite('dice', d.name, cx - w / 2 + i * 18, y, { alpha: d.alpha }));
 }
 
-function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, since: number) {
+export const PORTRAITS = ['citizen', 'officer', 'journalist', 'fanatic', 'researcher', 'terrorist'];
+
+/** Online play: the move clock, a replacement hint line, and the label on the "next" button. */
+export interface OnlineHud { clock?: string; sub?: string; nextLabel?: string }
+
+export function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, since: number, hud?: OnlineHud) {
   const picker = currentPicker(s);
   const showResult = s.phase === 'result' || s.phase === 'gameOver';
   const revealed = showResult && since > pace(REVEAL_MS);
@@ -120,7 +125,10 @@ function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, since: nu
   const me = s.players.find((p) => p.id === ME)!;
 
   g.tile('board', 'tile_night', 0, 0, W, H);
-  topBar(g, [{ text: `ROUND ${s.round}/${s.config.rounds}`, color: COLORS.gold }], 'DICE TOWER');
+  topBar(g, [
+    { text: `ROUND ${s.round}/${s.config.rounds}`, color: COLORS.gold },
+    ...(hud?.clock ? [{ text: hud.clock, color: COLORS.ruby }] : []),
+  ], 'DICE TOWER');
 
   // opponents
   const opponents = s.players.filter((p) => p.id !== ME);
@@ -192,6 +200,7 @@ function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, since: nu
       sub = `You: ${last.places[ME]} with ${last.combos[ME]} = ${pts(last.base[ME])} · bet ${last.predictions[ME]} ${betMark(last.predictions[ME], last.base[ME])} → +${last.earned[ME]}`;
     }
   }
+  if (hud?.sub) sub = hud.sub;
   if (msg) g.text(msg, W / 2, 154, { align: 'center', size: 11, color: COLORS.gold });
   if (sub) g.text(sub, W / 2, 167, { align: 'center', size: 8, color: COLORS.muted });
 
@@ -230,7 +239,7 @@ function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, since: nu
       size: 7, color: me.prediction !== null && s.phase === 'predict' ? COLORS.gold : COLORS.muted,
     });
   }
-  if (s.phase === 'result' && revealed) g.button('next', s.round >= s.config.rounds ? 'Final result' : 'Next round', 396, 244, 72);
+  if (s.phase === 'result' && revealed) g.button('next', hud?.nextLabel ?? (s.round >= s.config.rounds ? 'Final result' : 'Next round'), 396, 244, 72);
   if (s.phase === 'gameOver' && revealed) {
     const order = standings(s);
     standingsPanel(
@@ -250,7 +259,7 @@ const compareRank = (a: string, b: string) => PLACE_ORDER.indexOf(a) - PLACE_ORD
 
 // ---------------------------------------------------------------- log (DOM)
 
-function DiceLog({ state }: { state: GameState }) {
+export function DiceLog({ state }: { state: GameState }) {
   const name = (id: string) => state.players.find((p) => p.id === id)?.name ?? id;
   return (
     <aside className="log">
