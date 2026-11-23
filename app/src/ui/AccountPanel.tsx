@@ -126,7 +126,7 @@ export function AccountPanel({ onOnline, onMatches }: { onOnline: () => void; on
         {me.table && (
           <div className="rejoin" role="status">
             <span>
-              You’re still seated at <b>{GAMES.find((g) => g.id === me.table!.gameId)?.name ?? 'a table'}</b> (table <b className="code">{me.table.code}</b>
+              You’re still seated at <b>{me.table.gameId === 'party' ? 'a Party' : GAMES.find((g) => g.id === me.table!.gameId)?.name ?? 'a table'}</b> (table <b className="code">{me.table.code}</b>
               {me.table.status === 'playing' ? ', game in progress' : me.table.status === 'over' ? ', game finished' : ', in the lobby'}).
             </span>
             <button className="btn go" onClick={onOnline}>Rejoin table</button>

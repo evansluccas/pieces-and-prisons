@@ -76,11 +76,15 @@ function checkHidden(messages: ServerMessage[], values: number[]) {
     expect(text).not.toMatch(/"memory"|"rng"/);
     // the end screen shows the whole board, as in solo play
     if (m.type === 'game' && (m.view as View).game.phase === 'gameOver') continue;
-    expect(text).not.toContain(values.join(','));
-    if (m.type !== 'game') continue;
+    if (m.type !== 'game') {
+      expect(text).not.toContain(values.join(','));
+      continue;
+    }
     const g = (m.view as View).game;
     expect(g.phase).toBe('play');
     const up = new Set(g.attempts.flatMap((t) => LINES[t.line]));
+    // the whole board may be in the message only once every tile has been flipped
+    if (up.size < values.length) expect(text).not.toContain(values.join(','));
     g.values.forEach((v, i) => expect(v).toBe(up.has(i) ? values[i] : null));
     checked++;
   }

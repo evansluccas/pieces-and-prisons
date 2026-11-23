@@ -76,6 +76,8 @@ export interface RaceState<P, M> {
   results: Record<string, RoundResult>[];  // per round, per seat (filled in as players finish)
   botPlans: Record<string, { at: number; points: number; penaltyMs: number; detail: string }>;
   rng: Rng;
+  /** A shorter time limit for every round (the Party plays quick races); otherwise the puzzle's own. */
+  limitMs?: number;
 }
 
 /** What a seat is sent. */
@@ -119,7 +121,7 @@ export function race<P, M>(puzzle: RacePuzzle<P, M>) {
     return { at: Math.max(1000, Math.round(b.ms)), points: b.points, penaltyMs: b.penaltyMs ?? 0, detail: b.detail ?? '' };
   }
 
-  const limit = (s: S) => puzzle.limitMs(s.puzzles[s.round]);
+  const limit = (s: S) => s.limitMs ?? puzzle.limitMs(s.puzzles[s.round]);
   const current = (s: S) => s.results[s.round];
 
   function record(s: S, seat: string, r: RoundResult): S {

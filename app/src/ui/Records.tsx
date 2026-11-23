@@ -3,7 +3,7 @@ import { GAMES } from '../games/registry';
 import { LeaderRow, MatchSummary, Offline, records } from '../net/account';
 import { Panel } from './Panel';
 
-const gameName = (id: string) => GAMES.find((g) => g.id === id)?.name ?? id;
+const gameName = (id: string) => (id === 'party' ? 'Party' : GAMES.find((g) => g.id === id)?.name ?? id);
 const when = (t: number) => new Date(t).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 const placeText = (p: number | null) => (p === null ? '—' : p === 1 ? '1st' : p === 2 ? '2nd' : p === 3 ? '3rd' : `${p}th`);
 
@@ -72,6 +72,7 @@ export function Leaderboards({ onExit }: { onExit: () => void }) {
           Game{' '}
           <select value={game} onChange={(e) => setGame(e.target.value)}>
             <option value="">All games</option>
+            <option value="party">Party</option>
             {GAMES.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
           </select>
         </label>

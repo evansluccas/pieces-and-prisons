@@ -160,3 +160,16 @@ canvas.stage { image-rendering: pixelated; display: block; max-width: 100%; }
 .leaderboard th { color: var(--muted); font-weight: normal; }
 .leaderboard tr.you td { color: var(--gold); }
 .hub-links { display: flex; gap: 16px; margin: 0 0 12px; }
+
+/* ---- Party mode ---- */
+.mode-switch { display: inline-flex; gap: 4px; margin: 8px 0 16px; padding: 4px; border-radius: 8px; background: rgba(0, 0, 0, 0.35); }
+.mode-switch button { font: inherit; padding: 8px 20px; border: 0; border-radius: 6px; background: transparent; color: inherit; cursor: pointer; opacity: 0.7; }
+.mode-switch button.on { background: #c9a227; color: #2a1b05; opacity: 1; font-weight: bold; }
+.mode-switch button:focus-visible { outline: 2px solid #fff; }
+.party-panel { max-width: 720px; }
+.party-head { display: flex; gap: 16px; align-items: center; }
+.party-head h2 { margin: 0 0 4px; }
+.party-rules { line-height: 1.6; padding-left: 20px; }
+.party-mini .party-bar { margin: 0 0 8px; }
+.party-mini .team.blue { color: #70adf2; }
+.party-mini .team.red { color: #f2687a; }

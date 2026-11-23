@@ -15,7 +15,8 @@ export interface OnlineGameProps {
 }
 
 /** Games that can be played at an online table, and the view that plays them. */
-const ONLINE_VIEWS: Record<string, LazyExoticComponent<(p: OnlineGameProps) => ReactElement>> = {
+export const ONLINE_VIEWS: Record<string, LazyExoticComponent<(p: OnlineGameProps) => ReactElement>> = {
+  party: lazy(() => import('../games/party/PartyOnline').then((m) => ({ default: m.PartyOnline }))),
   'lonely-number': lazy(() => import('../games/lonely-number/LonelyNumberOnline').then((m) => ({ default: m.LonelyNumberOnline }))),
   'sand-bid': lazy(() => import('../games/sand-bid/SandBidOnline').then((m) => ({ default: m.SandBidOnline }))),
   'dice-tower': lazy(() => import('../games/dice-tower/DiceTowerOnline').then((m) => ({ default: m.DiceTowerOnline }))),
@@ -49,7 +50,10 @@ const ONLINE_VIEWS: Record<string, LazyExoticComponent<(p: OnlineGameProps) => R
 };
 export const ONLINE_IDS = Object.keys(ONLINE_VIEWS);
 
-export function Online({ onExit }: { onExit: () => void }) {
+/** Display name of an online game id ('party' isn't in the solo list). */
+export const onlineName = (id: string) => (id === 'party' ? 'Party' : GAMES.find((g) => g.id === id)?.name ?? id);
+
+export function Online({ onExit, mode = 'games' }: { onExit: () => void; mode?: 'games' | 'party' }) {
   const [me, setMe] = useState<Me | null | undefined>(undefined);
   useEffect(() => {
     account.me().then(setMe, () => setMe(null));
@@ -58,15 +62,15 @@ export function Online({ onExit }: { onExit: () => void }) {
   if (!me) {
     return (
       <div className="online">
-        <nav className="game-nav"><button className="link" onClick={onExit}>← All games</button><h1>Online tables</h1></nav>
+        <nav className="game-nav"><button className="link" onClick={onExit}>← All games</button><h1>{mode === 'party' ? 'Party' : 'Online tables'}</h1></nav>
         <Panel><p>Sign in or pick a guest name on the main screen to play online.</p></Panel>
       </div>
     );
   }
-  return <Tables me={me} onExit={onExit} />;
+  return <Tables me={me} onExit={onExit} mode={mode} />;
 }
 
-function Tables({ me, onExit }: { me: Me; onExit: () => void }) {
+function Tables({ me, onExit, mode }: { me: Me; onExit: () => void; mode: 'games' | 'party' }) {
   const { link, room, game, error, send, clearError } = useTable();
   const [code, setCode] = useState('');
 
@@ -81,7 +85,7 @@ function Tables({ me, onExit }: { me: Me; onExit: () => void }) {
     if (code.trim()) send({ type: 'join', code: code.trim() });
   };
   const leave = () => send({ type: 'leave' });
-  const title = room ? GAMES.find((g) => g.id === room.gameId)?.name ?? room.gameId : 'Online tables';
+  const title = room ? onlineName(room.gameId) : mode === 'party' ? 'Party' : 'Online tables';
   const View = room ? ONLINE_VIEWS[room.gameId] : null;
   const inGame = room && room.status !== 'lobby' && game && View;
 
@@ -105,6 +109,13 @@ function Tables({ me, onExit }: { me: Me; onExit: () => void }) {
         <Lobby room={room} send={send} />
       ) : (
         <div className="online-start">
+          {mode === 'party' ? (
+            <Panel>
+              <h2>Start a party</h2>
+              <p className="muted">A board game for 2, 4, 6 or 8 players, with mini-games between turns. You get a code to share; empty seats can be filled with bots.</p>
+              <button className="btn go" onClick={() => send({ type: 'create', gameId: 'party' })}>Start a party</button>
+            </Panel>
+          ) : (
           <Panel>
             <h2>Start a table</h2>
             <p className="muted">You get a code to share; friends join with it. Empty seats can be filled with bots.</p>
@@ -116,8 +127,8 @@ function Tables({ me, onExit }: { me: Me; onExit: () => void }) {
                 </button>
               ))}
             </div>
-            <p className="muted small">More games come online one by one.</p>
           </Panel>
+          )}
           <Panel>
             <h2>Join a table</h2>
             <form className="account-form" onSubmit={join}>
@@ -133,6 +144,7 @@ function Tables({ me, onExit }: { me: Me; onExit: () => void }) {
 
 function Lobby({ room, send }: { room: RoomView; send: (m: Record<string, unknown>) => void }) {
   const short = room.seats.length < room.minPlayers;
+  const odd = room.gameId === 'party' && room.seats.length % 2 === 1;
   const full = room.seats.length >= room.maxPlayers;
   return (
     <Panel className="lobby">
@@ -182,8 +194,9 @@ function Lobby({ room, send }: { room: RoomView; send: (m: Record<string, unknow
           ) : (
             <>
               <button className="btn" disabled={full} onClick={() => send({ type: 'addBot' })}>Add a bot</button>
-              <button className="btn go" disabled={short} onClick={() => send({ type: 'start' })}>Start game</button>
+              <button className="btn go" disabled={short || odd} onClick={() => send({ type: 'start' })}>Start game</button>
               {short && <span className="muted">Needs at least {room.minPlayers} players — add bots to fill seats.</span>}
+              {!short && odd && <span className="muted">A party needs 2, 4, 6 or 8 players — add or remove a bot.</span>}
             </>
           )}
         </div>

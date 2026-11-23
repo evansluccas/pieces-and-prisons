@@ -110,8 +110,8 @@ describe('saving tables', () => {
 
   it('every online game can be saved right after it starts', () => {
     const rooms = new Rooms(sendTo, db);
-    const users = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8', 'P9', 'P10', 'P11', 'P12', 'P13', 'P14', 'P15', 'P16', 'P17', 'P18', 'P19', 'P20', 'P21', 'P22', 'P23', 'P24', 'P25', 'P26', 'P27', 'P28', 'P29', 'P30'].map((n) => guest(db, n).user);
     const ids = Object.keys(ONLINE_GAMES);
+    const users = ids.map((_, i) => guest(db, `P${i + 1}`).user);
     ids.forEach((id, i) => {
       const u = users[i];
       rooms.handle(u, { type: 'create', gameId: id });

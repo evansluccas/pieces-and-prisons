@@ -1,10 +1,22 @@
+import { useState } from 'react';
 import { GAMES, STAGE_LABEL, Stage } from '../games/registry';
 import { AccountPanel } from './AccountPanel';
 import { ONLINE_IDS } from './Online';
 import { Panel, Sprite } from './Panel';
 
-export function Hub({ onPlay, onOnline, onPage }: { onPlay: (id: string) => void; onOnline: () => void; onPage: (page: 'matches' | 'leaders') => void }) {
+type Mode = 'games' | 'party';
+const MODE_KEY = 'pp-hub-mode';
+const savedMode = (): Mode => {
+  try { return localStorage.getItem(MODE_KEY) === 'party' ? 'party' : 'games'; } catch { return 'games'; }
+};
+
+export function Hub({ onPlay, onOnline, onParty, onPage }: { onPlay: (id: string) => void; onOnline: () => void; onParty: () => void; onPage: (page: 'matches' | 'leaders') => void }) {
   const stages: Stage[] = ['prison', 'main', 'exile', 'final', 'hidden'];
+  const [mode, setMode] = useState<Mode>(savedMode);
+  const choose = (m: Mode) => {
+    setMode(m);
+    try { localStorage.setItem(MODE_KEY, m); } catch { /* private window: just don't remember */ }
+  };
   return (
     <div className="hub">
       <header className="hub-head">
@@ -18,7 +30,11 @@ export function Hub({ onPlay, onOnline, onPage }: { onPlay: (id: string) => void
       <p className="hub-links">
         <button className="link" onClick={() => onPage('leaders')}>Leaderboards</button>
       </p>
-      {stages.map((stage) => (
+      <div className="mode-switch" role="tablist" aria-label="Game mode">
+        <button role="tab" aria-selected={mode === 'games'} className={mode === 'games' ? 'on' : ''} onClick={() => choose('games')}>Mini-games</button>
+        <button role="tab" aria-selected={mode === 'party'} className={mode === 'party' ? 'on' : ''} onClick={() => choose('party')}>Party</button>
+      </div>
+      {mode === 'party' ? <PartyPanel onParty={onParty} /> : stages.map((stage) => (
         <section key={stage}>
           <h2>{STAGE_LABEL[stage]}</h2>
           <div className="game-grid">
@@ -44,5 +60,28 @@ export function Hub({ onPlay, onOnline, onPage }: { onPlay: (id: string) => void
         </section>
       ))}
     </div>
+  );
+}
+
+function PartyPanel({ onParty }: { onParty: () => void }) {
+  return (
+    <Panel className="party-panel">
+      <div className="party-head">
+        <Sprite cat="icons" name="prison" size={48} />
+        <div>
+          <h2>Party</h2>
+          <p>A board game for <b>2, 4, 6 or 8 players</b> (bots fill empty seats). Roll the die, move around the yard and collect Pieces — whoever has the fewest at the end goes to prison.</p>
+        </div>
+      </div>
+      <ul className="party-rules">
+        <li><b>8 rounds.</b> Everyone starts with 10 Pieces and takes one roll per round.</li>
+        <li><b>Spaces:</b> blue +3 · red −3 · <b>?</b> a random event · <b>VS</b> challenge a rival to a duel for 5 Pieces · <b>JAIL</b> pay 5 or miss your next roll · <b>$</b> empty the vault · passing <b>GO</b> pays 5.</li>
+        <li>Pieces lost on red spaces, fines and jail go into the <b>vault</b>.</li>
+        <li><b>After every round, a mini-game:</b> everyone for themselves, or team blue against team red. Puzzles, races, bluffs and bids from the Mini-games collection — shortened to a minute or two.</li>
+        <li>The player with the most mini-game wins gets a bonus of 10 Pieces at the end.</li>
+      </ul>
+      <button className="btn go" onClick={onParty}>Play a party online</button>
+      <p className="muted small">Sign in or pick a guest name above first.</p>
+    </Panel>
   );
 }

@@ -85,9 +85,10 @@ export function App() {
   if (error) return <p className="center">Could not load assets: {error}</p>;
   if (!ready) return <p className="center muted">Loading…</p>;
   if (current === 'online') return <Online onExit={() => setCurrent(null)} />;
+  if (current === 'party') return <Online mode="party" onExit={() => setCurrent(null)} />;
   if (current === 'matches') return <MyMatches onExit={() => setCurrent(null)} />;
   if (current === 'leaders') return <Leaderboards onExit={() => setCurrent(null)} />;
-  if (!current) return <Hub onPlay={(id) => { setCurrent(id); setShowRules(true); }} onOnline={() => setCurrent('online')} onPage={setCurrent} />;
+  if (!current) return <Hub onPlay={(id) => { setCurrent(id); setShowRules(true); }} onOnline={() => setCurrent('online')} onParty={() => setCurrent('party')} onPage={setCurrent} />;
 
   const info = GAMES.find((g) => g.id === current)!;
   if (loaded?.id !== current) return <p className="center muted">Loading {info.name}…</p>;

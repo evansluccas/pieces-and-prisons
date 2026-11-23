@@ -31,7 +31,7 @@ export const BOT_MIN_MS = 500;
 export const BOT_MAX_MS = 1400;
 export const IDLE_ROOM_MS = 10 * 60_000;
 const CODE_LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // no I or O
-const BOT_NAMES = ['Hana', 'Jun', 'Seo', 'Mira', 'Taeo', 'Rin'];
+const BOT_NAMES = ['Hana', 'Jun', 'Seo', 'Mira', 'Taeo', 'Rin', 'Dae', 'Yuna'];
 
 interface SeatState { id: string; userId: number | null; name: string; isBot: boolean; connected: boolean }
 

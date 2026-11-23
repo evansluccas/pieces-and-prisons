@@ -2,7 +2,7 @@
 
 A collection of strategy, deduction and bluffing party games inspired by Korean "brain survival" game shows. Players earn **Pieces**, avoid **prison**, and outplay each other one match at a time.
 
-> **Status:** all 30 games are playable against bots (or, for the solo puzzles, against ghost times). Online multiplayer comes next.
+> **Status:** all 30 games are playable against bots (or, for the solo puzzles, against ghost times) and online, plus a **Party** mode that strings them together on a board.
 >
 > - **Prison matches:** Lonely Number, Sand Bid, Dice Tower, Tipping Scales, Six Chambers, Walls & Wards, Piggy Bluff, Deadeye Hold'em
 > - **Main matches:** Blind Bingo, Smuggler's Gems, Split Decision, Rumor Exchange, High-Low Equations, Turf War, Tri-Mancala, Color Doubt, Number Forge
@@ -66,6 +66,10 @@ Solo play needs only `npm run dev`. For accounts and online tables, run `npm run
 | `app/src/ui/` | Hub and DOM panels drawn with the UI sprites |
 | `app/server/` | Game server: SQLite database (`db.ts`), accounts and guests (`auth.ts`), HTTP API (`app.ts`), online tables (`rooms.ts`, `ws.ts`) |
 | `app/server/games/` | Which games can be played online, and how each plugs into a table |
+
+### Party mode
+
+The home screen has two modes: **Mini-games** (every game on its own) and **Party** — a board game for 2, 4, 6 or 8 players where you roll, move around the yard collecting Pieces, duel rivals and play a short mini-game from the collection after every round. Fewest Pieces after 8 rounds goes to prison. Rules and code: [docs/party-mode.md](docs/party-mode.md).
 
 Each game keeps its rules in pure TypeScript, separate from rendering. That way the bots, the tests and a future online mode can all share the same rules.
 
