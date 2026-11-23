@@ -142,14 +142,22 @@ function drawCard(g: Gfx, p: PlayerState, x: number, y: number, cell: number, ga
   }
 }
 
-function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, picked: number[], sinceResult: number) {
+export const PORTRAITS = ['citizen', 'officer', 'journalist', 'fanatic', 'researcher', 'terrorist'];
+
+/** Online play: a clock or countdown in the top bar, and the label on the "next" button. */
+export interface OnlineHud { clock?: string; nextLabel?: string }
+
+export function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, picked: number[], sinceResult: number, hud?: OnlineHud) {
   const me = s.players.find((p) => p.id === ME)!;
   const last = s.history[s.history.length - 1];
   const over = s.phase === 'gameOver';
   const showResult = s.phase === 'result' || over;
 
   g.tile('board', 'tile_night', 0, 0, W, H);
-  topBar(g, [{ text: `ROUND ${s.round}/${s.config.rounds}`, color: COLORS.gold }], 'BLIND BINGO');
+  topBar(g, [
+    { text: `ROUND ${s.round}/${s.config.rounds}`, color: COLORS.gold },
+    ...(hud?.clock ? [{ text: hud.clock, color: COLORS.ruby }] : []),
+  ], 'BLIND BINGO');
 
   // opponents
   const opponents = s.players.filter((p) => p.id !== ME);
@@ -226,7 +234,7 @@ function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, picked: n
       ? got ? `You won! +${plural(mineShape, got)} stamped` : `You won ${SHAPE_NAME[mineShape].toLowerCase()}s — but had no empty ones left`
       : `You lost the ${mineShape}s — your bid was ${last.bids[ME]}`;
     g.text(msg, mx + 10, 176, { size: 9, color: won ? COLORS.emerald : COLORS.ruby });
-    if (s.phase === 'result') g.button('next', s.round >= s.config.rounds ? 'Final result' : 'Next round', W - 92, 180, 80);
+    if (s.phase === 'result') g.button('next', hud?.nextLabel ?? (s.round >= s.config.rounds ? 'Final result' : 'Next round'), W - 92, 180, 80);
   }
 
   // coins
@@ -262,7 +270,7 @@ function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, picked: n
 
 // ---------------------------------------------------------------- log (DOM)
 
-function BingoLog({ state }: { state: GameState }) {
+export function BingoLog({ state }: { state: GameState }) {
   const over = state.phase === 'gameOver';
   const name = (id: string) => (id === ME ? 'You' : state.players.find((p) => p.id === id)?.name ?? id);
   return (

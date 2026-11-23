@@ -53,7 +53,7 @@ npm run server   # game server for online play, http://localhost:8787 (needs Nod
 npm test         # game-logic and server tests
 ```
 
-Solo play needs only `npm run dev`. For accounts and (soon) online tables, run `npm run server` as well; Vite forwards `/api` to it.
+Solo play needs only `npm run dev`. For accounts and online tables, run `npm run server` as well; Vite forwards `/api` to it.
 
 | Path | What |
 |---|---|
@@ -75,7 +75,7 @@ Signed-in players (accounts or guests) choose **Play online**, start a table and
 - Losing connection keeps your seat; opening Play online again puts you back. Leaving mid-game hands your seat to a bot.
 - Finished tables are saved to the database (`matches`, `match_players`).
 
-Games go online one at a time: so far **Lonely Number** (turn-based) and **Sand Bid** (real-time: the server times every hold, forgiving up to 1.5 s of connection lag but never crediting a hold longer than it saw). Each game adds an `online.ts` (its actions and per-player view) and an online view.
+Games go online one at a time: so far **Lonely Number**, **Dice Tower** and **Blind Bingo** (turn-based) and **Sand Bid** (real-time: the server times every hold, forgiving up to 1.5 s of connection lag but never crediting a hold longer than it saw). Each game adds an `online.ts` (its actions and per-player view) and an online view. What's next is in [docs/online-plan.md](docs/online-plan.md).
 
 ### Accounts
 
