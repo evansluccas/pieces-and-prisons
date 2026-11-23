@@ -6,7 +6,7 @@
  *   npx tsx server/admin.ts rename <user> <n>  give a player a new name (e.g. "Player 42")
  *
  * On Fly.io, run it on the machine (it uses the same DB_PATH as the server):
- *   fly ssh console -C "node_modules/.bin/tsx server/admin.ts reports"
+ *   fly ssh console -C "sh -c 'cd /repo/app && node_modules/.bin/tsx server/admin.ts reports'"
  */
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';

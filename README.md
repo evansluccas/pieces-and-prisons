@@ -133,7 +133,7 @@ Then open `https://<your-app-name>.fly.dev`.
 
 - Deploy changes: `fly deploy`. Tables in progress are saved and carry on after the restart (players see a short "restarting" notice and reconnect by themselves).
 - Logs: `fly logs`. Health: `fly status`. The server answers `GET /api/health`.
-- Reported names: `fly ssh console -C "node_modules/.bin/tsx server/admin.ts reports"` lists them; `... admin.ts resolve <id>` and `... admin.ts rename <user id> <new name>` deal with them.
+- Reported names: `fly ssh console -C "sh -c 'cd /repo/app && node_modules/.bin/tsx server/admin.ts reports'"` lists them; the same with `resolve <id>` or `rename <user id> <new name>` deals with them.
 - Load: `npx tsx server/loadcheck.ts 150 60` (in `app/`) runs 150 busy tables for a minute and reports memory, CPU and lag.
 - `npm ci` in the image is strict about the lockfile. If a deploy fails with "package.json and package-lock.json … are not in sync", regenerate it with the same npm version the image uses (shown in the build log), e.g. `npx npm@11.19.1 install --package-lock-only` in `app/`.
 - Backups: Fly snapshots the volume daily and keeps the snapshots for a few days (`fly volumes snapshots list pieces_data`). For an extra copy, `fly ssh sftp get /data/pieces.db`.
