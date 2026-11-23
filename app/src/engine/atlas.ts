@@ -4,7 +4,7 @@ export interface Frame { x: number; y: number; w: number; h: number }
 export interface Sheet { image: HTMLImageElement; frames: Record<string, Frame> }
 
 export const CATEGORIES = [
-  'cards', 'coins', 'dice', 'items', 'board', 'gems', 'tokens', 'portraits', 'icons', 'monsters', 'ui',
+  'cards', 'coins', 'dice', 'items', 'board', 'gems', 'tokens', 'portraits', 'icons', 'monsters', 'ui', 'party',
 ] as const;
 export type Category = (typeof CATEGORIES)[number];
 

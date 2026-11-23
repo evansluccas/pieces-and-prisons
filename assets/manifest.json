@@ -909,6 +909,183 @@
     "path": "sprites/portraits/journalist.png"
    }
   ],
+  "party": [
+   {
+    "name": "pawn_0",
+    "w": 16,
+    "h": 24,
+    "desc": "Party pawn 0: sapphire with a cap",
+    "path": "sprites/party/pawn_0.png"
+   },
+   {
+    "name": "head_0",
+    "w": 16,
+    "h": 17,
+    "desc": "Party pawn 0, head only (score cards)",
+    "path": "sprites/party/head_0.png"
+   },
+   {
+    "name": "pawn_1",
+    "w": 16,
+    "h": 24,
+    "desc": "Party pawn 1: ruby with a beanie",
+    "path": "sprites/party/pawn_1.png"
+   },
+   {
+    "name": "head_1",
+    "w": 16,
+    "h": 17,
+    "desc": "Party pawn 1, head only (score cards)",
+    "path": "sprites/party/head_1.png"
+   },
+   {
+    "name": "pawn_2",
+    "w": 16,
+    "h": 24,
+    "desc": "Party pawn 2: emerald with a bandana",
+    "path": "sprites/party/pawn_2.png"
+   },
+   {
+    "name": "head_2",
+    "w": 16,
+    "h": 17,
+    "desc": "Party pawn 2, head only (score cards)",
+    "path": "sprites/party/head_2.png"
+   },
+   {
+    "name": "pawn_3",
+    "w": 16,
+    "h": 24,
+    "desc": "Party pawn 3: gold with a crown",
+    "path": "sprites/party/pawn_3.png"
+   },
+   {
+    "name": "head_3",
+    "w": 16,
+    "h": 17,
+    "desc": "Party pawn 3, head only (score cards)",
+    "path": "sprites/party/head_3.png"
+   },
+   {
+    "name": "pawn_4",
+    "w": 16,
+    "h": 24,
+    "desc": "Party pawn 4: amethyst with a wizard",
+    "path": "sprites/party/pawn_4.png"
+   },
+   {
+    "name": "head_4",
+    "w": 16,
+    "h": 17,
+    "desc": "Party pawn 4, head only (score cards)",
+    "path": "sprites/party/head_4.png"
+   },
+   {
+    "name": "pawn_5",
+    "w": 16,
+    "h": 24,
+    "desc": "Party pawn 5: orange with a horns",
+    "path": "sprites/party/pawn_5.png"
+   },
+   {
+    "name": "head_5",
+    "w": 16,
+    "h": 17,
+    "desc": "Party pawn 5, head only (score cards)",
+    "path": "sprites/party/head_5.png"
+   },
+   {
+    "name": "pawn_6",
+    "w": 16,
+    "h": 24,
+    "desc": "Party pawn 6: pink with a cat",
+    "path": "sprites/party/pawn_6.png"
+   },
+   {
+    "name": "head_6",
+    "w": 16,
+    "h": 17,
+    "desc": "Party pawn 6, head only (score cards)",
+    "path": "sprites/party/head_6.png"
+   },
+   {
+    "name": "pawn_7",
+    "w": 16,
+    "h": 24,
+    "desc": "Party pawn 7: ivory with a top hat",
+    "path": "sprites/party/pawn_7.png"
+   },
+   {
+    "name": "head_7",
+    "w": 16,
+    "h": 17,
+    "desc": "Party pawn 7, head only (score cards)",
+    "path": "sprites/party/head_7.png"
+   },
+   {
+    "name": "space_blue",
+    "w": 24,
+    "h": 22,
+    "desc": "Party board space: blue",
+    "path": "sprites/party/space_blue.png"
+   },
+   {
+    "name": "space_red",
+    "w": 24,
+    "h": 22,
+    "desc": "Party board space: red",
+    "path": "sprites/party/space_red.png"
+   },
+   {
+    "name": "space_event",
+    "w": 24,
+    "h": 22,
+    "desc": "Party board space: event",
+    "path": "sprites/party/space_event.png"
+   },
+   {
+    "name": "space_duel",
+    "w": 24,
+    "h": 22,
+    "desc": "Party board space: duel",
+    "path": "sprites/party/space_duel.png"
+   },
+   {
+    "name": "space_prison",
+    "w": 24,
+    "h": 22,
+    "desc": "Party board space: prison",
+    "path": "sprites/party/space_prison.png"
+   },
+   {
+    "name": "space_vault",
+    "w": 24,
+    "h": 22,
+    "desc": "Party board space: vault",
+    "path": "sprites/party/space_vault.png"
+   },
+   {
+    "name": "space_gate",
+    "w": 24,
+    "h": 22,
+    "desc": "Party board space: gate",
+    "path": "sprites/party/space_gate.png"
+   },
+   {
+    "name": "jail_house",
+    "w": 30,
+    "h": 28,
+    "desc": "Party: the little jail by the jail spaces",
+    "path": "sprites/party/jail_house.png"
+   },
+   {
+    "name": "watchtower",
+    "w": 22,
+    "h": 40,
+    "desc": "Party: a yard watchtower",
+    "path": "sprites/party/watchtower.png"
+   }
+  ],
   "ui": [
    {
     "name": "panel_parchment",

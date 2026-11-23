@@ -16,7 +16,7 @@ A collection of strategy, deduction and bluffing party games inspired by Korean 
 
 | Path | What |
 |---|---|
-| `assets/sprites/` | 231 pixel-art sprites at 1x, one PNG each, grouped by category |
+| `assets/sprites/` | 256 pixel-art sprites at 1x, one PNG each, grouped by category |
 | `assets/sprites@4x/` | The same sprites upscaled 4x for docs and previews |
 | `assets/sheets/` | Packed sprite sheet plus JSON atlas for each category (for the game client) |
 | `assets/manifest.json` | Every sprite with its size and description |
@@ -40,6 +40,7 @@ A collection of strategy, deduction and bluffing party games inspired by Korean 
 - **Portraits** (6): chibi role portraits.
 - **Icons** (23): UI icons such as crown, skull, prison, house, exile, eye, swap, timer, lock and more.
 - **Monsters** (4) and **UI** (9): panels, buttons, a ribbon and an item slot.
+- **Party** (25): eight pawns with their own colours and hats (plus head-only versions), the board spaces, a jail and a watchtower.
 
 ## Run the app
 

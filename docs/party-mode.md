@@ -40,6 +40,13 @@ The last three mini-games played aren't picked again. A duel between two bots is
 - Inside a mini-game its own clocks apply (45 s per move for turn-based ones unless the game sets its own).
 - Worst case, a party takes about 20–25 minutes.
 
+## On screen
+
+- The board is a running track in the prison yard, filling the whole game screen: GO at the top, play clockwise, jails and watchtowers in the corners.
+- Each seat has its own **pawn** — a colour and a hat (cap, beanie, bandana, crown, wizard hat, horned helmet, cat ears, top hat) — drawn in `tools/build_assets.py` (category `party`, with a head-only version for the score cards).
+- Score cards sit along the top and bottom: place, Pieces, mini-game wins, and JAIL when a player will miss a roll. The player whose turn it is has a gold frame and a bobbing arrow over their pawn.
+- A roll shows the die tumbling, then the pawn hops space by space along its path. The middle of the yard shows the round, the vault, whose turn it is and the latest event.
+
 ## Code
 
 | Path | What |

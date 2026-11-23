@@ -113,7 +113,8 @@ canvas.stage { image-rendering: pixelated; display: block; max-width: 100%; }
 /* ---------------------------------------------------------------- online */
 .btn.go { background: #1f5a3a; border-color: #2f8a58; }
 .btn.go:hover:not(:disabled) { background: #2f8a58; }
-.online { max-width: 1040px; margin: 0 auto; padding: 16px; }
+.online { max-width: 1500px; margin: 0 auto; padding: 16px; }
+.online-start { max-width: 1040px; }
 .online .game-nav { flex-wrap: wrap; }
 .code { color: var(--gold); letter-spacing: 0.15em; font-weight: normal; }
 .code.big { font-size: 24px; }
@@ -173,3 +174,5 @@ canvas.stage { image-rendering: pixelated; display: block; max-width: 100%; }
 .party-mini .party-bar { margin: 0 0 8px; }
 .party-mini .team.blue { color: #70adf2; }
 .party-mini .team.red { color: #f2687a; }
+.party-layout { display: flex; flex-direction: column; gap: 12px; }
+.party-layout .log { width: 100%; max-height: 200px; }

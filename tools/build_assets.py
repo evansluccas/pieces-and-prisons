@@ -1201,6 +1201,139 @@ PORTRAITS = {
 for n, sp in PORTRAITS.items():
     register("portraits", n, sp, f"Role portrait: {n}")
 
+# ------------------------------------------------------------ party ----
+# Board pieces for Party mode: eight pawns (each with its own colour and hat),
+# a head-only version of each for score cards, the board spaces and the jail.
+
+PAWN_BODY = [
+    "................",  # 0
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",  # 5
+    "................",
+    "................",
+    "......hhhh......",
+    "....hhhhhhhh....",
+    "...hhhhhhhhhh...",  # 10
+    "...hffffffffh...",
+    "...ffkffffkff...",
+    "...ffkffffkff...",
+    "...ffffffffff...",
+    "....ffffmfff....",  # 15
+    ".....ffffff.....",
+    "....cccccccc....",
+    "...fccccccccf...",
+    "...fccbbbbccf...",
+    "....cccccccc....",  # 20
+    ".....cc..cc.....",
+    ".....ss..ss.....",
+    "................",
+]
+
+# (cloth, hair, hat rows (from row 0), hat legend)
+PAWNS = [
+    ("sapphire", "hair", {7: ".....cccccc.....", 8: "....cccccccc....", 9: "...cccccccccc...", 10: "...cccccccccccc."},
+     {"c": "sapphire"}),                                                     # cap
+    ("ruby", "blonde", {5: ".......pp.......", 6: "......pppp......", 7: ".....rrrrrr.....", 8: "....rrrrrrrr....",
+                        9: "...rrrrrrrrrr...", 10: "...wwwwwwwwww..."},
+     {"r": "ruby", "w": ("ruby", {"tone": 3, "outline": False}), "p": ("ivory", {"mode": "sphere"})}),  # beanie
+    ("emerald", "hair", {10: "...gggggggggggg.", 11: "............gg.."},
+     {"g": "emerald"}),                                                      # bandana
+    ("gold", "copper", {5: "....y..yy..y....", 6: "....yy.yy.yy....", 7: "....yyyyyyyy....", 8: "....yryyyyry...."},
+     {"y": "gold", "r": ("ruby", {"tone": 3, "outline": False})}),          # crown
+    ("amethyst", "blonde", {0: ".........a......", 1: "........aa......", 2: ".......aaa......", 3: "......aaaa......",
+                            4: "......aaaaa.....", 5: ".....aaayaa.....", 6: ".....aaaaaa.....", 7: "....aaaaaaaa....",
+                            8: "...aaaaaaaaaa...", 9: "..aaaaaaaaaaaa.."},
+     {"a": "amethyst", "y": ("topaz", {"tone": 4, "outline": False})}),     # wizard hat
+    ("orange", "hair", {5: "..v..........v..", 6: "..vv........vv..", 7: "...vv.ssss.vv...", 8: "....vssssssv....",
+                        9: "....ssssssss....", 10: "...ssssssssss...", 11: "...s........s..."},
+     {"s": "silver", "v": "ivory"}),                                         # horned helmet
+    ("pink", "hair", {6: "...h........h...", 7: "...hp......ph...", 8: "...hhhhhhhhhh..."},
+     {"h": "hair", "p": ("pink", {"tone": 3, "outline": False})}),          # cat ears
+    ("ivory", "blonde", {2: ".....kkkkkk.....", 3: ".....kkkkkk.....", 4: ".....kkkkkk.....", 5: ".....kkkkkk.....",
+                         6: ".....rrrrrr.....", 7: ".....kkkkkk.....", 8: "...kkkkkkkkkk..."},
+     {"k": "iron", "r": "ruby"}),                                            # top hat
+]
+PAWN_NAMES = ["cap", "beanie", "bandana", "crown", "wizard", "horns", "cat", "top hat"]
+
+
+def pawn(i: int, body: bool = True) -> Sprite:
+    cloth, hair, hat, legend = PAWNS[i]
+    rows = PAWN_BODY if body else PAWN_BODY[:17]
+    sp = Sprite(16, len(rows))
+    sp.ascii(rows, {"h": hair, "f": ("skin", {"mode": "flat"}), "m": ("skin", {"tone": 1, "outline": False}),
+                    "k": DARK, "c": cloth, "b": (cloth, {"tone": 1, "outline": False}), "s": "iron"})
+    hat_rows = [hat.get(y, "") for y in range(max(hat) + 1)]
+    sp.ascii(hat_rows, legend)
+    return sp
+
+
+for i in range(8):
+    register("party", f"pawn_{i}", pawn(i), f"Party pawn {i}: {PAWNS[i][0]} with a {PAWN_NAMES[i]}")
+    register("party", f"head_{i}", pawn(i, body=False), f"Party pawn {i}, head only (score cards)")
+
+SPACE_ICONS = {
+    "plus": ["..##..", "..##..", "######", "######", "..##..", "..##.."],
+    "minus": ["......", "......", "######", "######", "......", "......"],
+    "swords": ["#.....#", ".#...#.", "..#.#..", "...#...", "..#.#..", "##...##", "##...##"],
+    "bars": ["#######", "#.#.#.#", "#.#.#.#", "#.#.#.#", "#.#.#.#", "#.#.#.#", "#######"],
+    "coin": [".###.", "#.#.#", "#.#..", ".###.", "..#.#", "#.#.#", ".###."],
+    "star": ["...#...", "...#...", "#######", ".#####.", "..###..", ".##.##.", "##...##"],
+}
+SPACES = {  # name: (material, icon rows, icon material, tone)
+    "blue": ("sapphire", SPACE_ICONS["plus"], "ivory", 4),
+    "red": ("ruby", SPACE_ICONS["minus"], "ivory", 4),
+    "event": ("amethyst", FONT5["?"], "ivory", 4),
+    "duel": ("orange", SPACE_ICONS["swords"], "ivory", 4),
+    "prison": ("stone", SPACE_ICONS["bars"], "iron", 0),
+    "vault": ("emerald", SPACE_ICONS["coin"], "gold", 3),
+    "gate": ("ivory", SPACE_ICONS["star"], "gold", 2),
+}
+
+
+def space(mat: str, icon_rows, icon_mat: str, tone: int) -> Sprite:
+    """A round board space, seen from slightly above: a coloured top on a darker rim."""
+    sp = Sprite(24, 22)
+    sp.ellipse(12, 12, 10, 8, mat, tone=1)
+    sp.ellipse(12, 9, 10, 8, mat, mode="bevel")
+    w, h = len(icon_rows[0]), len(icon_rows)
+    sp.glyph(icon_rows, 12 - w // 2, 9 - h // 2, icon_mat, tone=tone)
+    return sp
+
+
+for n, (mat, rows, im, tone) in SPACES.items():
+    register("party", f"space_{n}", space(mat, rows, im, tone), f"Party board space: {n}")
+
+
+def jail_house() -> Sprite:
+    sp = Sprite(30, 28)
+    sp.poly([(1, 10), (15, 1), (29, 10)], "ruby")          # roof
+    sp.rect(3, 10, 24, 17, "stone")                         # walls
+    sp.rect(8, 13, 14, 10, "iron", mode="inset", outline=False)  # window
+    sp.glyph(["#.#.#.#", "#.#.#.#", "#.#.#.#", "#.#.#.#", "#.#.#.#", "#.#.#.#", "#.#.#.#", "#.#.#.#"],
+             11, 14, "silver", tone=3)
+    return sp
+
+
+register("party", "jail_house", jail_house(), "Party: the little jail by the jail spaces")
+
+
+def watchtower() -> Sprite:
+    sp = Sprite(22, 40)
+    sp.rect(5, 14, 12, 25, "wood")                          # legs/body
+    sp.line(6, 16, 15, 36, "wood", tone=1, outline=False)
+    sp.line(15, 16, 6, 36, "wood", tone=1, outline=False)
+    sp.rect(2, 7, 18, 8, "wood")                            # cabin
+    sp.rect(5, 9, 12, 4, "glass", outline=False)
+    sp.poly([(1, 7), (11, 0), (21, 7)], "iron")             # roof
+    return sp
+
+
+register("party", "watchtower", watchtower(), "Party: a yard watchtower")
+
+
 # --------------------------------------------------------- UI chrome ----
 
 
