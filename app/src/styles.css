@@ -86,3 +86,26 @@ canvas.stage { image-rendering: pixelated; display: block; max-width: 100%; }
 
 .memory-note { margin: 4px 0 8px; color: var(--amethyst, #b48cf2); font-size: 13px; }
 .log .sealed { color: var(--muted); font-style: italic; }
+
+/* ---------------------------------------------------------------- account */
+.account { margin: -12px 0 24px; }
+.account p { margin: 0; }
+.account-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.account-links, .account-tabs { display: flex; gap: 14px; }
+.account .gold { color: var(--gold); font-weight: normal; }
+.tab { all: unset; cursor: pointer; color: var(--muted); padding: 2px 0; border-bottom: 2px solid transparent; }
+.tab:hover { color: var(--ink); }
+.tab.on { color: var(--gold); border-bottom-color: var(--gold); }
+.tab:focus-visible, .btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.account-form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.account-form input {
+  font: inherit; color: var(--ink); background: var(--bg2); border: 1px solid #372a66;
+  padding: 6px 10px; min-width: 0; flex: 1 1 160px; max-width: 240px;
+}
+.account-form input:focus { outline: none; border-color: var(--gold); }
+.btn { font: inherit; cursor: pointer; color: var(--ink); background: #3d3270; border: 1px solid #5a4a96; padding: 6px 14px; }
+.btn:hover:not(:disabled) { background: #5a4a96; }
+.btn:disabled { opacity: 0.5; cursor: wait; }
+.btn.danger { background: #6a2030; border-color: #a03448; }
+.account-error { flex-basis: 100%; color: var(--ruby); }
+.account-note { flex-basis: 100%; font-size: 13px; color: var(--muted); }

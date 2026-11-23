@@ -49,8 +49,11 @@ The app is React + TypeScript + Canvas, built with Vite. The game board draws on
 cd app
 npm install
 npm run dev      # http://localhost:5173
-npm test         # game-logic unit tests
+npm run server   # game server for online play, http://localhost:8787 (needs Node 24+)
+npm test         # game-logic and server tests
 ```
+
+Solo play needs only `npm run dev`. For accounts and (soon) online tables, run `npm run server` as well; Vite forwards `/api` to it.
 
 | Path | What |
 |---|---|
@@ -59,8 +62,15 @@ npm test         # game-logic unit tests
 | `app/src/games/<game>/logic.ts` | Rules as pure, unit-tested functions |
 | `app/src/games/<game>/bots.ts` | Computer opponents |
 | `app/src/ui/` | Hub and DOM panels drawn with the UI sprites |
+| `app/server/` | Game server: SQLite database (`db.ts`), accounts and guests (`auth.ts`), HTTP API (`app.ts`) |
 
 Each game keeps its rules in pure TypeScript, separate from rendering. That way the bots, the tests and a future online mode can all share the same rules.
+
+### Accounts
+
+Players never give personal details. An **account** is a username and a password; a **guest** is just a name, and can later add a username and password to keep their history. Because no email is stored, a forgotten password can't be recovered.
+
+Passwords are stored as salted scrypt hashes, and sessions use a random token in an HttpOnly cookie (only its hash is kept in the database). The database is one SQLite file at `app/data/pieces.db` (set `DB_PATH` to move it); it isn't committed.
 
 ## Rebuild the assets
 

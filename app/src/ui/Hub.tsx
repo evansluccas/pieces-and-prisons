@@ -1,4 +1,5 @@
 import { GAMES, STAGE_LABEL, Stage } from '../games/registry';
+import { AccountPanel } from './AccountPanel';
 import { Panel, Sprite } from './Panel';
 
 export function Hub({ onPlay }: { onPlay: (id: string) => void }) {
@@ -12,6 +13,7 @@ export function Hub({ onPlay }: { onPlay: (id: string) => void }) {
           <p className="muted">Strategy, deduction and bluffing games. Earn Pieces. Stay out of prison.</p>
         </div>
       </header>
+      <AccountPanel />
       {stages.map((stage) => (
         <section key={stage}>
           <h2>{STAGE_LABEL[stage]}</h2>
