@@ -43,7 +43,7 @@ export const GAMES: GameInfo[] = [
   { id: 'high-or-low', name: 'High or Low', tagline: 'Show one card, hide another: count, bluff, call higher or lower.', stage: 'final', players: '2', icon: ['cards', 'number_7'], playable: true, paced: true },
   { id: 'tigers-and-goats', name: 'Tigers & Goats', tagline: 'Play both sides in turn: four tigers hunt twenty goats.', stage: 'final', players: '2', icon: ['icons', 'sword'], playable: true, paced: true },
   { id: 'ask-and-arrange', name: 'Ask & Arrange', tagline: "Spend ten tokens on questions to uncover your rival's eight-card row.", stage: 'final', players: '2', icon: ['icons', 'question'], playable: true, paced: true },
-  { id: 'knights-tour', name: "Knight's Tour", tagline: 'Visit every square of the board exactly once with a knight.', stage: 'hidden', players: '1+', icon: ['icons', 'shield'], playable: false },
+  { id: 'knights-tour', name: "Knight's Tour", tagline: 'Visit every square of the board exactly once with a knight.', stage: 'hidden', players: '1+', icon: ['icons', 'shield'], playable: true },
   { id: 'blind-five', name: 'Blind Five', tagline: 'Five in a row with face-down stones — remember which are yours.', stage: 'hidden', players: '2', icon: ['coins', 'coin_black'], playable: false },
   { id: 'magic-squares', name: 'Magic Squares', tagline: 'Fill ever-bigger magic squares so every line adds up.', stage: 'hidden', players: '1+', icon: ['icons', 'crown'], playable: false },
   { id: 'fence-loop', name: 'Fence Loop', tagline: 'Draw one closed fence that satisfies every number.', stage: 'exile', players: '1+', icon: ['board', 'tree'], playable: true },
