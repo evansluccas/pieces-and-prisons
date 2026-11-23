@@ -27,6 +27,7 @@ import { HighOrLow, RULES as HILO_RULES } from './games/high-or-low/HighOrLow';
 import { TigersAndGoats, RULES as TIGER_RULES } from './games/tigers-and-goats/TigersAndGoats';
 import { AskAndArrange, RULES as ASK_RULES } from './games/ask-and-arrange/AskAndArrange';
 import { KnightsTour, RULES as KNIGHT_RULES } from './games/knights-tour/KnightsTour';
+import { BlindFive, RULES as BLIND_FIVE_RULES } from './games/blind-five/BlindFive';
 import { Hub } from './ui/Hub';
 import { Panel } from './ui/Panel';
 
@@ -56,6 +57,7 @@ const GAME_VIEWS: Record<string, { rules: string[]; View: (p: { botCount: number
   'tigers-and-goats': { rules: TIGER_RULES, View: TigersAndGoats },
   'ask-and-arrange': { rules: ASK_RULES, View: AskAndArrange },
   'knights-tour': { rules: KNIGHT_RULES, View: KnightsTour },
+  'blind-five': { rules: BLIND_FIVE_RULES, View: BlindFive },
 };
 
 export function App() {
