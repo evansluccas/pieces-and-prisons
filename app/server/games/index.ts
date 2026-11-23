@@ -6,6 +6,8 @@ import * as sand from '../../src/games/sand-bid/online';
 import * as dice from '../../src/games/dice-tower/online';
 import * as bingo from '../../src/games/blind-bingo/online';
 import type { GameState as BingoState } from '../../src/games/blind-bingo/logic';
+import * as walls from '../../src/games/walls-and-wards/online';
+import type { GameState as WallsState } from '../../src/games/walls-and-wards/logic';
 
 const lonelyNumber: OnlineGame<LonelyState> = {
   id: 'lonely-number',
@@ -64,9 +66,23 @@ const blindBingo: OnlineGame<BingoState> = {
   results: bingo.results,
 };
 
+const wallsAndWards: OnlineGame<WallsState> = {
+  id: 'walls-and-wards',
+  minPlayers: 2,
+  maxPlayers: 4,
+  start: walls.start,
+  act: walls.act,
+  view: walls.view,
+  waitingOn: walls.waitingOn,
+  botAction: walls.botAction,
+  over: walls.over,
+  results: walls.results,
+};
+
 export const ONLINE_GAMES: Record<string, OnlineGame<any>> = {
   [lonelyNumber.id]: lonelyNumber,
   [sandBid.id]: sandBid,
   [diceTower.id]: diceTower,
   [blindBingo.id]: blindBingo,
+  [wallsAndWards.id]: wallsAndWards,
 };

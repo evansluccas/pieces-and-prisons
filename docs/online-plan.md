@@ -2,7 +2,7 @@
 
 How Pieces & Prisons moves from solo play to online tables: what's done, what each game needs, and what's left on the server before we can host it. Tick items off as they land.
 
-**Status (2026-11-23):** 4 of 30 games online · accounts, guests and tables working locally · not hosted yet.
+**Status (2026-11-23):** 5 of 30 games online · accounts, guests and tables working locally · not hosted yet.
 
 ---
 
@@ -42,6 +42,7 @@ Grouped by how much work each needs. Within a group, the order is a suggestion �
 | [x] Sand Bid | real-time (server-timed holds) |
 | [x] Dice Tower | turn-based draft + simultaneous bets |
 | [x] Blind Bingo | simultaneous choices and bids |
+| [x] Walls & Wards | open board, turn-based, 2–4 players |
 
 ### A. Simultaneous secret choices — same pattern as Lonely Number / Blind Bingo
 | Game | Notes |
@@ -59,7 +60,6 @@ Grouped by how much work each needs. Within a group, the order is a suggestion �
 ### C. Open-information boards — nothing to hide, quickest to convert
 | Game | Notes |
 |---|---|
-| [ ] Walls & Wards | 2–4 players |
 | [ ] Turf War | 2–4 players; piece placement needs turn/flip controls online |
 | [ ] Tri-Mancala | 2–4 players; extra turns |
 | [ ] Nine Men's Morris | duel |

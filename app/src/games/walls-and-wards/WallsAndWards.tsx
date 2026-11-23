@@ -53,7 +53,40 @@ function setup(botCount: number) {
   return { state, bots, rng: seededRng(Date.now() & 0xffff) };
 }
 
-interface Sel { counter: string | null; to: Cell | null; breaking?: boolean; broke?: string | null }
+export interface Sel { counter: string | null; to: Cell | null; breaking?: boolean; broke?: string | null }
+
+export const viewWithBreak = (s: GameState, sel: Sel): GameState => (sel.broke ? { ...s, walls: s.walls.filter((w) => w !== sel.broke) } : s);
+
+/**
+ * What a click on the board does on your turn (solo and online share this).
+ * Returns the new selection and, once a choice is complete, the placement
+ * or move to make.
+ */
+export function boardClick(id: string, s: GameState, sel: Sel): {
+  sel: Sel; place?: Cell; move?: { counter: string; to: Cell; wall: Dir | null; broke: string | null };
+} {
+  const none: Sel = { counter: null, to: null };
+  if (id === 'cancel') return { sel: none };
+  if (id === 'breaker') return { sel: { ...none, breaking: !sel.breaking } };
+  if (id.startsWith('break:') && sel.breaking) return { sel: { ...none, broke: id.slice(6) } };
+  if (sel.breaking) return { sel };
+  const view = viewWithBreak(s, sel);
+  const done = (counter: string, to: Cell, wall: Dir | null) => ({ sel: none, move: { counter, to, wall, broke: sel.broke ?? null } });
+  if (id.startsWith('cell:')) {
+    const [x, y] = id.slice(5).split(':').map(Number);
+    if (s.phase === 'place') return { sel, place: { x, y } };
+    const mine = s.counters.find((c) => c.owner === ME && c.x === x && c.y === y);
+    if (mine && !(sel.counter === mine.id && sel.to === null)) return { sel: { ...sel, counter: mine.id, to: null } };
+    if (sel.counter && !sel.to && reachable(view, sel.counter).some((c) => c.x === x && c.y === y)) {
+      const moved = { ...view, counters: view.counters.map((c) => (c.id === sel.counter ? { ...c, x, y } : c)) };
+      if (!freeSides(moved, { x, y }).length) return done(sel.counter, { x, y }, null);
+      return { sel: { ...sel, to: { x, y } } };
+    }
+  } else if (id.startsWith('wall:') && sel.counter && sel.to) {
+    return done(sel.counter, sel.to, id.slice(5) as Dir);
+  }
+  return { sel };
+}
 
 export function WallsAndWards({ botCount = 3 }: { botCount?: number }) {
   const [game, setGame] = useState(() => setup(botCount));
@@ -77,37 +110,19 @@ export function WallsAndWards({ botCount = 3 }: { botCount?: number }) {
     return () => clearTimeout(t);
   });
 
-  const commit = (counter: string, to: Cell, wall: Dir | null) => {
-    const broke = sel.broke ?? null;
-    setSel({ counter: null, to: null });
-    setGame((g) => ({ ...g, state: move(g.state, ME, counter, to, wall, broke) }));
-  };
   // what the board looks like with the wall you chose to break already gone
-  const view: GameState = sel.broke ? { ...s, walls: s.walls.filter((w) => w !== sel.broke) } : s;
+  const view = viewWithBreak(s, sel);
 
   const onHit = (id: string) => {
     if (id === 'again') {
       setSel({ counter: null, to: null });
       return setGame(setup(botCount));
     }
-    if (id === 'cancel') return setSel({ counter: null, to: null });
-    if (s.turn !== ME) return;
-    if (id === 'breaker') return setSel({ counter: null, to: null, breaking: !sel.breaking });
-    if (id.startsWith('break:') && sel.breaking) return setSel({ counter: null, to: null, broke: id.slice(6) });
-    if (sel.breaking) return;
-    if (id.startsWith('cell:')) {
-      const [x, y] = id.slice(5).split(':').map(Number);
-      if (s.phase === 'place') return setGame((g) => ({ ...g, state: place(g.state, ME, { x, y }) }));
-      const mine = s.counters.find((c) => c.owner === ME && c.x === x && c.y === y);
-      if (mine && !(sel.counter === mine.id && sel.to === null)) return setSel({ ...sel, counter: mine.id, to: null });
-      if (sel.counter && !sel.to && reachable(view, sel.counter).some((c) => c.x === x && c.y === y)) {
-        const moved = { ...view, counters: view.counters.map((c) => (c.id === sel.counter ? { ...c, x, y } : c)) };
-        if (!freeSides(moved, { x, y }).length) return commit(sel.counter, { x, y }, null);
-        return setSel({ ...sel, counter: sel.counter, to: { x, y } });
-      }
-    } else if (id.startsWith('wall:') && sel.counter && sel.to) {
-      commit(sel.counter, sel.to, id.slice(5) as Dir);
-    }
+    if (s.turn !== ME) return id === 'cancel' && setSel({ counter: null, to: null });
+    const r = boardClick(id, s, sel);
+    setSel(r.sel);
+    if (r.place) setGame((g) => ({ ...g, state: place(g.state, ME, r.place!) }));
+    if (r.move) setGame((g) => ({ ...g, state: move(g.state, ME, r.move!.counter, r.move!.to, r.move!.wall, r.move!.broke) }));
   };
 
   return (
@@ -136,7 +151,9 @@ function drawWall(g: Gfx, key: string, color = '#a6a2ad', edge = '#25232c') {
   }
 }
 
-function drawScene(g: Gfx, s: GameState, sel: Sel, color: Record<string, (typeof GEM)[number]>, real: GameState) {
+export { GEM };
+
+export function drawScene(g: Gfx, s: GameState, sel: Sel, color: Record<string, (typeof GEM)[number]>, real: GameState, hud?: { clock?: string }) {
   const myTurn = s.turn === ME;
   const regs = regions(s);
   const sc = scores(s);
@@ -148,6 +165,7 @@ function drawScene(g: Gfx, s: GameState, sel: Sel, color: Record<string, (typeof
   topBar(g, [
     { text: placing ? 'SETUP' : `TURN ${s.turns + 1}`, color: COLORS.gold },
     { text: `${s.walls.length} walls`, color: COLORS.muted },
+    ...(hud?.clock ? [{ text: hud.clock, color: COLORS.ruby }] : []),
   ], 'WALLS & WARDS');
 
   // board
@@ -336,7 +354,7 @@ function wrap(g: Gfx, text: string, x: number, y: number, maxW: number) {
 
 // ---------------------------------------------------------------- log (DOM)
 
-function MoveLog({ state }: { state: GameState }) {
+export function MoveLog({ state }: { state: GameState }) {
   return (
     <aside className="log">
       <h3>Move log</h3>

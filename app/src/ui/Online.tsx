@@ -4,6 +4,7 @@ import { LonelyNumberOnline } from '../games/lonely-number/LonelyNumberOnline';
 import { BlindBingoOnline } from '../games/blind-bingo/BlindBingoOnline';
 import { DiceTowerOnline } from '../games/dice-tower/DiceTowerOnline';
 import { SandBidOnline } from '../games/sand-bid/SandBidOnline';
+import { WallsAndWardsOnline } from '../games/walls-and-wards/WallsAndWardsOnline';
 import { GameMessage, RoomView, useTable } from '../net/table';
 import { Me, account } from '../net/account';
 import { Panel, Sprite } from './Panel';
@@ -22,6 +23,7 @@ const ONLINE_VIEWS: Record<string, (p: OnlineGameProps) => ReactElement> = {
   'sand-bid': SandBidOnline,
   'dice-tower': DiceTowerOnline,
   'blind-bingo': BlindBingoOnline,
+  'walls-and-wards': WallsAndWardsOnline,
 };
 export const ONLINE_IDS = Object.keys(ONLINE_VIEWS);
 
