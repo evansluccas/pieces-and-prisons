@@ -65,7 +65,8 @@ describe('Turf War online', () => {
     expect(va.turn).toBe(0);
     expect(vb.turn).toBe(2);
     // a placement worked out from Ana's own view is accepted
-    const p = placements(va, 0)[0];
+    // (one that covers no bonus spot: a rock would make Ana drop it before Ben's turn)
+    const p = placements(va, 0).find((x) => x.cells.every((c) => !va.bonus[c]))!;
     act(a, { type: 'piece', pick: p.pick, cells: p.cells });
     expect(error(a)).toBeUndefined();
     expect(view<TurfState>(b).owner[p.cells[0]]).toBe(2);

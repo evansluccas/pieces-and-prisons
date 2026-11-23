@@ -2,7 +2,7 @@
 
 How Pieces & Prisons moves from solo play to online tables: what's done, what each game needs, and what's left on the server before we can host it. Tick items off as they land.
 
-**Status (2026-11-23):** 23 of 30 games online · live at https://pieces-and-prisons.fly.dev (Fly.io, Amsterdam).
+**Status (2026-11-23):** all 30 games online · live at https://pieces-and-prisons.fly.dev (Fly.io, Amsterdam).
 
 ---
 
@@ -61,6 +61,13 @@ Grouped by how much work each needs. Within a group, the order is a suggestion �
 | [x] Blind Five | duel; no message names the owner of a face-down stone (not even your own); per-seat bot memory |
 | [x] Number Forge | real-time race; the server's arrival order decides who claims a forge; 60 s rounds; remaining answers hidden until a round ends |
 | [x] Split Decision | real-time; 30 s server clock per question, answer times measured by the server (1.5 s lag allowance); the right answer and others' picks hidden until it closes; the card grid sent only during the 8 s study |
+| [x] Second Glance | race; the server times the 10 s study; the original scene and the changes are never sent while spotting; marks count at time-out |
+| [x] Piece Together | race; any complete legal fill is accepted (checked on the server); the original cut stays hidden; 4 min |
+| [x] Mirror Pieces | race; the server checks the exact mirror image and that every piece is turned, never flipped; 3 min |
+| [x] Fence Loop | race; the answer loop is never sent; the server checks the submitted loop; 6 min |
+| [x] Cipher Lock | race; the code is never sent before the round ends; wrong tries +30 s and private; 2–6 min per lock |
+| [x] Knight's Tour | race; the server checks the tour; hints go through the server (+30 s, only to the asker); 4/6/8 min |
+| [x] Magic Squares | race; the solution is never sent; the server checks the square; hints +30 s, only to the asker; 3/7/12 min |
 
 ### A. Simultaneous secret choices — done
 Both are online (see *Done*).
@@ -77,10 +84,10 @@ All seven are online (see *Done*). Each view sends only what the solo screen sho
 ### E. Timed races — done
 Both are online (see *Done*). They run on the real-time engine: the server owns every clock and decides arrival order and answer times.
 
-### F. Solo puzzles — format to decide first
-Second Glance, Piece Together, Mirror Pieces, Fence Loop, Cipher Lock, Knight's Tour, Magic Squares.
+### F. Solo puzzles — done, as puzzle races
+All seven are online as **puzzle races** (`app/src/games/shared/race.ts`, scoreboard `app/src/ui/RaceBoard.tsx`): everyone gets the same puzzle each round (3 rounds, normal difficulty, as in solo); the server makes the puzzles, keeps the answers, checks every submission and times everyone from when the round opens, adding solo's 30 s penalties for wrong tries and hints. Each round has a time limit; whoever is still working scores "not finished". Ranking: most solved (Second Glance: most changes found), then lowest total time. Bots finish when the solo ghost rivals would. A race works alone too (1–6 players).
 
-These have no opponents. Online they'd be a **puzzle race**: everyone gets the same puzzle, fastest correct solve ranks first. One generic "race" adapter could serve all seven. **Decision needed** before starting: race, or leave them solo-only.
+Note: hiding the answer stops anyone reading it from the network, but a puzzle whose clues are public (Cipher Lock, Fence Loop, Magic Squares, Knight's Tour) can still be solved by a program — the same as in any online puzzle race.
 
 ## 4. Rules for memory games
 
@@ -118,4 +125,4 @@ Not tied to one game. Ordered by when they're needed.
 3. ~~Groups A and B~~ — done.
 4. ~~Development tool upgrades, hosting, first deploy~~ — done: https://pieces-and-prisons.fly.dev
 5. ~~Groups D and E~~ — done.
-6. Decide on group F.
+6. ~~Group F~~ — done as puzzle races. Every game is online.

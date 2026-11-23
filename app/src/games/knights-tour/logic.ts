@@ -100,6 +100,29 @@ export function hint(n: number, path: number[]): Hint {
   return { kind: 'move', to: r[path.length] };
 }
 
+/**
+ * Check a path sent over the network: a list of squares on the board, none
+ * twice, a legal start, and knight jumps all the way. Returns a clean copy;
+ * throws a friendly message otherwise.
+ */
+export function readPath(n: number, raw: unknown): number[] {
+  if (!Array.isArray(raw)) throw new Error('Send the path as a list of squares.');
+  if (raw.length > n * n) throw new Error('That path is longer than the board.');
+  const seen = new Set<number>();
+  const out: number[] = [];
+  for (const c of raw) {
+    if (typeof c !== 'number' || !Number.isInteger(c) || c < 0 || c >= n * n) throw new Error('That path has a square off the board.');
+    if (seen.has(c)) throw new Error(`The path visits ${square(n, c)} twice.`);
+    if (!out.length && !canStart(n, c)) throw new Error(`On ${n}×${n} the tour must start on a square coloured like the corners.`);
+    if (out.length && !moves(n, out[out.length - 1]).includes(c)) {
+      throw new Error(`${square(n, out[out.length - 1])} to ${square(n, c)} isn’t a knight move.`);
+    }
+    seen.add(c);
+    out.push(c);
+  }
+  return out;
+}
+
 export const square = (n: number, c: number) => `${'abcdefgh'[xy(n, c)[0]]}${n - xy(n, c)[1]}`;
 
 // ------------------------------------------------------------- the match ----
@@ -123,12 +146,15 @@ export interface GameState {
 
 export const size = (s: GameState) => s.boards[s.index];
 
+const GHOST_BASE: Record<number, number> = { 5: 60_000, 6: 110_000, 7: 170_000, 8: 260_000 };
+const GHOST_SKILLS = [0.8, 1, 1.25];
+
+/** How long rival number `i` takes on an n×n board (solo ghosts and online bots). */
+export const ghostTime = (n: number, i: number, rng: Rng) =>
+  Math.round(GHOST_BASE[n] * GHOST_SKILLS[i % 3] * (0.8 + rng() * 0.5));
+
 export function newGame(rng: Rng, ghostNames: string[], boards = BOARDS): GameState {
-  const base: Record<number, number> = { 5: 60_000, 6: 110_000, 7: 170_000, 8: 260_000 };
-  const skills = [0.8, 1, 1.25];
-  const ghosts = ghostNames.map((name, i) => ({
-    name, times: boards.map((n) => Math.round(base[n] * skills[i % 3] * (0.8 + rng() * 0.5))),
-  }));
+  const ghosts = ghostNames.map((name, i) => ({ name, times: boards.map((n) => ghostTime(n, i, rng)) }));
   return { index: 0, phase: 'play', path: [], hints: 0, results: [], ghosts, boards };
 }
 

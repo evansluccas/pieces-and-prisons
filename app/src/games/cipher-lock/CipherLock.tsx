@@ -3,10 +3,10 @@ import { PixelStage } from '../../engine/PixelStage';
 import { COLORS, Gfx } from '../../engine/gfx';
 import { seededRng } from '../shared/rng';
 import { standingsPanel, topBar } from '../shared/draw';
-import { Code, DEFAULT_CONFIG, Difficulty, GameState, L, clock, clueText, codeText, newGame, nextLock, standings, tryCode } from './logic';
+import { Clue, Code, DEFAULT_CONFIG, Difficulty, GameState, L, clock, clueText, codeText, newGame, nextLock, standings, tryCode } from './logic';
 
-const W = 480;
-const H = 270;
+export const W = 480;
+export const H = 270;
 const GHOSTS = ['Hana', 'Jun', 'Seo', 'Mira', 'Taeo'];
 const DIFFS: { id: Difficulty; label: string; note: string }[] = [
   { id: 'easy', label: 'Easy', note: 'letters A–F' },
@@ -25,7 +25,43 @@ export const RULES = [
 // Dev-only: ?quick plays a single easy lock.
 const QUICK = import.meta.env.DEV && new URLSearchParams(location.search).has('quick');
 
-type Note = 0 | 1 | 2; // blank, crossed out, certain
+export type Note = 0 | 1 | 2; // blank, crossed out, certain
+
+export const emptyNotes = (letters: number): Note[][] => Array.from({ length: 4 }, () => Array<Note>(letters).fill(0));
+
+/** What you are typing and your scrap-paper notes. */
+export interface LockInput { entry: number[]; notes: Note[][] }
+
+/**
+ * A click (or key) on the lock, shared by solo and online play: the new entry
+ * and notes, plus the code to try when it was "Try it" with four letters in.
+ */
+export function lockClick(id: string, input: LockInput, letters: number): LockInput & { attempt?: Code } {
+  const { entry, notes } = input;
+  if (id.startsWith('key:')) {
+    const i = Number(id.slice(4));
+    const ok = Number.isInteger(i) && i >= 0 && i < letters && entry.length < 4 && !entry.includes(i);
+    return { entry: ok ? [...entry, i] : entry, notes };
+  }
+  if (id === 'del') return { entry: entry.slice(0, -1), notes };
+  if (id === 'clear') return { entry: [], notes };
+  if (id === 'try') return entry.length === 4 ? { entry: [], notes, attempt: entry } : input;
+  if (id.startsWith('note:')) {
+    const [slot, letter] = id.slice(5).split(',').map(Number);
+    return { entry, notes: notes.map((row, r) => (r === slot ? row.map((v, c) => (c === letter ? (((v + 1) % 3) as Note) : v)) : row)) };
+  }
+  return input;
+}
+
+/** Which lock control a key stands for (letters, Backspace, Enter, Escape), if any. */
+export function keyHit(key: string, letters: number): string | null {
+  const i = key.toUpperCase().charCodeAt(0) - 65;
+  if (key.length === 1 && i >= 0 && i < letters) return `key:${i}`;
+  if (key === 'Backspace') return 'del';
+  if (key === 'Enter') return 'try';
+  if (key === 'Escape') return 'clear';
+  return null;
+}
 
 function setup(difficulty: Difficulty, ghostCount: number) {
   const rng = seededRng(Date.now() & 0xffff);
@@ -45,31 +81,31 @@ export function CipherLock({ botCount = 3 }: { botCount?: number }) {
     if (!s || s.phase !== 'solve') return;
     lockStart.current = performance.now();
     setEntry([]);
-    setNotes(Array.from({ length: 4 }, () => Array<Note>(s.puzzle.letters).fill(0)));
+    setNotes(emptyNotes(s.puzzle.letters));
     setFlash(null);
   }, [s?.lock, s?.phase === 'solve', s?.puzzle]);
 
   const start = (d: Difficulty) => setState(setup(d, botCount));
   const elapsed = () => performance.now() - lockStart.current;
 
-  const typeLetter = (i: number) => setEntry((e) => (e.length < 4 && !e.includes(i) ? [...e, i] : e));
-  const attempt = () => {
-    if (!s || s.phase !== 'solve' || entry.length !== 4) return;
-    const next = tryCode(s, entry as Code, elapsed());
-    if (next.phase === 'solve') setFlash({ text: `${codeText(entry)} is wrong — +30s`, at: performance.now() });
+  // entry, notes and tries, the same way online play does them
+  const press = (id: string) => {
+    if (!s || s.phase !== 'solve') return;
+    const r = lockClick(id, { entry, notes }, s.puzzle.letters);
+    setEntry(r.entry);
+    setNotes(r.notes);
+    if (!r.attempt) return;
+    const next = tryCode(s, r.attempt, elapsed());
+    if (next.phase === 'solve') setFlash({ text: `${codeText(r.attempt)} is wrong — +30s`, at: performance.now() });
     setState(next);
-    setEntry([]);
   };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!s || s.phase !== 'solve' || e.target instanceof HTMLSelectElement) return;
-      const i = e.key.toUpperCase().charCodeAt(0) - 65;
-      if (e.key.length === 1 && i >= 0 && i < s.puzzle.letters) typeLetter(i);
-      else if (e.key === 'Backspace') setEntry((x) => x.slice(0, -1));
-      else if (e.key === 'Enter') attempt();
-      else if (e.key === 'Escape') setEntry([]);
-      else return;
+      const id = keyHit(e.key, s.puzzle.letters);
+      if (!id) return;
+      press(id);
       e.preventDefault();
     };
     window.addEventListener('keydown', onKey);
@@ -81,14 +117,7 @@ export function CipherLock({ botCount = 3 }: { botCount?: number }) {
     if (!s) return;
     if (id === 'again') return setState(null);
     if (id === 'next') return setState(nextLock(s));
-    if (s.phase !== 'solve') return;
-    if (id.startsWith('key:')) typeLetter(Number(id.slice(4)));
-    if (id === 'del') setEntry((x) => x.slice(0, -1));
-    if (id === 'try') attempt();
-    if (id.startsWith('note:')) {
-      const [slot, letter] = id.slice(5).split(',').map(Number);
-      setNotes((n) => n.map((row, r) => (r === slot ? row.map((v, c) => (c === letter ? (((v + 1) % 3) as Note) : v)) : row)));
-    }
+    press(id);
   };
 
   return (
@@ -123,7 +152,6 @@ function drawIntro(g: Gfx) {
 function drawScene(g: Gfx, s: GameState, entry: number[], notes: Note[][], now: number, flash: { text: string; at: number } | null) {
   const solving = s.phase === 'solve';
   const p = solving ? s.puzzle : s.results[s.results.length - 1].puzzle;
-  const n = p.letters;
   const penalty = s.wrong.length * s.config.penaltyMs;
 
   g.tile('board', 'tile_night', 0, 0, W, H);
@@ -133,43 +161,13 @@ function drawScene(g: Gfx, s: GameState, entry: number[], notes: Note[][], now: 
     { text: s.difficulty.toUpperCase(), color: COLORS.muted },
   ], 'CIPHER LOCK');
 
-  // clues
-  g.panel('panel_parchment', 4, 30, 292, 174, 4);
-  g.text(`CLUES — letters ${L(0)}–${L(n - 1)}, four different, one answer`, 12, 36, { size: 7, color: '#5e3a24', shadow: false });
-  let y = 48;
-  p.clues.forEach((c, i) => {
-    g.text(`${i + 1}.`, 12, y, { size: 8, color: '#86192f', shadow: false });
-    const lines = wrapInk(g, clueText(c), 24, y, 264);
-    y += lines * 10 + 3;
-  });
-
-  // notes grid
-  const gx = 302;
-  const cw = Math.floor((172 - 22) / n);
-  g.panel('panel_night', 298, 30, 178, 98, 4);
-  g.text('NOTES (click: ✗ / ✓ / clear)', gx + 4, 35, { size: 7, color: COLORS.muted });
-  for (let c = 0; c < n; c++) g.text(L(c), gx + 22 + c * cw + cw / 2, 46, { align: 'center', size: 8, color: COLORS.ink });
-  for (let r = 0; r < 4; r++) {
-    const ry = 57 + r * 17;
-    g.text(`${r + 1}`, gx + 8, ry + 3, { size: 8, color: COLORS.gold });
-    for (let c = 0; c < n; c++) {
-      const x = gx + 22 + c * cw;
-      const v = notes[r]?.[c] ?? 0;
-      const id = `note:${r},${c}`;
-      g.rect(x + 1, ry, cw - 2, 15, g.isHover(id) ? '#3a2d6e' : '#231a45');
-      if (v === 1) g.text('✗', x + cw / 2, ry + 3, { align: 'center', size: 9, color: COLORS.ruby });
-      if (v === 2) g.text('✓', x + cw / 2, ry + 3, { align: 'center', size: 9, color: COLORS.emerald });
-      if (solving) g.hit(id, x + 1, ry, cw - 2, 15);
-    }
-  }
+  drawClues(g, p.clues, p.letters);
+  drawNotes(g, notes, p.letters, solving);
 
   // tries and other players' times
   g.panel('panel_night', 298, 132, 178, 72, 4);
-  if (solving) {
-    g.text('YOUR WRONG TRIES', 306, 138, { size: 7, color: COLORS.muted });
-    if (!s.wrong.length) g.text('none yet', 306, 150, { size: 8, color: COLORS.muted });
-    s.wrong.slice(-5).forEach((w, i) => g.text(`${codeText(w)}  ✗`, 306 + (i % 2) * 80, 150 + Math.floor(i / 2) * 12, { size: 9, color: COLORS.ruby }));
-  } else {
+  if (solving) drawWrong(g, s.wrong);
+  else {
     const r = s.results[s.results.length - 1];
     g.text(`LOCK ${s.results.length} TIMES`, 306, 138, { size: 7, color: COLORS.muted });
     const rows = [{ name: 'You', ms: r.timeMs }, ...s.ghosts.map((gh) => ({ name: gh.name, ms: gh.times[s.results.length - 1] }))].sort((a, b) => a.ms - b.ms);
@@ -181,22 +179,8 @@ function drawScene(g: Gfx, s: GameState, entry: number[], notes: Note[][], now: 
 
   // entry
   g.panel('panel_night', 4, 208, W - 8, 58, 4);
-  if (solving) {
-    for (let k = 0; k < 4; k++) {
-      const x = 12 + k * 26;
-      g.rect(x, 214, 22, 26, '#1b1233');
-      g.frame(x, 214, 22, 26, k === entry.length ? COLORS.gold : '#4a3a8a');
-      if (entry[k] !== undefined) g.text(L(entry[k]), x + 11, 219, { align: 'center', size: 14, color: COLORS.gold });
-    }
-    for (let c = 0; c < n; c++) {
-      const used = entry.includes(c);
-      g.button(`key:${c}`, L(c), 122 + c * 22, 214, 20, { disabled: used || entry.length >= 4 });
-    }
-    g.button('del', 'Del', 122, 234, 40, { disabled: !entry.length });
-    g.button('try', 'Try it (Enter)', 168, 234, 80, { disabled: entry.length !== 4, color: 'red' });
-    if (flash && performance.now() - flash.at < 2500) g.text(flash.text, 256, 238, { size: 8, color: COLORS.ruby });
-    else g.text('or type the letters', 256, 238, { size: 7, color: COLORS.muted });
-  } else if (s.phase === 'solved') {
+  if (solving) drawEntry(g, p.letters, entry, flash);
+  else if (s.phase === 'solved') {
     const r = s.results[s.results.length - 1];
     g.text(`OPEN! The code was ${codeText(r.puzzle.code)}`, 12, 216, { size: 11, color: COLORS.emerald });
     g.text(`Your time ${clock(r.timeMs)}${r.wrong ? ` (${r.wrong} wrong ${r.wrong === 1 ? 'try' : 'tries'}, +${r.wrong * 30}s)` : ''}`, 12, 234, {
@@ -214,6 +198,65 @@ function drawScene(g: Gfx, s: GameState, entry: number[], notes: Note[][], now: 
       order[0].name === 'You' ? 'Fastest — you win the exile match!' : youLast ? 'Slowest — you are exiled.' : `${order[0].name} was fastest. You survive.`,
     );
   }
+}
+
+/** The clue list on the left. */
+export function drawClues(g: Gfx, clues: Clue[], n: number) {
+  g.panel('panel_parchment', 4, 30, 292, 174, 4);
+  g.text(`CLUES — letters ${L(0)}–${L(n - 1)}, four different, one answer`, 12, 36, { size: 7, color: '#5e3a24', shadow: false });
+  let y = 48;
+  clues.forEach((c, i) => {
+    g.text(`${i + 1}.`, 12, y, { size: 8, color: '#86192f', shadow: false });
+    const lines = wrapInk(g, clueText(c), 24, y, 264);
+    y += lines * 10 + 3;
+  });
+}
+
+/** The notes grid (top right); cells are clickable while `active`. */
+export function drawNotes(g: Gfx, notes: Note[][], n: number, active: boolean) {
+  const gx = 302;
+  const cw = Math.floor((172 - 22) / n);
+  g.panel('panel_night', 298, 30, 178, 98, 4);
+  g.text('NOTES (click: ✗ / ✓ / clear)', gx + 4, 35, { size: 7, color: COLORS.muted });
+  for (let c = 0; c < n; c++) g.text(L(c), gx + 22 + c * cw + cw / 2, 46, { align: 'center', size: 8, color: COLORS.ink });
+  for (let r = 0; r < 4; r++) {
+    const ry = 57 + r * 17;
+    g.text(`${r + 1}`, gx + 8, ry + 3, { size: 8, color: COLORS.gold });
+    for (let c = 0; c < n; c++) {
+      const x = gx + 22 + c * cw;
+      const v = notes[r]?.[c] ?? 0;
+      const id = `note:${r},${c}`;
+      g.rect(x + 1, ry, cw - 2, 15, g.isHover(id) ? '#3a2d6e' : '#231a45');
+      if (v === 1) g.text('✗', x + cw / 2, ry + 3, { align: 'center', size: 9, color: COLORS.ruby });
+      if (v === 2) g.text('✓', x + cw / 2, ry + 3, { align: 'center', size: 9, color: COLORS.emerald });
+      if (active) g.hit(id, x + 1, ry, cw - 2, 15);
+    }
+  }
+}
+
+/** Your wrong tries, inside the small panel at 298,132. */
+export function drawWrong(g: Gfx, wrong: Code[]) {
+  g.text('YOUR WRONG TRIES', 306, 138, { size: 7, color: COLORS.muted });
+  if (!wrong.length) g.text('none yet', 306, 150, { size: 8, color: COLORS.muted });
+  wrong.slice(-5).forEach((w, i) => g.text(`${codeText(w)}  ✗`, 306 + (i % 2) * 80, 150 + Math.floor(i / 2) * 12, { size: 9, color: COLORS.ruby }));
+}
+
+/** The four slots and the keypad, inside the bottom panel. */
+export function drawEntry(g: Gfx, n: number, entry: number[], flash: { text: string; at: number } | null, busy = false) {
+  for (let k = 0; k < 4; k++) {
+    const x = 12 + k * 26;
+    g.rect(x, 214, 22, 26, '#1b1233');
+    g.frame(x, 214, 22, 26, k === entry.length ? COLORS.gold : '#4a3a8a');
+    if (entry[k] !== undefined) g.text(L(entry[k]), x + 11, 219, { align: 'center', size: 14, color: COLORS.gold });
+  }
+  for (let c = 0; c < n; c++) {
+    const used = entry.includes(c);
+    g.button(`key:${c}`, L(c), 122 + c * 22, 214, 20, { disabled: used || entry.length >= 4 });
+  }
+  g.button('del', 'Del', 122, 234, 40, { disabled: !entry.length });
+  g.button('try', 'Try it (Enter)', 168, 234, 80, { disabled: entry.length !== 4 || busy, color: 'red' });
+  if (flash && performance.now() - flash.at < 2500) g.text(flash.text, 256, 238, { size: 8, color: COLORS.ruby });
+  else g.text(busy ? 'trying…' : 'or type the letters', 256, 238, { size: 7, color: COLORS.muted });
 }
 
 /** Clue text on parchment (dark ink, no shadow). */

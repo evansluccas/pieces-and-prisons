@@ -48,6 +48,16 @@ const NB: Cell[] = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 /** Reflect a board square across the mirror line between the two halves. */
 export const mirrorCell = ([x, y]: Cell, cols: number): Cell => [2 * cols - 1 - x, y];
 
+/** The mirror image of a picture: where each piece belongs on the right half. */
+export function reflect(left: Placement[], cols: number): Placement[] {
+  return left.map((p) => {
+    const sq = placedCells(p).map((c) => mirrorCell(c, cols));
+    const cells = norm(sq);
+    const at: Cell = [Math.min(...sq.map((c) => c[0])), Math.min(...sq.map((c) => c[1]))];
+    return { piece: p.piece, cells, at };
+  });
+}
+
 export function makePuzzle(rng: Rng, difficulty: Difficulty): Puzzle {
   const { count, cols, rows, pool } = PROFILE[difficulty];
   for (;;) {
@@ -71,12 +81,7 @@ export function makePuzzle(rng: Rng, difficulty: Difficulty): Puzzle {
       left.push(p);
     }
     if (!ok) continue;
-    const target = left.map((p) => {
-      const sq = placedCells(p).map((c) => mirrorCell(c, cols));
-      const cells = norm(sq);
-      const at: Cell = [Math.min(...sq.map((c) => c[0])), Math.min(...sq.map((c) => c[1]))];
-      return { piece: p.piece, cells, at };
-    });
+    const target = reflect(left, cols);
     // the tray piece is the MIRRORED shape in a random turn: it can be turned into place, never flipped
     // ...and never already in the answer's turn, unless the piece looks the same every way round
     const tray = target.map((t) => {
@@ -88,7 +93,7 @@ export function makePuzzle(rng: Rng, difficulty: Difficulty): Puzzle {
 }
 
 /** Squares a piece may go on: the right half of the board. */
-export function canPlace(pz: Puzzle, placed: Placement[], cells: Cell[], at: Cell, ignore = -1): boolean {
+export function canPlace(pz: Pick<Puzzle, 'cols' | 'rows'>, placed: Placement[], cells: Cell[], at: Cell, ignore = -1): boolean {
   const used = new Set(placed.filter((p) => p.piece !== ignore).flatMap(placedCells).map(key));
   return cells.every(([x, y]) => {
     const bx = x + at[0];
@@ -98,7 +103,7 @@ export function canPlace(pz: Puzzle, placed: Placement[], cells: Cell[], at: Cel
 }
 
 /** Every piece sits exactly on its reflection. */
-export function isMirrored(pz: Puzzle, placed: Placement[]): boolean {
+export function isMirrored(pz: Pick<Puzzle, 'target'>, placed: Placement[]): boolean {
   if (placed.length !== pz.target.length) return false;
   return pz.target.every((t) => {
     const p = placed.find((q) => q.piece === t.piece);

@@ -34,7 +34,12 @@ function setup(d: Difficulty, ghosts: number) {
   return newGame(rng, d, GHOSTS.slice(0, Math.max(1, ghosts)), QUICK ? { ...DEFAULT_CONFIG, puzzles: 1 } : DEFAULT_CONFIG);
 }
 
-interface Held { piece: number; cells: Cell[] }
+export interface Held { piece: number; cells: Cell[] }
+/** The public part of a puzzle: everything the board and tray need to draw. */
+export type Board = Pick<Puzzle, 'cols' | 'rows' | 'left' | 'tray'>;
+/** The pieces in play: what's on the board, the tray's turns, and the piece in hand. */
+export interface Hand { placed: Placement[]; shapes: Cell[][]; held: Held | null }
+export const emptyHand = (b: Board): Hand => ({ placed: [], shapes: b.tray, held: null });
 
 /** Where a held piece's (0,0) goes so that its middle square sits on the hovered cell. */
 function anchorAt(cells: Cell[], hover: Cell): Cell {
@@ -44,11 +49,48 @@ function anchorAt(cells: Cell[], hover: Cell): Cell {
   return [hover[0] - mid[0], hover[1] - mid[1]];
 }
 
+/**
+ * A click (or key) while solving: the pieces after it. Handles 'turn',
+ * 'drop', 'clear', 'tray:i' and 'cell:x:y'; anything else changes nothing.
+ * Shared by solo and online play.
+ */
+export function mirrorClick(id: string, b: Board, h: Hand): Hand {
+  const { placed, shapes, held } = h;
+  if (id === 'turn') {
+    if (!held) return h;
+    const cells = rotate(held.cells);
+    return { placed, held: { ...held, cells }, shapes: shapes.map((c, i) => (i === held.piece ? cells : c)) };
+  }
+  if (id === 'drop') return held ? { ...h, held: null } : h;
+  if (id === 'clear') return { ...h, placed: [], held: null };
+  if (id.startsWith('tray:')) {
+    const i = Number(id.slice(5));
+    if (!shapes[i]) return h;
+    if (held?.piece === i) return { ...h, held: null };
+    return { shapes, placed: placed.filter((x) => x.piece !== i), held: { piece: i, cells: shapes[i] } };
+  }
+  if (id.startsWith('cell:')) {
+    const [x, y] = id.slice(5).split(':').map(Number);
+    if (held) {
+      const at = anchorAt(held.cells, [x, y]);
+      if (!canPlace(b, placed, held.cells, at, held.piece)) return h;
+      return { shapes, held: null, placed: [...placed.filter((p) => p.piece !== held.piece), { piece: held.piece, cells: held.cells, at }] };
+    }
+    const hit = placed.find((p) => placedCells(p).some((c) => c[0] === x && c[1] === y));
+    if (hit) return { shapes, placed: placed.filter((q) => q.piece !== hit.piece), held: { piece: hit.piece, cells: hit.cells } };
+  }
+  return h;
+}
+
+/** The solving keys: R turns, Esc drops, F (no flipping here) warns. */
+export function mirrorKey(key: string): string | null {
+  const k = key.toLowerCase();
+  return k === 'r' ? 'turn' : k === 'f' ? 'warn' : key === 'Escape' ? 'drop' : null;
+}
+
 export function MirrorPieces({ botCount = 3 }: { botCount?: number }) {
   const [state, setState] = useState<GameState | null>(null);
-  const [placed, setPlaced] = useState<Placement[]>([]);
-  const [shapes, setShapes] = useState<Cell[][]>([]);
-  const [held, setHeld] = useState<Held | null>(null);
+  const [hand, setHand] = useState<Hand>({ placed: [], shapes: [], held: null });
   const [warn, setWarn] = useState(0);
   const start = useRef(performance.now());
   const s = state;
@@ -56,34 +98,24 @@ export function MirrorPieces({ botCount = 3 }: { botCount?: number }) {
   useEffect(() => {
     if (!s || s.phase !== 'solve') return;
     start.current = performance.now();
-    setPlaced([]);
-    setHeld(null);
-    setShapes(s.puzzle.tray);
+    setHand(emptyHand(s.puzzle));
   }, [s?.index, s?.phase === 'solve', s?.puzzle]);
 
-  const turn = () => {
-    if (!held) return;
-    const cells = rotate(held.cells);
-    setHeld({ ...held, cells });
-    setShapes((sh) => sh.map((c, i) => (i === held.piece ? cells : c)));
-  };
-
-  const put = (at: Cell) => {
-    if (!s || !held || !canPlace(s.puzzle, placed, held.cells, at, held.piece)) return;
-    const next = [...placed.filter((p) => p.piece !== held.piece), { piece: held.piece, cells: held.cells, at }];
-    setPlaced(next);
-    setHeld(null);
-    setState(finish(s, next, performance.now() - start.current));
+  const play = (id: string) => {
+    if (!s) return;
+    const next = mirrorClick(id, s.puzzle, hand);
+    if (next === hand) return;
+    setHand(next);
+    if (next.placed !== hand.placed) setState(finish(s, next.placed, performance.now() - start.current));
   };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!s || s.phase !== 'solve' || e.target instanceof HTMLSelectElement) return;
-      const k = e.key.toLowerCase();
-      if (k === 'r') turn();
-      else if (k === 'f') setWarn(performance.now()); // no flipping in this one
-      else if (e.key === 'Escape') setHeld(null);
-      else return;
+      const id = mirrorKey(e.key);
+      if (!id) return;
+      if (id === 'warn') setWarn(performance.now()); // no flipping in this one
+      else play(id);
       e.preventDefault();
     };
     window.addEventListener('keydown', onKey);
@@ -96,26 +128,7 @@ export function MirrorPieces({ botCount = 3 }: { botCount?: number }) {
     if (id === 'again') return setState(null);
     if (id === 'next') return setState(nextPuzzle(s));
     if (s.phase !== 'solve') return;
-    if (id === 'turn') return turn();
-    if (id === 'clear') {
-      setPlaced([]);
-      return setHeld(null);
-    }
-    if (id.startsWith('tray:')) {
-      const i = Number(id.slice(5));
-      if (held?.piece === i) return setHeld(null);
-      setPlaced((p) => p.filter((x) => x.piece !== i));
-      return setHeld({ piece: i, cells: shapes[i] });
-    }
-    if (id.startsWith('cell:')) {
-      const [x, y] = id.slice(5).split(':').map(Number);
-      if (held) return put(anchorAt(held.cells, [x, y]));
-      const hit = placed.find((p) => placedCells(p).some((c) => c[0] === x && c[1] === y));
-      if (hit) {
-        setPlaced((p) => p.filter((q) => q.piece !== hit.piece));
-        setHeld({ piece: hit.piece, cells: hit.cells });
-      }
-    }
+    play(id);
   };
 
   return (
@@ -123,7 +136,7 @@ export function MirrorPieces({ botCount = 3 }: { botCount?: number }) {
       <PixelStage
         width={W}
         height={H}
-        draw={(g) => (s ? drawScene(g, s, placed, shapes, held, s.phase === 'solve' ? performance.now() - start.current : 0, performance.now() - warn < 1800) : drawIntro(g))}
+        draw={(g) => (s ? drawScene(g, s, hand, s.phase === 'solve' ? performance.now() - start.current : 0, performance.now() - warn < 1800) : drawIntro(g))}
         onHit={onHit}
       />
       <PuzzleLog state={s} />
@@ -147,7 +160,7 @@ function drawIntro(g: Gfx) {
   });
 }
 
-function layout(p: Puzzle) {
+function layout(p: Board) {
   const cs = Math.min(22, Math.floor(262 / (2 * p.cols)), Math.floor(210 / p.rows));
   const width = 2 * p.cols * cs;
   return { cs, x0: Math.round(4 + (278 - width) / 2), y0: Math.round(40 + (218 - p.rows * cs) / 2) };
@@ -159,18 +172,10 @@ function block(g: Gfx, x: number, y: number, cs: number, color: string, alpha = 
   g.rect(x + 1, y + cs - 3, cs - 2, 2, '#000000', 0.3 * alpha);
 }
 
-function drawScene(g: Gfx, s: GameState, placed: Placement[], shapes: Cell[][], held: Held | null, now: number, warn: boolean) {
-  const solving = s.phase === 'solve';
-  const pz = solving ? s.puzzle : s.results[s.results.length - 1].puzzle;
+/** The left-hand panel: picture, mirror and your reflection; while solving, the click targets and the held piece. */
+export function drawBoard(g: Gfx, pz: Board, placed: Placement[], held: Held | null, solving: boolean) {
   const { cs, x0, y0 } = layout(pz);
   const mx = x0 + pz.cols * cs; // mirror line
-
-  g.tile('board', 'tile_night', 0, 0, W, H);
-  topBar(g, [
-    { text: `PUZZLE ${s.index + 1}/${s.config.puzzles}`, color: COLORS.gold },
-    { text: solving ? clock(now) : 'perfect reflection!', color: COLORS.ink },
-    { text: s.difficulty.toUpperCase(), color: COLORS.muted },
-  ], 'MIRROR PIECES');
 
   g.panel('panel_night', 4, 30, 278, 236, 4);
   g.text('PICTURE', x0, y0 - 14, { size: 7, color: COLORS.muted });
@@ -206,34 +211,58 @@ function drawScene(g: Gfx, s: GameState, placed: Placement[], shapes: Cell[][], 
       g.ctx.restore();
     }
   }
+}
+
+/** Left edge of the right-hand panel (tray, results). */
+export const TRAY_X = 286;
+
+/** The tray panel while solving: the pieces, their turns, and the Turn / Clear buttons. */
+export function drawTray(g: Gfx, pz: Board, hand: Hand, warn: boolean) {
+  const { placed, shapes, held } = hand;
+  const tx = TRAY_X;
+  g.panel('panel_night', tx, 30, W - tx - 4, 236, 4);
+  g.text(held ? 'R turn · Esc back · no flipping!' : 'TRAY — click a piece', tx + 8, 35, { size: 7, color: warn ? COLORS.ruby : COLORS.muted });
+  const bw = 88;
+  const bh = 58;
+  pz.tray.forEach((_, i) => {
+    const bx = tx + 6 + (i % 2) * (bw + 4);
+    const by = 46 + Math.floor(i / 2) * (bh + 4);
+    const onBoard = placed.some((p) => p.piece === i);
+    const inHand = held?.piece === i;
+    const id = `tray:${i}`;
+    g.rect(bx, by, bw, bh, inHand ? '#3a2d6e' : g.isHover(id) ? '#2e2258' : '#1b1233');
+    g.frame(bx, by, bw, bh, inHand ? COLORS.gold : '#3d3175');
+    const shape = shapes[i] ?? pz.tray[i];
+    const ms = 9;
+    const sw = (Math.max(...shape.map((c) => c[0])) + 1) * ms;
+    const sh = (Math.max(...shape.map((c) => c[1])) + 1) * ms;
+    for (const [x, y] of shape) block(g, bx + (bw - sw) / 2 + x * ms, by + (bh - sh) / 2 + y * ms, ms, INK[i % INK.length], onBoard && !inHand ? 0.25 : 1);
+    if (onBoard && !inHand) g.text('placed', bx + bw - 4, by + bh - 10, { align: 'right', size: 6, color: COLORS.muted });
+    g.hit(id, bx, by, bw, bh);
+  });
+  if (warn) g.text('Pieces can’t be flipped — only turned.', tx + 8, 238, { size: 7, color: COLORS.ruby });
+  g.button('turn', 'Turn (R)', tx + 6, 250, 84, { disabled: !held });
+  g.button('clear', 'Clear', tx + 96, 250, 84, { color: 'red', disabled: !placed.length });
+}
+
+function drawScene(g: Gfx, s: GameState, hand: Hand, now: number, warn: boolean) {
+  const solving = s.phase === 'solve';
+  const pz = solving ? s.puzzle : s.results[s.results.length - 1].puzzle;
+
+  g.tile('board', 'tile_night', 0, 0, W, H);
+  topBar(g, [
+    { text: `PUZZLE ${s.index + 1}/${s.config.puzzles}`, color: COLORS.gold },
+    { text: solving ? clock(now) : 'perfect reflection!', color: COLORS.ink },
+    { text: s.difficulty.toUpperCase(), color: COLORS.muted },
+  ], 'MIRROR PIECES');
+
+  drawBoard(g, pz, hand.placed, hand.held, solving);
 
   // tray
-  const tx = 286;
-  g.panel('panel_night', tx, 30, W - tx - 4, 236, 4);
-  if (solving) {
-    g.text(held ? 'R turn · Esc back · no flipping!' : 'TRAY — click a piece', tx + 8, 35, { size: 7, color: warn ? COLORS.ruby : COLORS.muted });
-    const bw = 88;
-    const bh = 58;
-    pz.tray.forEach((_, i) => {
-      const bx = tx + 6 + (i % 2) * (bw + 4);
-      const by = 46 + Math.floor(i / 2) * (bh + 4);
-      const onBoard = placed.some((p) => p.piece === i);
-      const inHand = held?.piece === i;
-      const id = `tray:${i}`;
-      g.rect(bx, by, bw, bh, inHand ? '#3a2d6e' : g.isHover(id) ? '#2e2258' : '#1b1233');
-      g.frame(bx, by, bw, bh, inHand ? COLORS.gold : '#3d3175');
-      const shape = shapes[i] ?? pz.tray[i];
-      const ms = 9;
-      const sw = (Math.max(...shape.map((c) => c[0])) + 1) * ms;
-      const sh = (Math.max(...shape.map((c) => c[1])) + 1) * ms;
-      for (const [x, y] of shape) block(g, bx + (bw - sw) / 2 + x * ms, by + (bh - sh) / 2 + y * ms, ms, INK[i % INK.length], onBoard && !inHand ? 0.25 : 1);
-      if (onBoard && !inHand) g.text('placed', bx + bw - 4, by + bh - 10, { align: 'right', size: 6, color: COLORS.muted });
-      g.hit(id, bx, by, bw, bh);
-    });
-    if (warn) g.text('Pieces can’t be flipped — only turned.', tx + 8, 238, { size: 7, color: COLORS.ruby });
-    g.button('turn', 'Turn (R)', tx + 6, 250, 84, { disabled: !held });
-    g.button('clear', 'Clear', tx + 96, 250, 84, { color: 'red', disabled: !placed.length });
-  } else {
+  const tx = TRAY_X;
+  if (solving) drawTray(g, pz, hand, warn);
+  else {
+    g.panel('panel_night', tx, 30, W - tx - 4, 236, 4);
     const r = s.results[s.results.length - 1];
     const rows = [{ name: 'You', ms: r.timeMs }, ...s.ghosts.map((gh) => ({ name: gh.name, ms: gh.times[s.results.length - 1] }))].sort((a, b) => a.ms - b.ms);
     g.text('PERFECT!', tx + 10, 38, { size: 12, color: COLORS.emerald });

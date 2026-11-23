@@ -4,12 +4,12 @@ import { COLORS, Gfx } from '../../engine/gfx';
 import { seededRng } from '../shared/rng';
 import { standingsPanel, topBar } from '../shared/draw';
 import {
-  BOARDS, GameState, HINT_MS, Hint, canStart, clock, hint, newGame, nextBoard, nextSquares, restart, size, square, standings, step, stuck,
-  undo, useHint, xy,
+  BOARDS, GameState, HINT_MS, Hint, canStart, clock, complete, hint, newGame, nextBoard, nextSquares, restart, size, square, standings, step,
+  stuck, undo, useHint, xy,
 } from './logic';
 
-const W = 480;
-const H = 270;
+export const W = 480;
+export const H = 270;
 const GHOSTS = ['Hana', 'Jun', 'Seo', 'Mira', 'Taeo'];
 
 export const RULES = [
@@ -59,16 +59,12 @@ export function KnightsTour({ botCount = 3 }: { botCount?: number }) {
     if (s.phase !== 'play') return;
     if (id === 'undo') return doUndo();
     if (id === 'restart') return setS(restart(s));
-    if (id === 'hint' && s.path.length) {
+    const m = tourClick(id, size(s), s.path);
+    if (m?.kind === 'hint') {
       setS(useHint(s));
       return setTip({ h: hint(size(s), s.path), at: performance.now(), len: s.path.length });
     }
-    if (id.startsWith('sq:')) {
-      const c = Number(id.slice(3));
-      const n = size(s);
-      const ok = s.path.length ? nextSquares(n, s.path).includes(c) : canStart(n, c);
-      if (ok) setS(step(s, c, elapsed()));
-    }
+    if (m?.kind === 'jump') setS(step(s, m.to, elapsed()));
   };
 
   return (
@@ -92,29 +88,32 @@ function drawIntro(g: Gfx) {
   g.button('start', 'Start', 200, 170, 80, { color: 'red' });
 }
 
-function layout(n: number) {
+export function layout(n: number) {
   const cs = Math.floor(224 / n);
   return { cs, x0: Math.round(4 + (278 - n * cs) / 2), y0: Math.round(32 + (234 - n * cs) / 2) };
 }
 
-function drawScene(g: Gfx, s: GameState, tip: { h: Hint; at: number; len: number } | null, now: number) {
-  const playing = s.phase === 'play';
-  const n = playing || s.phase === 'solved' ? size(s) : s.boards[s.boards.length - 1];
+/** Where the side panel starts. */
+export const SIDE_X = 286;
+
+export type TourClick = { kind: 'jump'; to: number } | { kind: 'undo' } | { kind: 'restart' } | { kind: 'hint' };
+
+/** What a click on the board or its buttons means (null: nothing to do). Shared by solo and online. */
+export function tourClick(id: string, n: number, path: number[]): TourClick | null {
+  if (id === 'undo' || id === 'restart') return path.length ? { kind: id } : null;
+  if (id === 'hint') return path.length && !stuck(n, path) && !complete(n, path) ? { kind: 'hint' } : null;
+  if (!id.startsWith('sq:')) return null;
+  const c = Number(id.slice(3));
+  const ok = path.length ? nextSquares(n, path).includes(c) : canStart(n, c);
+  return ok ? { kind: 'jump', to: c } : null;
+}
+
+/** The board with the path so far; `tipTo` flashes a hinted square. */
+export function drawBoard(g: Gfx, n: number, path: number[], playing: boolean, tipTo: number | null) {
   const { cs, x0, y0 } = layout(n);
-  const path = s.path;
   const order = new Map(path.map((c, i) => [c, i + 1]));
   const head = path[path.length - 1];
   const next = playing ? nextSquares(n, path) : [];
-  const isStuck = playing && stuck(n, path);
-  const penalty = s.hints * HINT_MS;
-  const freshTip = tip && tip.len === path.length && performance.now() - tip.at < 6000 ? tip.h : null;
-
-  g.tile('board', 'tile_night', 0, 0, W, H);
-  topBar(g, [
-    { text: `BOARD ${s.index + 1}/${s.boards.length} · ${n}×${n}`, color: COLORS.gold },
-    { text: playing ? `${clock(now + penalty)}${penalty ? ` (incl. +${penalty / 1000}s)` : ''}` : 'toured!', color: COLORS.ink },
-  ], "KNIGHT'S TOUR");
-
   g.panel('panel_night', 4, 30, 278, 236, 4);
   for (let c = 0; c < n * n; c++) {
     const [x, y] = xy(n, c);
@@ -132,38 +131,61 @@ function drawScene(g: Gfx, s: GameState, tip: { h: Hint; at: number; len: number
     }
     if (legal && path.length) g.rect(px + cs / 2 - 4, py + cs / 2 - 4, 8, 8, COLORS.gold, g.isHover(id) ? 1 : 0.7);
     if (legal && !path.length && g.isHover(id)) g.frame(px + 1, py + 1, cs - 2, cs - 2, COLORS.gold, 2);
-    if (freshTip?.kind === 'move' && freshTip.to === c && Math.floor(g.time / 250) % 2) g.frame(px + 1, py + 1, cs - 2, cs - 2, COLORS.emerald, 2);
+    if (tipTo === c && Math.floor(g.time / 250) % 2) g.frame(px + 1, py + 1, cs - 2, cs - 2, COLORS.emerald, 2);
     if (legal) g.hit(id, px, py, cs, cs);
   }
   g.frame(x0 - 2, y0 - 2, n * cs + 4, n * cs + 4, '#5e3a24', 2);
+}
 
-  // side panel
-  const sx = 286;
+/** The side panel while touring: what to do, progress, undo/restart/hint, and the latest hint. */
+export function drawPlayPanel(g: Gfx, n: number, path: number[], tip: Hint | null, note?: { text: string; color: string }) {
+  const sx = SIDE_X;
+  const isStuck = stuck(n, path);
   g.panel('panel_night', sx, 30, W - sx - 4, 236, 4);
-  if (playing) {
-    let msg = '';
-    let col: string = COLORS.gold;
-    if (!path.length) msg = n % 2 ? 'Pick a start (corner colour)' : 'Pick any starting square';
-    else if (isStuck) {
-      msg = 'Stuck! Undo or restart';
-      col = COLORS.ruby;
-    } else msg = 'Jump to a gold square';
-    g.text(msg, sx + 10, 38, { size: 9, color: col });
-    g.text(`${path.length}/${n * n} squares`, sx + 10, 54, { size: 8, color: COLORS.ink });
-    g.rect(sx + 10, 66, W - sx - 24, 5, '#2a1f4d');
-    g.rect(sx + 10, 66, Math.round((W - sx - 24) * (path.length / (n * n))), 5, COLORS.emerald);
-    g.button('undo', 'Undo (⌫)', sx + 10, 80, 84, { disabled: !path.length });
-    g.button('restart', 'Restart', sx + 100, 80, 80, { color: 'red', disabled: !path.length });
-    g.button('hint', 'Hint (+30 s)', sx + 10, 100, 170, { disabled: !path.length || isStuck });
-    if (freshTip) {
-      const text = freshTip.kind === 'move' ? `Try ${square(n, freshTip.to)} (flashing green)`
-        : freshTip.kind === 'deadEnd' ? 'This path can’t finish — undo some moves'
-          : 'Probably a dead end — try undoing a few moves';
-      g.text(text, sx + 10, 122, { size: 7, color: freshTip.kind === 'move' ? COLORS.emerald : COLORS.ruby });
-    }
-    g.text('TIP: squares with few ways out', sx + 10, 150, { size: 7, color: COLORS.muted });
-    g.text('(edges, corners) are best visited early.', sx + 10, 160, { size: 7, color: COLORS.muted });
-  } else {
+  let msg = '';
+  let col: string = COLORS.gold;
+  if (!path.length) msg = n % 2 ? 'Pick a start (corner colour)' : 'Pick any starting square';
+  else if (isStuck) {
+    msg = 'Stuck! Undo or restart';
+    col = COLORS.ruby;
+  } else msg = 'Jump to a gold square';
+  g.text(msg, sx + 10, 38, { size: 9, color: col });
+  g.text(`${path.length}/${n * n} squares`, sx + 10, 54, { size: 8, color: COLORS.ink });
+  g.rect(sx + 10, 66, W - sx - 24, 5, '#2a1f4d');
+  g.rect(sx + 10, 66, Math.round((W - sx - 24) * (path.length / (n * n))), 5, COLORS.emerald);
+  g.button('undo', 'Undo (⌫)', sx + 10, 80, 84, { disabled: !path.length });
+  g.button('restart', 'Restart', sx + 100, 80, 80, { color: 'red', disabled: !path.length });
+  g.button('hint', 'Hint (+30 s)', sx + 10, 100, 170, { disabled: !path.length || isStuck || complete(n, path) });
+  if (tip) {
+    const text = tip.kind === 'move' ? `Try ${square(n, tip.to)} (flashing green)`
+      : tip.kind === 'deadEnd' ? 'This path can’t finish — undo some moves'
+        : 'Probably a dead end — try undoing a few moves';
+    g.text(text, sx + 10, 122, { size: 7, color: tip.kind === 'move' ? COLORS.emerald : COLORS.ruby });
+  }
+  g.text('TIP: squares with few ways out', sx + 10, 150, { size: 7, color: COLORS.muted });
+  g.text('(edges, corners) are best visited early.', sx + 10, 160, { size: 7, color: COLORS.muted });
+  if (note) g.text(note.text, sx + 10, 184, { size: 7, color: note.color });
+}
+
+function drawScene(g: Gfx, s: GameState, tip: { h: Hint; at: number; len: number } | null, now: number) {
+  const playing = s.phase === 'play';
+  const n = playing || s.phase === 'solved' ? size(s) : s.boards[s.boards.length - 1];
+  const path = s.path;
+  const penalty = s.hints * HINT_MS;
+  const freshTip = tip && tip.len === path.length && performance.now() - tip.at < 6000 ? tip.h : null;
+
+  g.tile('board', 'tile_night', 0, 0, W, H);
+  topBar(g, [
+    { text: `BOARD ${s.index + 1}/${s.boards.length} · ${n}×${n}`, color: COLORS.gold },
+    { text: playing ? `${clock(now + penalty)}${penalty ? ` (incl. +${penalty / 1000}s)` : ''}` : 'toured!', color: COLORS.ink },
+  ], "KNIGHT'S TOUR");
+
+  drawBoard(g, n, path, playing, freshTip?.kind === 'move' ? freshTip.to : null);
+
+  const sx = SIDE_X;
+  if (playing) drawPlayPanel(g, n, path, freshTip);
+  else {
+    g.panel('panel_night', sx, 30, W - sx - 4, 236, 4);
     const r = s.results[s.results.length - 1];
     g.text('TOUR COMPLETE!', sx + 10, 40, { size: 11, color: COLORS.emerald });
     g.text(`Your time ${clock(r.timeMs)}${r.hints ? ` (${r.hints} hint${r.hints > 1 ? 's' : ''})` : ''}`, sx + 10, 58, { size: 8, color: COLORS.ink });

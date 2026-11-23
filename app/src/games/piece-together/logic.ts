@@ -169,8 +169,14 @@ export function canPlace(outline: Cell[], placed: Placement[], cells: Cell[], at
   });
 }
 
-export const isComplete = (pz: Puzzle, placed: Placement[]) =>
+export const isComplete = (pz: Pick<Puzzle, 'outline' | 'pieces'>, placed: Placement[]) =>
   placed.length === pz.pieces.length && placed.reduce((t, p) => t + p.cells.length, 0) === pz.outline.length;
+
+/** A complete, legal fill: every piece in, nothing out of the outline, no overlaps. */
+export function isFilled(pz: Pick<Puzzle, 'outline' | 'pieces'>, placed: Placement[]): boolean {
+  if (!isComplete(pz, placed) || new Set(placed.map((p) => p.piece)).size !== placed.length) return false;
+  return placed.every((p) => canPlace(pz.outline, placed, p.cells, p.at, p.piece));
+}
 
 // ------------------------------------------------------------- the match ----
 
@@ -205,8 +211,7 @@ export function newGame(rng: Rng, difficulty: Difficulty, ghostNames: string[], 
 
 /** Hand in a board; only a complete, legal fill counts. */
 export function finish(s: GameState, placed: Placement[], timeMs: number): GameState {
-  if (s.phase !== 'solve' || !isComplete(s.puzzle, placed)) return s;
-  for (let i = 0; i < placed.length; i++) if (!canPlace(s.puzzle.outline, placed, placed[i].cells, placed[i].at, placed[i].piece)) return s;
+  if (s.phase !== 'solve' || !isFilled(s.puzzle, placed)) return s;
   return { ...s, phase: 'solved', results: [...s.results, { puzzle: s.puzzle, timeMs }] };
 }
 

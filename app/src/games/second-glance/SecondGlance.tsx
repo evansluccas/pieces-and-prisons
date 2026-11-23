@@ -5,16 +5,19 @@ import { COLORS, Gfx } from '../../engine/gfx';
 import { seededRng } from '../shared/rng';
 import { standingsPanel, topBar } from '../shared/draw';
 import {
-  COLS, DEFAULT_CONFIG, Difficulty, GameState, ROWS, Scene, clock, memorizeMs, newGame, nextRound, objName, score, standings,
-  startSpotting, submit,
+  COLS, DEFAULT_CONFIG, Difficulty, GameState, ROWS, Scene, clock, memorizeMs, newGame, nextRound, objName, standings,
+  startSpotting, submit, toggleMark,
 } from './logic';
 
-const W = 480;
-const H = 270;
+export const W = 480;
+export const H = 270;
 const CW = 46;
 const CH = 42;
 const SX = 6;
 const SY = 32;
+/** Where the side panel on the canvas starts, and its width. */
+export const PX = 380;
+export const PW = W - PX - 4;
 const GHOSTS = ['Hana', 'Jun', 'Seo', 'Mira', 'Taeo'];
 const DIFFS: { id: Difficulty; label: string; note: string }[] = [
   { id: 'easy', label: 'Easy', note: '14 objects · 15 s to look' },
@@ -81,7 +84,7 @@ export function SecondGlance({ botCount = 3 }: { botCount?: number }) {
     if (s.phase !== 'spot') return;
     if (id.startsWith('cell:')) {
       const c = Number(id.slice(5));
-      setMarks((m) => (m.includes(c) ? m.filter((x) => x !== c) : m.length < s.config.maxMarks ? [...m, c] : m));
+      setMarks((m) => toggleMark(m, c, s.config.maxMarks));
     }
     if (id === 'done') setState(submit(s, marks, since()));
   };
@@ -110,7 +113,7 @@ function drawIntro(g: Gfx) {
   });
 }
 
-function drawField(g: Gfx, scene: Scene, clickable: boolean) {
+export function drawField(g: Gfx, scene: Scene, clickable: boolean) {
   g.tile('board', 'tile_sand', SX, SY, COLS * CW, ROWS * CH);
   for (let c = 1; c < COLS; c++) g.rect(SX + c * CW, SY, 1, ROWS * CH, '#000000', 0.08);
   for (let r = 1; r < ROWS; r++) g.rect(SX, SY + r * CH, COLS * CW, 1, '#000000', 0.08);
@@ -127,7 +130,7 @@ function drawField(g: Gfx, scene: Scene, clickable: boolean) {
 
 const cellXY = (i: number) => ({ x: SX + (i % COLS) * CW, y: SY + Math.floor(i / COLS) * CH });
 
-function drawX(g: Gfx, i: number, color: string) {
+export function drawX(g: Gfx, i: number, color: string) {
   const { x, y } = cellXY(i);
   for (let k = 0; k < 24; k++) {
     g.rect(x + 11 + k, y + 9 + k, 3, 3, color);
@@ -136,8 +139,8 @@ function drawX(g: Gfx, i: number, color: string) {
 }
 
 function drawScene(g: Gfx, s: GameState, marks: number[], compare: boolean, since: number) {
-  const px = 380;
-  const pw = W - px - 4;
+  const px = PX;
+  const pw = PW;
   g.tile('board', 'tile_night', 0, 0, W, H);
 
   if (s.phase === 'memorize') {
@@ -180,18 +183,7 @@ function drawScene(g: Gfx, s: GameState, marks: number[], compare: boolean, sinc
   }
 
   // results
-  const sc = score(round, res.marks);
-  if (!compare) {
-    for (const i of sc.hits) {
-      const { x, y } = cellXY(i);
-      g.frame(x + 1, y + 1, CW - 2, CH - 2, COLORS.emerald, 2);
-    }
-    for (const i of sc.wrong) drawX(g, i, COLORS.ruby);
-    for (const i of sc.missed) {
-      const { x, y } = cellXY(i);
-      if (Math.floor(g.time / 400) % 2) g.frame(x + 1, y + 1, CW - 2, CH - 2, COLORS.gold, 2);
-    }
-  }
+  if (!compare) drawAnswer(g, round.changes.map((c) => c.slot), res.marks);
   g.text(`FOUND ${res.found}/5`, px + 8, 38, { size: 10, color: res.found >= 4 ? COLORS.emerald : res.found >= 2 ? COLORS.gold : COLORS.ruby });
   g.text(`in ${clock(res.timeMs)}`, px + 8, 52, { size: 8, color: COLORS.ink });
   g.text('green found · gold missed', px + 8, 64, { size: 7, color: COLORS.muted });
@@ -216,9 +208,22 @@ function drawScene(g: Gfx, s: GameState, marks: number[], compare: boolean, sinc
   }
 }
 
+/** After a round: found squares framed green, wrong marks as red X, missed squares blinking gold. */
+export function drawAnswer(g: Gfx, changed: number[], marks: number[]) {
+  for (const i of marks.filter((m) => changed.includes(m))) {
+    const { x, y } = cellXY(i);
+    g.frame(x + 1, y + 1, CW - 2, CH - 2, COLORS.emerald, 2);
+  }
+  for (const i of marks.filter((m) => !changed.includes(m))) drawX(g, i, COLORS.ruby);
+  for (const i of changed.filter((c) => !marks.includes(c))) {
+    const { x, y } = cellXY(i);
+    if (Math.floor(g.time / 400) % 2) g.frame(x + 1, y + 1, CW - 2, CH - 2, COLORS.gold, 2);
+  }
+}
+
 // ---------------------------------------------------------------- log (DOM)
 
-const KIND_TEXT = { removed: 'removed', added: 'added', swapped: 'swapped', recolored: 'colour/number changed' };
+export const KIND_TEXT = { removed: 'removed', added: 'added', swapped: 'swapped', recolored: 'colour/number changed' };
 
 function GlanceLog({ state }: { state: GameState | null }) {
   return (

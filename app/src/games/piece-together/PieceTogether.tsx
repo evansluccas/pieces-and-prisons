@@ -8,8 +8,8 @@ import {
   placedCells, rotate, standings,
 } from './logic';
 
-const W = 480;
-const H = 270;
+export const W = 480;
+export const H = 270;
 const GHOSTS = ['Hana', 'Jun', 'Seo', 'Mira', 'Taeo'];
 const INK = ['#f2687a', '#f5cd5b', '#6edd8c', '#70adf2', '#bf89ea', '#e89a5e', '#7fe0d8', '#f29ad6'];
 const DIFFS: { id: Difficulty; label: string; note: string }[] = [
@@ -34,48 +34,85 @@ function setup(d: Difficulty, ghosts: number) {
 }
 
 /** A piece in hand: which one, and its current turn/flip. */
-interface Held { piece: number; cells: Cell[] }
+export interface Held { piece: number; cells: Cell[] }
+
+/** What the solver sees of a puzzle: the outline and the tray (never the answer). */
+export type Shape = Pick<Puzzle, 'outline' | 'pieces'>;
+
+/** Your board as you work: what's placed, each tray piece's turn/flip, and the piece in hand. */
+export interface Board { placed: Placement[]; shapes: Cell[][]; held: Held | null }
+export const freshBoard = (pz: Shape): Board => ({ placed: [], shapes: pz.pieces, held: null });
+
+/** R, F and Esc as the same ids as the buttons. */
+export function keyHit(key: string): string | null {
+  const k = key.toLowerCase();
+  return k === 'r' ? 'turn' : k === 'f' ? 'flip' : key === 'Escape' ? 'drop' : null;
+}
+
+/**
+ * A click on the board or the tray (or a key, via `keyHit`), shared by the
+ * solo and online screens. Returns the new board, or null if `id` isn't a
+ * board control.
+ */
+export function boardHit(pz: Shape, b: Board, id: string): Board | null {
+  const { held } = b;
+  const turn = (fn: (c: Cell[]) => Cell[]): Board => {
+    if (!held) return b;
+    const cells = fn(held.cells);
+    return { ...b, held: { ...held, cells }, shapes: b.shapes.map((c, i) => (i === held.piece ? cells : c)) };
+  };
+  if (id === 'turn') return turn(rotate);
+  if (id === 'flip') return turn(flip);
+  if (id === 'drop') return { ...b, held: null };
+  if (id === 'clear') return { ...b, placed: [], held: null };
+  if (id.startsWith('tray:')) {
+    const i = Number(id.slice(5));
+    if (held?.piece === i) return { ...b, held: null };
+    // taking it from the board, if it was there
+    return { ...b, placed: b.placed.filter((x) => x.piece !== i), held: { piece: i, cells: b.shapes[i] } };
+  }
+  if (id.startsWith('cell:')) {
+    const [x, y] = id.slice(5).split(':').map(Number);
+    if (held) {
+      const at = anchorAt(held.cells, [x, y]);
+      if (!canPlace(pz.outline, b.placed, held.cells, at, held.piece)) return b;
+      return { ...b, placed: [...b.placed.filter((p) => p.piece !== held.piece), { piece: held.piece, cells: held.cells, at }], held: null };
+    }
+    const hit = b.placed.find((p) => placedCells(p).some((c) => c[0] === x && c[1] === y));
+    if (!hit) return b;
+    return { ...b, placed: b.placed.filter((q) => q.piece !== hit.piece), held: { piece: hit.piece, cells: hit.cells } };
+  }
+  return null;
+}
 
 export function PieceTogether({ botCount = 3 }: { botCount?: number }) {
   const [state, setState] = useState<GameState | null>(null);
-  const [placed, setPlaced] = useState<Placement[]>([]);
-  const [shapes, setShapes] = useState<Cell[][]>([]); // each tray piece's current orientation
-  const [held, setHeld] = useState<Held | null>(null);
+  const [board, setBoard] = useState<Board>({ placed: [], shapes: [], held: null });
   const start = useRef(performance.now());
   const s = state;
 
   useEffect(() => {
     if (!s || s.phase !== 'solve') return;
     start.current = performance.now();
-    setPlaced([]);
-    setHeld(null);
-    setShapes(s.puzzle.pieces);
+    setBoard(freshBoard(s.puzzle));
   }, [s?.index, s?.phase === 'solve', s?.puzzle]);
 
-  const turn = (fn: (c: Cell[]) => Cell[]) => {
-    if (!held) return;
-    const cells = fn(held.cells);
-    setHeld({ ...held, cells });
-    setShapes((sh) => sh.map((c, i) => (i === held.piece ? cells : c)));
-  };
-
-  const put = (at: Cell) => {
-    if (!s || !held) return;
-    if (!canPlace(s.puzzle.outline, placed, held.cells, at, held.piece)) return;
-    const next = [...placed.filter((p) => p.piece !== held.piece), { piece: held.piece, cells: held.cells, at }];
-    setPlaced(next);
-    setHeld(null);
-    setState(finish(s, next, performance.now() - start.current));
+  /** Apply a board control; the puzzle opens the moment the last piece fits. */
+  const play = (id: string) => {
+    if (!s || s.phase !== 'solve') return false;
+    const next = boardHit(s.puzzle, board, id);
+    if (!next) return false;
+    setBoard(next);
+    if (next.placed !== board.placed) setState(finish(s, next.placed, performance.now() - start.current));
+    return true;
   };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!s || s.phase !== 'solve' || e.target instanceof HTMLSelectElement) return;
-      const k = e.key.toLowerCase();
-      if (k === 'r') turn(rotate);
-      else if (k === 'f') turn(flip);
-      else if (e.key === 'Escape') setHeld(null);
-      else return;
+      const id = keyHit(e.key);
+      if (!id) return;
+      play(id);
       e.preventDefault();
     };
     window.addEventListener('keydown', onKey);
@@ -87,28 +124,7 @@ export function PieceTogether({ botCount = 3 }: { botCount?: number }) {
     if (!s) return;
     if (id === 'again') return setState(null);
     if (id === 'next') return setState(nextPuzzle(s));
-    if (s.phase !== 'solve') return;
-    if (id === 'turn') return turn(rotate);
-    if (id === 'flip') return turn(flip);
-    if (id === 'clear') {
-      setPlaced([]);
-      return setHeld(null);
-    }
-    if (id.startsWith('tray:')) {
-      const i = Number(id.slice(5));
-      if (held?.piece === i) return setHeld(null);
-      setPlaced((p) => p.filter((x) => x.piece !== i)); // taking it from the board, if it was there
-      return setHeld({ piece: i, cells: shapes[i] });
-    }
-    if (id.startsWith('cell:')) {
-      const [x, y] = id.slice(5).split(':').map(Number);
-      if (held) return put(anchorAt(held.cells, [x, y]));
-      const hit = placed.find((p) => placedCells(p).some((c) => c[0] === x && c[1] === y));
-      if (hit) {
-        setPlaced((p) => p.filter((q) => q.piece !== hit.piece));
-        setHeld({ piece: hit.piece, cells: hit.cells });
-      }
-    }
+    play(id);
   };
 
   return (
@@ -116,7 +132,7 @@ export function PieceTogether({ botCount = 3 }: { botCount?: number }) {
       <PixelStage
         width={W}
         height={H}
-        draw={(g) => (s ? drawScene(g, s, placed, shapes, held, s.phase === 'solve' ? performance.now() - start.current : 0) : drawIntro(g))}
+        draw={(g) => (s ? drawScene(g, s, board, s.phase === 'solve' ? performance.now() - start.current : 0) : drawIntro(g))}
         onHit={onHit}
       />
       <PuzzleLog state={s} />
@@ -148,7 +164,7 @@ function drawIntro(g: Gfx) {
   });
 }
 
-function boardLayout(p: Puzzle) {
+function boardLayout(p: Shape) {
   const w = Math.max(...p.outline.map((c) => c[0])) + 1;
   const h = Math.max(...p.outline.map((c) => c[1])) + 1;
   // one empty square of margin around the outline so pieces can hang over the edge while you aim
@@ -162,19 +178,17 @@ function block(g: Gfx, x: number, y: number, cs: number, color: string, alpha = 
   g.rect(x + 1, y + cs - 3, cs - 2, 2, '#000000', 0.3 * alpha);
 }
 
-function drawScene(g: Gfx, s: GameState, placed: Placement[], shapes: Cell[][], held: Held | null, now: number) {
-  const solving = s.phase === 'solve';
-  const pz = solving ? s.puzzle : s.results[s.results.length - 1].puzzle;
-  // after solving, keep showing YOUR arrangement (any complete fill counts)
-  const shown = solving || placed.length ? placed : pz.solution;
-  const { w, h, cs, x0, y0 } = boardLayout(pz);
+/** Left edge of the tray panel; callers draw their own text there when not solving. */
+export const TRAY_X = 286;
 
-  g.tile('board', 'tile_night', 0, 0, W, H);
-  topBar(g, [
-    { text: `PUZZLE ${s.index + 1}/${s.config.puzzles}`, color: COLORS.gold },
-    { text: solving ? clock(now) : 'complete!', color: COLORS.ink },
-    { text: s.difficulty.toUpperCase(), color: COLORS.muted },
-  ], 'PIECE TOGETHER');
+/**
+ * The board (outline and `shown` pieces) and the tray panel. While `solving`
+ * it also draws the hover preview, the tray's pieces and the Turn/Flip/Clear
+ * buttons, with their click areas; otherwise the tray panel is left empty.
+ */
+export function drawPlay(g: Gfx, pz: Shape, b: Board, solving: boolean, shown: Placement[] = b.placed) {
+  const { placed, shapes, held } = b;
+  const { w, h, cs, x0, y0 } = boardLayout(pz);
 
   // board
   g.panel('panel_night', 4, 30, 278, 236, 4);
@@ -215,18 +229,19 @@ function drawScene(g: Gfx, s: GameState, placed: Placement[], shapes: Cell[][], 
   }
 
   // tray
-  const tx = 286;
+  const tx = TRAY_X;
   g.panel('panel_night', tx, 30, W - tx - 4, 236, 4);
-  if (solving) g.text(held ? 'R turn · F flip · Esc back' : 'TRAY — click a piece', tx + 8, 35, { size: 7, color: COLORS.muted });
+  if (!solving) return;
+  g.text(held ? 'R turn · F flip · Esc back' : 'TRAY — click a piece', tx + 8, 35, { size: 7, color: COLORS.muted });
   const bw = 88;
   const bh = 46;
-  if (solving) pz.pieces.forEach((_, i) => {
+  pz.pieces.forEach((_, i) => {
     const bx = tx + 6 + (i % 2) * (bw + 4);
     const by = 46 + Math.floor(i / 2) * (bh + 4);
     const onBoard = shown.some((p) => p.piece === i);
     const inHand = held?.piece === i;
     const id = `tray:${i}`;
-    g.rect(bx, by, bw, bh, inHand ? '#3a2d6e' : g.isHover(id) && solving ? '#2e2258' : '#1b1233');
+    g.rect(bx, by, bw, bh, inHand ? '#3a2d6e' : g.isHover(id) ? '#2e2258' : '#1b1233');
     g.frame(bx, by, bw, bh, inHand ? COLORS.gold : '#3d3175');
     const shape = shapes[i] ?? pz.pieces[i];
     const ms = 8;
@@ -234,14 +249,31 @@ function drawScene(g: Gfx, s: GameState, placed: Placement[], shapes: Cell[][], 
     const sh = (Math.max(...shape.map((c) => c[1])) + 1) * ms;
     for (const [x, y] of shape) block(g, bx + (bw - sw) / 2 + x * ms, by + (bh - sh) / 2 + y * ms, ms, INK[i % INK.length], onBoard && !inHand ? 0.25 : 1);
     if (onBoard && !inHand) g.text('placed', bx + bw - 4, by + bh - 10, { align: 'right', size: 6, color: COLORS.muted });
-    if (solving) g.hit(id, bx, by, bw, bh);
+    g.hit(id, bx, by, bw, bh);
   });
 
-  if (solving) {
-    g.button('turn', 'Turn (R)', tx + 6, 250, 58, { disabled: !held });
-    g.button('flip', 'Flip (F)', tx + 68, 250, 58, { disabled: !held });
-    g.button('clear', 'Clear', tx + 130, 250, 50, { color: 'red', disabled: !placed.length });
-  } else {
+  g.button('turn', 'Turn (R)', tx + 6, 250, 58, { disabled: !held });
+  g.button('flip', 'Flip (F)', tx + 68, 250, 58, { disabled: !held });
+  g.button('clear', 'Clear', tx + 130, 250, 50, { color: 'red', disabled: !placed.length });
+}
+
+function drawScene(g: Gfx, s: GameState, b: Board, now: number) {
+  const solving = s.phase === 'solve';
+  const pz = solving ? s.puzzle : s.results[s.results.length - 1].puzzle;
+  // after solving, keep showing YOUR arrangement (any complete fill counts)
+  const shown = solving || b.placed.length ? b.placed : pz.solution;
+
+  g.tile('board', 'tile_night', 0, 0, W, H);
+  topBar(g, [
+    { text: `PUZZLE ${s.index + 1}/${s.config.puzzles}`, color: COLORS.gold },
+    { text: solving ? clock(now) : 'complete!', color: COLORS.ink },
+    { text: s.difficulty.toUpperCase(), color: COLORS.muted },
+  ], 'PIECE TOGETHER');
+
+  drawPlay(g, pz, b, solving, shown);
+
+  if (!solving) {
+    const tx = TRAY_X;
     const r = s.results[s.results.length - 1];
     const rows = [{ name: 'You', ms: r.timeMs }, ...s.ghosts.map((gh) => ({ name: gh.name, ms: gh.times[s.results.length - 1] }))].sort((a, b) => a.ms - b.ms);
     g.text('COMPLETE!', tx + 10, 38, { size: 12, color: COLORS.emerald });

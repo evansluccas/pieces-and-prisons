@@ -308,6 +308,17 @@ export function makePuzzle(rng: Rng, difficulty: Difficulty): Puzzle {
 /** The player's fences match the answer. */
 export const solved = (p: Puzzle, fences: boolean[]) => fences.every((x, e) => x === p.answer[e]);
 
+/**
+ * One closed loop that meets every number. Needs only the numbers, so the
+ * online screen can tell when to send its loop; as each puzzle has exactly
+ * one answer, a loop that passes this is the answer.
+ */
+export function meetsNumbers(R: number, C: number, clues: (number | null)[], fences: boolean[]): boolean {
+  const g = geometry(R, C);
+  if (fences.length !== g.edges || !isSingleLoop(R, C, fences)) return false;
+  return clues.every((k, cell) => k === null || clueOf(g, fences, cell) === k);
+}
+
 // ------------------------------------------------------------- the match ----
 
 export interface Config { puzzles: number }

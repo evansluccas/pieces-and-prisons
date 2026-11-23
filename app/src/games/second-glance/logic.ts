@@ -124,14 +124,28 @@ export interface GameState {
   ghosts: Ghost[];
 }
 
-export function newGame(rng: Rng, difficulty: Difficulty, ghostNames: string[], config = DEFAULT_CONFIG): GameState {
-  const rounds = Array.from({ length: config.rounds }, () => makeRound(rng, difficulty));
+/** How likely ghost rival number `i` is to catch each change. */
+export function ghostSkill(difficulty: Difficulty, i: number) {
   const base = { easy: 0.8, normal: 0.65, hard: 0.5 }[difficulty];
   const skills = [0.15, 0, -0.15];
+  return Math.max(0.15, Math.min(0.95, base + skills[i % 3]));
+}
+/** How many of the 5 changes a ghost with skill `p` finds in one round. */
+export const ghostFound = (rng: Rng, p: number) =>
+  Array.from({ length: 5 }, () => (rng() < p ? 1 : 0)).reduce((a: number, b: number) => a + b, 0);
+/** How long a ghost takes to spot (18–53 s). */
+export const ghostTime = (rng: Rng) => Math.round(18_000 + rng() * 35_000);
+
+/** Click a square: mark it, or take the mark back (no more than `max` marks). */
+export const toggleMark = (marks: number[], cell: number, max: number) =>
+  marks.includes(cell) ? marks.filter((x) => x !== cell) : marks.length < max ? [...marks, cell] : marks;
+
+export function newGame(rng: Rng, difficulty: Difficulty, ghostNames: string[], config = DEFAULT_CONFIG): GameState {
+  const rounds = Array.from({ length: config.rounds }, () => makeRound(rng, difficulty));
   const ghosts = ghostNames.map((name, i) => {
-    const p = Math.max(0.15, Math.min(0.95, base + skills[i % 3]));
-    const found = rounds.map(() => Array.from({ length: 5 }, () => (rng() < p ? 1 : 0)).reduce((a: number, b: number) => a + b, 0));
-    return { name, found, times: rounds.map(() => Math.round(18_000 + rng() * 35_000)) };
+    const p = ghostSkill(difficulty, i);
+    const found = rounds.map(() => ghostFound(rng, p));
+    return { name, found, times: rounds.map(() => ghostTime(rng)) };
   });
   return { config, difficulty, index: 0, phase: 'memorize', round: rounds[0], queue: rounds.slice(1), results: [], ghosts };
 }

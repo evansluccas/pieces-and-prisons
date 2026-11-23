@@ -4,11 +4,11 @@ import { COLORS, Gfx } from '../../engine/gfx';
 import { seededRng } from '../shared/rng';
 import { standingsPanel, topBar } from '../shared/draw';
 import {
-  BOARDS, GameState, HINT_MS, clock, current, hintCell, isGiven, lineTotals, magicSum, newGame, nextBoard, standings, useHint, write,
+  BOARDS, GameState, Grid, HINT_MS, clock, current, hintCell, lineTotals, magicSum, newGame, nextBoard, standings, useHint, write,
 } from './logic';
 
-const W = 480;
-const H = 270;
+export const W = 480;
+export const H = 270;
 const GHOSTS = ['Hana', 'Jun', 'Seo', 'Mira', 'Taeo'];
 const CELL: Record<number, number> = { 3: 46, 4: 38, 5: 32 };
 
@@ -44,39 +44,21 @@ export function MagicSquares({ botCount = 3 }: { botCount?: number }) {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (!started || s.phase !== 'play' || sel === null || e.target instanceof HTMLSelectElement) return;
-      const [x, y] = [sel % n, Math.floor(sel / n)];
-      const moves: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
-      if (moves[e.key]) {
-        const [dx, dy] = moves[e.key];
-        const nx = Math.min(n - 1, Math.max(0, x + dx));
-        const ny = Math.min(n - 1, Math.max(0, y + dy));
-        setSel(ny * n + nx);
-        typed.current = null;
-        return e.preventDefault();
-      }
-      if (isGiven(s, sel)) return;
-      if (e.key === 'Backspace' || e.key === 'Delete' || e.key === '0' && !typed.current) {
-        put(sel, null);
-        typed.current = null;
-        return e.preventDefault();
-      }
-      if (!/^[0-9]$/.test(e.key)) return;
-      const d = Number(e.key);
-      const prev = typed.current;
-      // a second digit soon after the first makes a two-digit number (4×4 and 5×5)
-      if (prev && prev.cell === sel && performance.now() - prev.at < 1200 && prev.digit * 10 + d <= n * n) {
-        put(sel, prev.digit * 10 + d);
-        typed.current = null;
-      } else if (d >= 1) {
-        put(sel, d);
-        typed.current = d * 10 <= n * n ? { digit: d, cell: sel, at: performance.now() } : null;
-      }
+      if (!started || s.phase !== 'play' || e.target instanceof HTMLSelectElement) return;
+      const r = squareKey(e.key, performance.now(), n, current(s).givens, { sel, typed: typed.current });
+      if (!r.handled) return;
+      apply(r);
       e.preventDefault();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   });
+
+  const apply = (r: Intent) => {
+    setSel(r.sel);
+    typed.current = r.typed;
+    if (r.put) put(r.put.cell, r.put.v);
+  };
 
   const onHit = (id: string) => {
     if (id === 'start') return setStarted(true);
@@ -86,11 +68,9 @@ export function MagicSquares({ botCount = 3 }: { botCount?: number }) {
     }
     if (id === 'next') return setS(nextBoard(s));
     if (s.phase !== 'play') return;
-    typed.current = null;
-    if (id.startsWith('cell:')) return setSel(Number(id.slice(5)));
-    if (id.startsWith('num:') && sel !== null) return put(sel, Number(id.slice(4)));
-    if (id === 'clear' && sel !== null) return put(sel, null);
-    if (id === 'hint') {
+    const r = squareClick(id, n, current(s).givens, { sel, typed: typed.current });
+    apply(r);
+    if (r.hint) {
       const c = hintCell(s, rng);
       if (c < 0) return;
       setFlash({ cell: c, at: performance.now() });
@@ -133,21 +113,32 @@ function layout(n: number) {
   return { cs, x0: Math.round(4 + (278 - size - 26) / 2), y0: Math.round(32 + (234 - size - 18) / 2) };
 }
 
-function drawScene(g: Gfx, s: GameState, sel: number | null, flash: { cell: number; at: number } | null, now: number) {
-  const playing = s.phase === 'play';
-  const p = s.phase === 'gameOver' ? s.puzzles[s.puzzles.length - 1] : current(s);
-  const n = p.n;
-  const grid = s.phase === 'gameOver' ? p.solution : s.grid;
+/** One square on screen, solo or online. */
+export interface Square {
+  n: number;
+  fixed: Grid;           // numbers that can't change: the givens (online, hints too)
+  hinted?: Grid;         // online: numbers a hint revealed, drawn in green
+  grid: Grid;            // what's on the board
+  sel: number | null;
+  flash: { cell: number; at: number } | null;
+  playing: boolean;
+}
+
+export const SIDE_X = 286;
+const FLASH_MS = 2500;
+
+/** The board: top bar, the grid and its line totals. */
+export function drawSquare(g: Gfx, q: Square, title: string, time: string) {
+  const { n, grid, sel, flash, playing } = q;
   const m = magicSum(n);
   const { cs, x0, y0 } = layout(n);
   const totals = lineTotals(n, grid);
-  const penalty = s.hints * HINT_MS;
 
   g.tile('board', 'tile_night', 0, 0, W, H);
   topBar(g, [
-    { text: `SQUARE ${Math.min(s.index + 1, s.puzzles.length)}/${s.puzzles.length} · ${n}×${n}`, color: COLORS.gold },
+    { text: title, color: COLORS.gold },
     { text: `MAGIC SUM ${m}`, color: COLORS.emerald },
-    { text: playing ? `${clock(now + penalty)}${penalty ? ` (incl. +${penalty / 1000}s)` : ''}` : 'solved!', color: COLORS.ink },
+    { text: time, color: COLORS.ink },
   ], 'MAGIC SQUARES');
 
   g.panel('panel_night', 4, 30, 278, 236, 4);
@@ -155,13 +146,14 @@ function drawScene(g: Gfx, s: GameState, sel: number | null, flash: { cell: numb
   for (let c = 0; c < n * n; c++) {
     const px = x0 + (c % n) * cs;
     const py = y0 + Math.floor(c / n) * cs;
-    const given = p.givens[c] !== null;
+    const given = q.fixed[c] !== null;
+    const hint = q.hinted?.[c] != null;
     const id = `cell:${c}`;
     g.rect(px + 1, py + 1, cs - 2, cs - 2, given ? '#c9b48a' : sel === c && playing ? '#fff1c4' : '#e8d3a8');
     if (playing && !given && g.isHover(id) && sel !== c) g.rect(px + 1, py + 1, cs - 2, cs - 2, '#ffffff', 0.25);
     const v = grid[c];
-    if (v !== null) g.text(`${v}`, px + cs / 2, py + cs / 2 - big / 2 - 1, { align: 'center', size: big, color: given ? '#3a2216' : '#1f4d8a', shadow: false });
-    if (flash?.cell === c && performance.now() - flash.at < 2500 && Math.floor(g.time / 250) % 2) g.frame(px + 1, py + 1, cs - 2, cs - 2, COLORS.emerald, 2);
+    if (v !== null) g.text(`${v}`, px + cs / 2, py + cs / 2 - big / 2 - 1, { align: 'center', size: big, color: hint ? '#1d6b3a' : given ? '#3a2216' : '#1f4d8a', shadow: false });
+    if (flash?.cell === c && performance.now() - flash.at < FLASH_MS && Math.floor(g.time / 250) % 2) g.frame(px + 1, py + 1, cs - 2, cs - 2, COLORS.emerald, 2);
     if (sel === c && playing) g.frame(px + 1, py + 1, cs - 2, cs - 2, COLORS.gold, 2);
     if (playing) g.hit(id, px, py, cs, cs);
   }
@@ -178,37 +170,63 @@ function drawScene(g: Gfx, s: GameState, sel: number | null, flash: { cell: numb
   const anti = totals[2 * n + 1];
   g.text(`↘${diag.sum}`, x0 + n * cs + 4, y0 + n * cs + 4, { size: 8, color: tone(diag) });
   g.text(`${anti.sum}↙`, x0 - 4, y0 + n * cs + 4, { align: 'right', size: 8, color: tone(anti) });
+}
+
+/** The side panel while solving: the number pad, Clear and Hint. */
+export function drawPad(g: Gfx, q: Square, hintLabel = 'Hint (+30 s)') {
+  const { n, grid, sel, flash } = q;
+  const sx = SIDE_X;
+  const pw = W - sx - 4;
+  const locked = sel !== null && q.fixed[sel] !== null;
+  g.panel('panel_night', sx, 30, pw, 236, 4);
+  const used = new Set(grid.filter((v) => v !== null));
+  const filled = grid.filter((v) => v !== null).length;
+  g.text(sel === null ? 'Pick an empty square' : locked ? (q.hinted?.[sel] != null ? 'That number is a hint' : 'That number is given') : 'Pick a number (or type it)', sx + 10, 38, { size: 9, color: COLORS.gold });
+  g.text(`${filled}/${n * n} filled · each number once`, sx + 10, 52, { size: 7, color: COLORS.muted });
+  const cols = 5;
+  const bw = 32;
+  const bh = 18;
+  for (let v = 1; v <= n * n; v++) {
+    const bx = sx + 10 + ((v - 1) % cols) * (bw + 2);
+    const by = 64 + Math.floor((v - 1) / cols) * (bh + 2);
+    const id = `num:${v}`;
+    const canUse = sel !== null && !locked;
+    const taken = used.has(v);
+    g.rect(bx, by, bw, bh, taken ? '#2a1f4d' : g.isHover(id) && canUse ? '#5a4a96' : '#3d3270');
+    g.text(`${v}`, bx + bw / 2, by + 5, { align: 'center', size: 8, color: taken ? '#6b6390' : COLORS.ink });
+    if (sel !== null && grid[sel] === v) g.frame(bx, by, bw, bh, COLORS.gold);
+    if (canUse) g.hit(id, bx, by, bw, bh);
+  }
+  const by = 64 + Math.ceil((n * n) / cols) * (bh + 2) + 6;
+  g.button('clear', 'Clear (⌫)', sx + 10, by, 80, { disabled: sel === null || locked || grid[sel] === null });
+  g.button('hint', hintLabel, sx + 96, by, pw - 106);
+  if (flash && performance.now() - flash.at < FLASH_MS) g.text('A correct number, flashing green', sx + 10, by + 22, { size: 7, color: COLORS.emerald });
+  else {
+    g.text('Dimmed numbers are on the board —', sx + 10, by + 22, { size: 7, color: COLORS.muted });
+    g.text('picking one moves it here.', sx + 10, by + 32, { size: 7, color: COLORS.muted });
+  }
+}
+
+function drawScene(g: Gfx, s: GameState, sel: number | null, flash: { cell: number; at: number } | null, now: number) {
+  const playing = s.phase === 'play';
+  const p = s.phase === 'gameOver' ? s.puzzles[s.puzzles.length - 1] : current(s);
+  const n = p.n;
+  const grid = s.phase === 'gameOver' ? p.solution : s.grid;
+  const penalty = s.hints * HINT_MS;
+  const q: Square = { n, fixed: p.givens, grid, sel, flash, playing };
+
+  drawSquare(
+    g, q,
+    `SQUARE ${Math.min(s.index + 1, s.puzzles.length)}/${s.puzzles.length} · ${n}×${n}`,
+    playing ? `${clock(now + penalty)}${penalty ? ` (incl. +${penalty / 1000}s)` : ''}` : 'solved!',
+  );
 
   // side panel
-  const sx = 286;
+  const sx = SIDE_X;
   const pw = W - sx - 4;
-  g.panel('panel_night', sx, 30, pw, 236, 4);
-  if (playing) {
-    const used = new Set(grid.filter((v) => v !== null));
-    const filled = grid.filter((v) => v !== null).length;
-    g.text(sel === null ? 'Pick an empty square' : isGiven(s, sel) ? 'That number is given' : 'Pick a number (or type it)', sx + 10, 38, { size: 9, color: COLORS.gold });
-    g.text(`${filled}/${n * n} filled · each number once`, sx + 10, 52, { size: 7, color: COLORS.muted });
-    const cols = 5;
-    const bw = 32;
-    const bh = 18;
-    for (let v = 1; v <= n * n; v++) {
-      const bx = sx + 10 + ((v - 1) % cols) * (bw + 2);
-      const by = 64 + Math.floor((v - 1) / cols) * (bh + 2);
-      const id = `num:${v}`;
-      const canUse = sel !== null && !isGiven(s, sel);
-      const taken = used.has(v);
-      g.rect(bx, by, bw, bh, taken ? '#2a1f4d' : g.isHover(id) && canUse ? '#5a4a96' : '#3d3270');
-      g.text(`${v}`, bx + bw / 2, by + 5, { align: 'center', size: 8, color: taken ? '#6b6390' : COLORS.ink });
-      if (sel !== null && grid[sel] === v) g.frame(bx, by, bw, bh, COLORS.gold);
-      if (canUse) g.hit(id, bx, by, bw, bh);
-    }
-    const by = 64 + Math.ceil((n * n) / cols) * (bh + 2) + 6;
-    g.button('clear', 'Clear (⌫)', sx + 10, by, 80, { disabled: sel === null || isGiven(s, sel) || grid[sel] === null });
-    g.button('hint', 'Hint (+30 s)', sx + 96, by, pw - 106);
-    if (flash && performance.now() - flash.at < 2500) g.text('A correct number, flashing green', sx + 10, by + 22, { size: 7, color: COLORS.emerald });
-    else g.text('Dimmed numbers are on the board —', sx + 10, by + 22, { size: 7, color: COLORS.muted });
-    if (!(flash && performance.now() - flash.at < 2500)) g.text('picking one moves it here.', sx + 10, by + 32, { size: 7, color: COLORS.muted });
-  } else {
+  if (playing) drawPad(g, q);
+  else {
+    g.panel('panel_night', sx, 30, pw, 236, 4);
     const r = s.results[s.results.length - 1];
     g.text('MAGIC!', sx + 10, 40, { size: 11, color: COLORS.emerald });
     g.text(`Your time ${clock(r.timeMs)}${r.hints ? ` (${r.hints} hint${r.hints > 1 ? 's' : ''})` : ''}`, sx + 10, 58, { size: 8, color: COLORS.ink });
@@ -229,6 +247,65 @@ function drawScene(g: Gfx, s: GameState, sel: number | null, flash: { cell: numb
       order[0].name === 'You' ? 'Fastest solver — you win!' : `${order[0].name} solved fastest.`,
     );
   }
+}
+
+// ---------------------------------------------------------------- input
+
+/** Where a typed first digit is waiting for a possible second one. */
+export interface Typed { digit: number; cell: number; at: number }
+export interface Input { sel: number | null; typed: Typed | null }
+/** What a click or key does: the new selection, maybe a number to put, maybe a hint. */
+export interface Intent extends Input {
+  handled: boolean;
+  put?: { cell: number; v: number | null };
+  hint?: boolean;
+}
+
+/** A click on the board or the pad. `fixed` marks the cells that can't change. */
+export function squareClick(id: string, n: number, fixed: Grid, input: Input): Intent {
+  const sel = input.sel;
+  const open = sel !== null && fixed[sel] === null;
+  const out: Intent = { sel, typed: null, handled: true };
+  if (id.startsWith('cell:')) {
+    const c = Number(id.slice(5));
+    return Number.isInteger(c) && c >= 0 && c < n * n ? { ...out, sel: c } : out;
+  }
+  if (id.startsWith('num:') && open) {
+    const v = Number(id.slice(4));
+    return v >= 1 && v <= n * n ? { ...out, put: { cell: sel, v } } : out;
+  }
+  if (id === 'clear' && open) return { ...out, put: { cell: sel, v: null } };
+  if (id === 'hint') return { ...out, hint: true };
+  return out;
+}
+
+/** A key press: arrows move, digits type (two quick digits make 10 and up), ⌫ clears. */
+export function squareKey(key: string, now: number, n: number, fixed: Grid, input: Input): Intent {
+  const { sel, typed } = input;
+  const skip: Intent = { sel, typed, handled: false };
+  if (sel === null) return skip;
+  const [x, y] = [sel % n, Math.floor(sel / n)];
+  const moves: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+  if (moves[key]) {
+    const [dx, dy] = moves[key];
+    const nx = Math.min(n - 1, Math.max(0, x + dx));
+    const ny = Math.min(n - 1, Math.max(0, y + dy));
+    return { sel: ny * n + nx, typed: null, handled: true };
+  }
+  if (fixed[sel] !== null) return skip;
+  if (key === 'Backspace' || key === 'Delete' || key === '0' && !typed) {
+    return { sel, typed: null, handled: true, put: { cell: sel, v: null } };
+  }
+  if (!/^[0-9]$/.test(key)) return skip;
+  const d = Number(key);
+  // a second digit soon after the first makes a two-digit number (4×4 and 5×5)
+  if (typed && typed.cell === sel && now - typed.at < 1200 && typed.digit * 10 + d <= n * n) {
+    return { sel, typed: null, handled: true, put: { cell: sel, v: typed.digit * 10 + d } };
+  }
+  if (d >= 1) {
+    return { sel, typed: d * 10 <= n * n ? { digit: d, cell: sel, at: now } : null, handled: true, put: { cell: sel, v: d } };
+  }
+  return { sel, typed, handled: true };
 }
 
 // ---------------------------------------------------------------- log (DOM)

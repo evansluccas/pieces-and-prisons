@@ -224,12 +224,17 @@ export interface GameState {
 
 export const current = (s: GameState) => s.puzzles[s.index];
 
-export function newGame(rng: Rng, ghostNames: string[], boards = BOARDS): GameState {
-  const puzzles = boards.map((n) => makePuzzle(n, rng));
+/** A rival's time on an n×n square: a typical time, their skill, and some luck. */
+export function ghostMs(n: number, i: number, rng: Rng): number {
   const base: Record<number, number> = { 3: 50_000, 4: 200_000, 5: 420_000 };
   const skills = [0.8, 1, 1.25];
+  return Math.round(base[n] * skills[i % 3] * (0.8 + rng() * 0.5));
+}
+
+export function newGame(rng: Rng, ghostNames: string[], boards = BOARDS): GameState {
+  const puzzles = boards.map((n) => makePuzzle(n, rng));
   const ghosts = ghostNames.map((name, i) => ({
-    name, times: boards.map((n) => Math.round(base[n] * skills[i % 3] * (0.8 + rng() * 0.5))),
+    name, times: boards.map((n) => ghostMs(n, i, rng)),
   }));
   return { index: 0, phase: 'play', puzzles, grid: [...puzzles[0].givens], hints: 0, results: [], ghosts };
 }
@@ -241,9 +246,12 @@ export function write(s: GameState, c: number, v: number | null, timeMs: number)
   if (s.phase !== 'play' || isGiven(s, c)) return s;
   const n = current(s).n;
   if (v !== null && (v < 1 || v > n * n)) return s;
-  const grid = s.grid.map((x, i) => (i === c ? v : x === v && v !== null ? null : x));
-  return finish({ ...s, grid }, timeMs);
+  return finish({ ...s, grid: place(s.grid, c, v) }, timeMs);
 }
+
+/** The grid with v in cell c; a number already used elsewhere moves here. */
+export const place = (g: Grid, c: number, v: number | null): Grid =>
+  g.map((x, i) => (i === c ? v : x === v && v !== null ? null : x));
 
 function finish(s: GameState, timeMs: number): GameState {
   const n = current(s).n;

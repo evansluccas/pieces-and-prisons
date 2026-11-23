@@ -140,3 +140,9 @@ canvas.stage { image-rendering: pixelated; display: block; max-width: 100%; }
 .lobby-results li.you { color: var(--gold); }
 
 .rejoin { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-top: 10px; padding: 8px 10px; border: 1px solid var(--gold); background: #2a2050; }
+
+/* puzzle races: the scoreboard beside the board */
+.race-board p { margin: 4px 0 8px; }
+.race-board p.tip { color: var(--ruby); }
+.race-board li.you b { color: var(--gold); }
+.race-board .btn { margin-top: 8px; }

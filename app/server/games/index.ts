@@ -29,6 +29,13 @@ import * as d_hex_sum from '../../src/games/hex-sum/online';
 import * as d_blind_five from '../../src/games/blind-five/online';
 import * as e_number_forge from '../../src/games/number-forge/online';
 import * as e_split_decision from '../../src/games/split-decision/online';
+import * as f_second_glance from '../../src/games/second-glance/online';
+import * as f_piece_together from '../../src/games/piece-together/online';
+import * as f_mirror_pieces from '../../src/games/mirror-pieces/online';
+import * as f_fence_loop from '../../src/games/fence-loop/online';
+import * as f_cipher_lock from '../../src/games/cipher-lock/online';
+import * as f_knights_tour from '../../src/games/knights-tour/online';
+import * as f_magic_squares from '../../src/games/magic-squares/online';
 
 const lonelyNumber: OnlineGame<LonelyState> = {
   id: 'lonely-number',
@@ -250,6 +257,17 @@ const GROUP_E = [
   fromModule('split-decision', 2, 6, e_split_decision),
 ];
 
+/** Group F: the solo puzzles, raced (src/games/shared/race.ts). A race works alone, too. */
+const GROUP_F = [
+  fromModule('second-glance', 1, 6, f_second_glance),
+  fromModule('piece-together', 1, 6, f_piece_together),
+  fromModule('mirror-pieces', 1, 6, f_mirror_pieces),
+  fromModule('fence-loop', 1, 6, f_fence_loop),
+  fromModule('cipher-lock', 1, 6, f_cipher_lock),
+  fromModule('knights-tour', 1, 6, f_knights_tour),
+  fromModule('magic-squares', 1, 6, f_magic_squares),
+];
+
 export const ONLINE_GAMES: Record<string, OnlineGame<any>> = {
   [lonelyNumber.id]: lonelyNumber,
   [sandBid.id]: sandBid,
@@ -267,4 +285,5 @@ export const ONLINE_GAMES: Record<string, OnlineGame<any>> = {
   [highLowEquations.id]: highLowEquations,
   ...Object.fromEntries(GROUP_D.map((g) => [g.id, g])),
   ...Object.fromEntries(GROUP_E.map((g) => [g.id, g])),
+  ...Object.fromEntries(GROUP_F.map((g) => [g.id, g])),
 };

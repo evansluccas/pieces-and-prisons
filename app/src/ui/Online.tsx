@@ -23,6 +23,13 @@ import { HexSumOnline } from '../games/hex-sum/HexSumOnline';
 import { BlindFiveOnline } from '../games/blind-five/BlindFiveOnline';
 import { NumberForgeOnline } from '../games/number-forge/NumberForgeOnline';
 import { SplitDecisionOnline } from '../games/split-decision/SplitDecisionOnline';
+import { SecondGlanceOnline } from '../games/second-glance/SecondGlanceOnline';
+import { PieceTogetherOnline } from '../games/piece-together/PieceTogetherOnline';
+import { MirrorPiecesOnline } from '../games/mirror-pieces/MirrorPiecesOnline';
+import { FenceLoopOnline } from '../games/fence-loop/FenceLoopOnline';
+import { CipherLockOnline } from '../games/cipher-lock/CipherLockOnline';
+import { KnightsTourOnline } from '../games/knights-tour/KnightsTourOnline';
+import { MagicSquaresOnline } from '../games/magic-squares/MagicSquaresOnline';
 import { GameMessage, RoomView, useTable } from '../net/table';
 import { Me, account } from '../net/account';
 import { Panel, Sprite } from './Panel';
@@ -60,6 +67,13 @@ const ONLINE_VIEWS: Record<string, (p: OnlineGameProps) => ReactElement> = {
   'blind-five': BlindFiveOnline,
   'number-forge': NumberForgeOnline,
   'split-decision': SplitDecisionOnline,
+  'second-glance': SecondGlanceOnline,
+  'piece-together': PieceTogetherOnline,
+  'mirror-pieces': MirrorPiecesOnline,
+  'fence-loop': FenceLoopOnline,
+  'cipher-lock': CipherLockOnline,
+  'knights-tour': KnightsTourOnline,
+  'magic-squares': MagicSquaresOnline,
 };
 export const ONLINE_IDS = Object.keys(ONLINE_VIEWS);
 
