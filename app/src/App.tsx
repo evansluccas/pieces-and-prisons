@@ -31,6 +31,7 @@ import { BlindFive, RULES as BLIND_FIVE_RULES } from './games/blind-five/BlindFi
 import { MagicSquares, RULES as MAGIC_RULES } from './games/magic-squares/MagicSquares';
 import { HighLowEquations, RULES as HLE_RULES } from './games/high-low-equations/HighLowEquations';
 import { TurfWar, RULES as TURF_RULES } from './games/turf-war/TurfWar';
+import { TriMancala, RULES as MANCALA_RULES } from './games/tri-mancala/TriMancala';
 import { Hub } from './ui/Hub';
 import { Panel } from './ui/Panel';
 
@@ -64,6 +65,7 @@ const GAME_VIEWS: Record<string, { rules: string[]; View: (p: { botCount: number
   'magic-squares': { rules: MAGIC_RULES, View: MagicSquares },
   'high-low-equations': { rules: HLE_RULES, View: HighLowEquations },
   'turf-war': { rules: TURF_RULES, View: TurfWar },
+  'tri-mancala': { rules: MANCALA_RULES, View: TriMancala },
 };
 
 export function App() {
