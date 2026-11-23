@@ -63,6 +63,24 @@ export function bestGuess(rows: Row[]): Row {
   return best;
 }
 
+/** Above this many possible rows, questions are judged on a sample this big. */
+const SAMPLE = 1500;
+
+const gcd = (a: number, b: number): number => (b ? gcd(b, a % b) : a);
+
+/**
+ * `size` rows spread over the whole list with no pattern. The rows are in
+ * sorted order, so taking every n-th one would pick rows that look alike;
+ * stepping by a large stride that shares no factor with the length visits
+ * them in a well-mixed order instead.
+ */
+function spread(rows: Row[], size: number): Row[] {
+  if (rows.length <= size) return rows;
+  let step = 7919;
+  while (gcd(step, rows.length) !== 1) step += 2;
+  return Array.from({ length: size }, (_, k) => rows[(k * step) % rows.length]);
+}
+
 export type BotAction = { kind: 'ask'; q: Question } | { kind: 'guess'; row: Row };
 
 /**
@@ -74,8 +92,11 @@ export function botTurn(s: GameState, side: Side, level: Level, rng: Rng): BotAc
   const affordable = ALL_QUESTIONS.filter((q) => COST[q.kind] <= s.tokens[side]);
   if (rows.length === 1 || !affordable.length) return { kind: 'guess', row: bestGuess(rows) };
   if (level === 'easy') return { kind: 'ask', q: affordable[Math.floor(rng() * affordable.length)] };
+  // early on (tens of thousands of possible rows) an even sample judges each question just as well,
+  // at a fraction of the work — the server runs many of these bots at once
+  const sample = spread(rows, SAMPLE);
   const scored = affordable
-    .map((q) => ({ q, v: information(rows, q) / (level === 'hard' ? COST[q.kind] : 1) + rng() * 0.01 }))
+    .map((q) => ({ q, v: information(sample, q) / (level === 'hard' ? COST[q.kind] : 1) + rng() * 0.01 }))
     .filter((x) => x.v > 0.001)
     .sort((a, b) => b.v - a.v);
   if (!scored.length) return { kind: 'guess', row: bestGuess(rows) };

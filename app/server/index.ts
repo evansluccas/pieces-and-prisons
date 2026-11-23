@@ -19,6 +19,7 @@ import { fileURLToPath } from 'node:url';
 import { sweep } from './auth';
 import { createApp } from './app';
 import { openDb } from './db';
+import { saveTables, takeTables } from './persist';
 import { staticFiles } from './static';
 import { attachSockets } from './ws';
 
@@ -52,15 +53,29 @@ const server = createServer((req, res) => {
   void (isApi || !files ? handle(req, res) : files(req, res));
 });
 rooms = attachSockets(server, db);
+
+// tables saved when the server last stopped carry on (players reconnect on their own)
+const restored = rooms.restore(takeTables(db));
+if (restored) console.log(`restored ${restored} table${restored === 1 ? '' : 's'}`);
+// and they're saved now and then, in case the server stops without warning
+const save = () => saveTables(db, rooms!.snapshot(), Date.now());
+setInterval(save, 30_000).unref();
 server.listen(port, () => {
   console.log(`Pieces & Prisons server on http://localhost:${port} (db: ${dbPath}${staticDir ? `, app: ${staticDir}` : ''})`);
 });
 
-// the host stops the machine with SIGTERM (e.g. on a deploy): close the database cleanly
+// the host stops the machine (SIGINT or SIGTERM, e.g. on a deploy): tell the players,
+// save every table, close the database cleanly
 for (const sig of ['SIGTERM', 'SIGINT'] as const) {
   process.once(sig, () => {
+    rooms!.notice('The server is restarting for an update — your table is saved and will be back in a moment.');
+    rooms!.stop();
+    save();
     server.close();
-    db.close();
-    process.exit(0);
+    // a moment for that message to leave before the connections drop
+    setTimeout(() => {
+      db.close();
+      process.exit(0);
+    }, 300);
   });
 }

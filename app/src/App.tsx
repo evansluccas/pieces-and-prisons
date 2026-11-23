@@ -1,72 +1,45 @@
 import { useEffect, useState } from 'react';
 import { loadAll } from './engine/atlas';
 import { GAMES } from './games/registry';
-import { LonelyNumber, RULES as LONELY_RULES } from './games/lonely-number/LonelyNumber';
-import { SandBid, RULES as SAND_RULES } from './games/sand-bid/SandBid';
-import { DiceTower, RULES as DICE_RULES } from './games/dice-tower/DiceTower';
-import { TippingScales, RULES as SCALES_RULES } from './games/tipping-scales/TippingScales';
-import { SixChambers, RULES as CHAMBER_RULES } from './games/six-chambers/SixChambers';
-import { WallsAndWards, RULES as WALL_RULES } from './games/walls-and-wards/WallsAndWards';
-import { PiggyBluff, RULES as PIGGY_RULES } from './games/piggy-bluff/PiggyBluff';
-import { BlindBingo, RULES as BINGO_RULES } from './games/blind-bingo/BlindBingo';
-import { SmugglersGems, RULES as GEM_RULES } from './games/smugglers-gems/SmugglersGems';
 import { BOT_SPEED, SPEEDS, Speed, setSpeed } from './games/shared/pace';
-import { ColorDoubt, RULES as DOUBT_RULES } from './games/color-doubt/ColorDoubt';
-import { NumberForge, RULES as FORGE_RULES } from './games/number-forge/NumberForge';
-import { RumorExchange, RULES as RUMOR_RULES } from './games/rumor-exchange/RumorExchange';
-import { CipherLock, RULES as CIPHER_RULES } from './games/cipher-lock/CipherLock';
-import { FenceLoop, RULES as FENCE_RULES } from './games/fence-loop/FenceLoop';
-import { SecondGlance, RULES as GLANCE_RULES } from './games/second-glance/SecondGlance';
-import { DeadeyeHoldem, RULES as DEADEYE_RULES } from './games/deadeye-holdem/DeadeyeHoldem';
-import { SplitDecision, RULES as SPLIT_RULES } from './games/split-decision/SplitDecision';
-import { PieceTogether, RULES as PIECE_RULES } from './games/piece-together/PieceTogether';
-import { MirrorPieces, RULES as MIRROR_RULES } from './games/mirror-pieces/MirrorPieces';
-import { NineMensMorris, RULES as MORRIS_RULES } from './games/nine-mens-morris/NineMensMorris';
-import { HexSum, RULES as HEX_RULES } from './games/hex-sum/HexSum';
-import { HighOrLow, RULES as HILO_RULES } from './games/high-or-low/HighOrLow';
-import { TigersAndGoats, RULES as TIGER_RULES } from './games/tigers-and-goats/TigersAndGoats';
-import { AskAndArrange, RULES as ASK_RULES } from './games/ask-and-arrange/AskAndArrange';
-import { KnightsTour, RULES as KNIGHT_RULES } from './games/knights-tour/KnightsTour';
-import { BlindFive, RULES as BLIND_FIVE_RULES } from './games/blind-five/BlindFive';
-import { MagicSquares, RULES as MAGIC_RULES } from './games/magic-squares/MagicSquares';
-import { HighLowEquations, RULES as HLE_RULES } from './games/high-low-equations/HighLowEquations';
-import { TurfWar, RULES as TURF_RULES } from './games/turf-war/TurfWar';
-import { TriMancala, RULES as MANCALA_RULES } from './games/tri-mancala/TriMancala';
 import { Hub } from './ui/Hub';
 import { Online } from './ui/Online';
+import { Leaderboards, MyMatches } from './ui/Records';
 import { Panel } from './ui/Panel';
 
-const GAME_VIEWS: Record<string, { rules: string[]; View: (p: { botCount: number }) => JSX.Element }> = {
-  'lonely-number': { rules: LONELY_RULES, View: LonelyNumber },
-  'sand-bid': { rules: SAND_RULES, View: SandBid },
-  'dice-tower': { rules: DICE_RULES, View: DiceTower },
-  'tipping-scales': { rules: SCALES_RULES, View: TippingScales },
-  'six-chambers': { rules: CHAMBER_RULES, View: SixChambers },
-  'walls-and-wards': { rules: WALL_RULES, View: WallsAndWards },
-  'piggy-bluff': { rules: PIGGY_RULES, View: PiggyBluff },
-  'blind-bingo': { rules: BINGO_RULES, View: BlindBingo },
-  'smugglers-gems': { rules: GEM_RULES, View: SmugglersGems },
-  'color-doubt': { rules: DOUBT_RULES, View: ColorDoubt },
-  'number-forge': { rules: FORGE_RULES, View: NumberForge },
-  'rumor-exchange': { rules: RUMOR_RULES, View: RumorExchange },
-  'cipher-lock': { rules: CIPHER_RULES, View: CipherLock },
-  'fence-loop': { rules: FENCE_RULES, View: FenceLoop },
-  'second-glance': { rules: GLANCE_RULES, View: SecondGlance },
-  'deadeye-holdem': { rules: DEADEYE_RULES, View: DeadeyeHoldem },
-  'split-decision': { rules: SPLIT_RULES, View: SplitDecision },
-  'piece-together': { rules: PIECE_RULES, View: PieceTogether },
-  'mirror-pieces': { rules: MIRROR_RULES, View: MirrorPieces },
-  'nine-mens-morris': { rules: MORRIS_RULES, View: NineMensMorris },
-  'hex-sum': { rules: HEX_RULES, View: HexSum },
-  'high-or-low': { rules: HILO_RULES, View: HighOrLow },
-  'tigers-and-goats': { rules: TIGER_RULES, View: TigersAndGoats },
-  'ask-and-arrange': { rules: ASK_RULES, View: AskAndArrange },
-  'knights-tour': { rules: KNIGHT_RULES, View: KnightsTour },
-  'blind-five': { rules: BLIND_FIVE_RULES, View: BlindFive },
-  'magic-squares': { rules: MAGIC_RULES, View: MagicSquares },
-  'high-low-equations': { rules: HLE_RULES, View: HighLowEquations },
-  'turf-war': { rules: TURF_RULES, View: TurfWar },
-  'tri-mancala': { rules: MANCALA_RULES, View: TriMancala },
+/** A game's screen and rules. Each game's code loads only when it's opened (smaller first download). */
+interface GameModule { rules: string[]; View: (p: { botCount: number }) => JSX.Element }
+const GAME_VIEWS: Record<string, () => Promise<GameModule>> = {
+  'lonely-number': () => import('./games/lonely-number/LonelyNumber').then((m) => ({ rules: m.RULES, View: m.LonelyNumber })),
+  'sand-bid': () => import('./games/sand-bid/SandBid').then((m) => ({ rules: m.RULES, View: m.SandBid })),
+  'dice-tower': () => import('./games/dice-tower/DiceTower').then((m) => ({ rules: m.RULES, View: m.DiceTower })),
+  'tipping-scales': () => import('./games/tipping-scales/TippingScales').then((m) => ({ rules: m.RULES, View: m.TippingScales })),
+  'six-chambers': () => import('./games/six-chambers/SixChambers').then((m) => ({ rules: m.RULES, View: m.SixChambers })),
+  'walls-and-wards': () => import('./games/walls-and-wards/WallsAndWards').then((m) => ({ rules: m.RULES, View: m.WallsAndWards })),
+  'piggy-bluff': () => import('./games/piggy-bluff/PiggyBluff').then((m) => ({ rules: m.RULES, View: m.PiggyBluff })),
+  'blind-bingo': () => import('./games/blind-bingo/BlindBingo').then((m) => ({ rules: m.RULES, View: m.BlindBingo })),
+  'smugglers-gems': () => import('./games/smugglers-gems/SmugglersGems').then((m) => ({ rules: m.RULES, View: m.SmugglersGems })),
+  'color-doubt': () => import('./games/color-doubt/ColorDoubt').then((m) => ({ rules: m.RULES, View: m.ColorDoubt })),
+  'number-forge': () => import('./games/number-forge/NumberForge').then((m) => ({ rules: m.RULES, View: m.NumberForge })),
+  'rumor-exchange': () => import('./games/rumor-exchange/RumorExchange').then((m) => ({ rules: m.RULES, View: m.RumorExchange })),
+  'cipher-lock': () => import('./games/cipher-lock/CipherLock').then((m) => ({ rules: m.RULES, View: m.CipherLock })),
+  'fence-loop': () => import('./games/fence-loop/FenceLoop').then((m) => ({ rules: m.RULES, View: m.FenceLoop })),
+  'second-glance': () => import('./games/second-glance/SecondGlance').then((m) => ({ rules: m.RULES, View: m.SecondGlance })),
+  'deadeye-holdem': () => import('./games/deadeye-holdem/DeadeyeHoldem').then((m) => ({ rules: m.RULES, View: m.DeadeyeHoldem })),
+  'split-decision': () => import('./games/split-decision/SplitDecision').then((m) => ({ rules: m.RULES, View: m.SplitDecision })),
+  'piece-together': () => import('./games/piece-together/PieceTogether').then((m) => ({ rules: m.RULES, View: m.PieceTogether })),
+  'mirror-pieces': () => import('./games/mirror-pieces/MirrorPieces').then((m) => ({ rules: m.RULES, View: m.MirrorPieces })),
+  'nine-mens-morris': () => import('./games/nine-mens-morris/NineMensMorris').then((m) => ({ rules: m.RULES, View: m.NineMensMorris })),
+  'hex-sum': () => import('./games/hex-sum/HexSum').then((m) => ({ rules: m.RULES, View: m.HexSum })),
+  'high-or-low': () => import('./games/high-or-low/HighOrLow').then((m) => ({ rules: m.RULES, View: m.HighOrLow })),
+  'tigers-and-goats': () => import('./games/tigers-and-goats/TigersAndGoats').then((m) => ({ rules: m.RULES, View: m.TigersAndGoats })),
+  'ask-and-arrange': () => import('./games/ask-and-arrange/AskAndArrange').then((m) => ({ rules: m.RULES, View: m.AskAndArrange })),
+  'knights-tour': () => import('./games/knights-tour/KnightsTour').then((m) => ({ rules: m.RULES, View: m.KnightsTour })),
+  'blind-five': () => import('./games/blind-five/BlindFive').then((m) => ({ rules: m.RULES, View: m.BlindFive })),
+  'magic-squares': () => import('./games/magic-squares/MagicSquares').then((m) => ({ rules: m.RULES, View: m.MagicSquares })),
+  'high-low-equations': () => import('./games/high-low-equations/HighLowEquations').then((m) => ({ rules: m.RULES, View: m.HighLowEquations })),
+  'turf-war': () => import('./games/turf-war/TurfWar').then((m) => ({ rules: m.RULES, View: m.TurfWar })),
+  'tri-mancala': () => import('./games/tri-mancala/TriMancala').then((m) => ({ rules: m.RULES, View: m.TriMancala })),
 };
 
 export function App() {
@@ -97,13 +70,28 @@ export function App() {
     loadAll().then(() => setReady(true)).catch((e) => setError(String(e)));
   }, []);
 
+  // fetch the chosen game's code
+  const [loaded, setLoaded] = useState<{ id: string; mod: GameModule } | null>(null);
+  useEffect(() => {
+    const load = current ? GAME_VIEWS[current] : undefined;
+    if (!current || !load || loaded?.id === current) return;
+    let live = true;
+    load().then((mod) => live && setLoaded({ id: current, mod }), (e) => live && setError(String(e)));
+    return () => {
+      live = false;
+    };
+  }, [current]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (error) return <p className="center">Could not load assets: {error}</p>;
   if (!ready) return <p className="center muted">Loading…</p>;
   if (current === 'online') return <Online onExit={() => setCurrent(null)} />;
-  if (!current) return <Hub onPlay={(id) => { setCurrent(id); setShowRules(true); }} onOnline={() => setCurrent('online')} />;
+  if (current === 'matches') return <MyMatches onExit={() => setCurrent(null)} />;
+  if (current === 'leaders') return <Leaderboards onExit={() => setCurrent(null)} />;
+  if (!current) return <Hub onPlay={(id) => { setCurrent(id); setShowRules(true); }} onOnline={() => setCurrent('online')} onPage={setCurrent} />;
 
   const info = GAMES.find((g) => g.id === current)!;
-  const { rules, View } = GAME_VIEWS[current];
+  if (loaded?.id !== current) return <p className="center muted">Loading {info.name}…</p>;
+  const { rules, View } = loaded.mod;
   return (
     <div className="game-screen">
       <nav className="game-nav">

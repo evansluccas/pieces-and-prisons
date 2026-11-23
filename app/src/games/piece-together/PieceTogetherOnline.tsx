@@ -13,7 +13,7 @@ import { Board, H, TRAY_X, W, boardHit, drawPlay, freshBoard, keyHit } from './P
  * Piece Together as a puzzle race: arrange the pieces here; the moment the
  * board is full it goes to the server, which checks it and stops your clock.
  */
-export function PieceTogetherOnline({ game, send, onAgain }: OnlineGameProps) {
+export function PieceTogetherOnline({ game, send, onAgain, error }: OnlineGameProps) {
   const v = game.view as RaceView;
   const pz = v.puzzle as View;
   const [board, setBoard] = useState<Board>(() => freshBoard(pz));
@@ -80,7 +80,9 @@ export function PieceTogetherOnline({ game, send, onAgain }: OnlineGameProps) {
     const shown = solving ? board.placed : pz.placed ?? (settled ? pz.solution ?? [] : board.placed);
     drawPlay(g, pz, board, solving, shown);
     if (solving) {
-      if (rejected) g.text('Not accepted — move a piece to try again', 8, 255, { size: 7, color: COLORS.ruby });
+      // the server's own reason, if it turned the board down
+      const refused = sentAt !== null && error && error.at >= sentAt ? error.text : null;
+      if (refused || rejected) g.text(refused ? `${refused} — move a piece to try again` : 'Not accepted — move a piece to try again', 8, 255, { size: 7, color: COLORS.ruby });
       return;
     }
 

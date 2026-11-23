@@ -34,3 +34,33 @@ export const account = {
   logout: () => call('logout', {}),
   remove: (password: string) => call('delete', { password }),
 };
+
+/** Read-only JSON from the server (history, leaderboards). */
+async function read<T>(path: string): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(`/api/${path}`, { credentials: 'same-origin' });
+  } catch {
+    throw new Offline('The game server is offline.');
+  }
+  if (!(res.headers.get('content-type') ?? '').includes('application/json')) throw new Offline('The game server is offline.');
+  const json = (await res.json()) as T & { error?: string };
+  if (!res.ok) throw new ApiError(json.error ?? 'Something went wrong.');
+  return json;
+}
+
+export interface MatchSummary {
+  id: number;
+  gameId: string;
+  startedAt: number;
+  finishedAt: number;
+  place: number | null;
+  detail: string | null;
+  players: { name: string; place: number | null; detail: string | null; you: boolean; bot: boolean }[];
+}
+export interface LeaderRow { rank: number; name: string; played: number; wins: number; winRate: number; avgPlace: number; you: boolean }
+
+export const records = {
+  matches: () => read<{ matches: MatchSummary[] }>('matches').then((r) => r.matches),
+  leaderboard: (gameId: string | null) => read<{ rows: LeaderRow[] }>(`leaderboard${gameId ? `?game=${encodeURIComponent(gameId)}` : ''}`).then((r) => r.rows),
+};

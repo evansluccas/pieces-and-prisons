@@ -22,6 +22,7 @@ import { seededRng, type Rng } from '../src/games/shared/rng';
 import type { User } from './auth';
 import type { Db } from './db';
 import { ONLINE_GAMES } from './games';
+import { decode, encode } from './persist';
 import type { OnlineGame, Result } from './games/types';
 
 export const TURN_MS = 60_000;
@@ -54,7 +55,11 @@ interface Room {
   nextSeat: number;
   decision: number;               // bumps each time a new decision begins
   decisionKey: string | null;     // the game's own name for the current decision, if it gives one
+  startedAt: number | null;       // when the current game began
 }
+
+/** What is kept of a room when the server stops (see snapshot/restore). */
+type SavedRoom = Omit<Room, 'game' | 'timers' | 'ready'> & { ready: string[] };
 
 export interface SeatView { name: string; bot: boolean; connected: boolean; you: boolean; host: boolean }
 export interface RoomView {
@@ -72,7 +77,8 @@ export interface TableInfo { code: string; gameId: string; status: Status }
 
 export type ServerMessage =
   | { type: 'room'; room: RoomView }
-  | { type: 'game'; view: unknown; waiting: boolean; deadline: number | null; pauseUntil: number | null }
+  /** `now` is the server's clock when sent, so clients can count down without trusting their own clock. */
+  | { type: 'game'; view: unknown; waiting: boolean; deadline: number | null; pauseUntil: number | null; now: number }
   | { type: 'left' }
   | { type: 'error'; message: string };
 
@@ -86,6 +92,7 @@ export type ClientMessage =
   | { type: 'act'; action: unknown }
   | { type: 'ready' }
   | { type: 'again' }
+  | { type: 'report'; seat: number }
   | { type: 'hello' };
 
 class TableError extends Error {}
@@ -115,6 +122,7 @@ export class Rooms {
         case 'act': return this.act(user, msg.action);
         case 'ready': return this.ready(user);
         case 'again': return this.again(user);
+        case 'report': return this.report(user, Number(msg.seat));
         default: throw new TableError('Unknown request.');
       }
     } catch (e) {
@@ -197,7 +205,7 @@ export class Rooms {
     const room: Room = {
       code: this.newCode(), gameId, game, hostId: user.id, seats: [], status: 'lobby', state: null,
       rng: seededRng(randomInt(1 << 30)), results: null, deadline: null, pauseUntil: null, ready: new Set(),
-      timers: new Set(), emptySince: null, nextSeat: 0, decision: 0, decisionKey: null,
+      timers: new Set(), emptySince: null, nextSeat: 0, decision: 0, decisionKey: null, startedAt: null,
     };
     this.rooms.set(room.code, room);
     this.seat(room, user);
@@ -299,6 +307,7 @@ export class Rooms {
     if (room.seats.length < room.game.minPlayers) throw new TableError(`This game needs at least ${room.game.minPlayers} players — add bots to fill seats.`);
     room.state = room.game.start(room.seats.map((s) => ({ id: s.id, name: s.name, isBot: s.isBot })), room.rng, this.now());
     room.status = 'playing';
+    room.startedAt = this.now();
     room.results = null;
     this.advance(room);
   }
@@ -347,6 +356,23 @@ export class Rooms {
     room.ready.add(seat.id);
     const people = room.seats.filter((s) => !s.isBot && s.connected);
     if (people.every((s) => room.ready.has(s.id))) this.endPause(room);
+  }
+
+  /** Report another person's name at this table; kept for review (server/admin.ts). */
+  private report(user: User, index: number) {
+    const room = this.mustRoom(user);
+    const seat = room.seats[index];
+    if (!seat || seat.userId === null) throw new TableError('Only players can be reported, not bots.');
+    if (seat.userId === user.id) throw new TableError('You can’t report yourself.');
+    if (this.db) {
+      const day = this.now() - 24 * 60 * 60 * 1000;
+      const again = this.db.prepare('SELECT 1 FROM reports WHERE reporter_id = ? AND reported_id = ? AND created_at > ?').get(user.id, seat.userId, day);
+      if (!again) {
+        this.db.prepare('INSERT INTO reports (reporter_id, reported_id, name, table_code, created_at) VALUES (?, ?, ?, ?, ?)')
+          .run(user.id, seat.userId, seat.name, room.code, this.now());
+      }
+    }
+    this.send(user.id, { type: 'error', message: `Thanks — “${seat.name}” has been reported and will be looked at.` });
   }
 
   private again(user: User) {
@@ -449,7 +475,7 @@ export class Rooms {
   private record(room: Room) {
     if (!this.db || !room.results) return;
     const at = this.now();
-    const { lastInsertRowid } = this.db.prepare('INSERT INTO matches (game_id, started_at, finished_at) VALUES (?, ?, ?)').run(room.gameId, at, at);
+    const { lastInsertRowid } = this.db.prepare('INSERT INTO matches (game_id, started_at, finished_at) VALUES (?, ?, ?)').run(room.gameId, room.startedAt ?? at, at);
     const insert = this.db.prepare('INSERT INTO match_players (match_id, user_id, name, seat, place, detail) VALUES (?, ?, ?, ?, ?, ?)');
     for (const r of room.results) {
       const i = room.seats.findIndex((s) => s.id === r.seat);
@@ -500,6 +526,7 @@ export class Rooms {
           waiting: room.status === 'playing' && room.pauseUntil === null && room.game.waitingOn(room.state).includes(seat.id),
           deadline: room.deadline,
           pauseUntil: room.pauseUntil,
+          now: this.now(),
         });
       }
     }
@@ -521,5 +548,69 @@ export class Rooms {
   /** For tests and the admin log. */
   count() {
     return this.rooms.size;
+  }
+
+  // ------------------------------------------------------------ restarts ----
+
+  /**
+   * Every table, ready to save (the server calls this when it stops, and now
+   * and then in case it stops without warning). A table whose state can't be
+   * saved exactly is left out rather than saved broken.
+   */
+  snapshot(): { code: string; data: string }[] {
+    const out: { code: string; data: string }[] = [];
+    for (const room of this.rooms.values()) {
+      const { game: _game, timers: _timers, ready, ...rest } = room;
+      const saved: SavedRoom = { ...rest, ready: [...ready] };
+      try {
+        out.push({ code: room.code, data: encode(saved) });
+      } catch (e) {
+        console.warn(`table ${room.code} (${room.gameId}) can't be saved: ${e instanceof Error ? e.message : e}`);
+      }
+    }
+    return out;
+  }
+
+  /**
+   * Bring saved tables back after a restart. Everyone starts as disconnected —
+   * their pages reconnect on their own and say hello, which puts them back in
+   * their seats. Clocks start afresh: a move clock or a pause begins again,
+   * and real-time games carry on from their own timestamps.
+   */
+  restore(saved: { code: string; data: string }[]): number {
+    let count = 0;
+    for (const row of saved) {
+      try {
+        const s = decode<SavedRoom>(row.data);
+        const game = ONLINE_GAMES[s.gameId];
+        if (!game || this.rooms.has(s.code)) continue;
+        const room: Room = { ...s, game, timers: new Set(), ready: new Set(s.ready), emptySince: this.now() };
+        for (const seat of room.seats) {
+          if (seat.userId === null) continue;
+          seat.connected = false;
+          this.where.set(seat.userId, room.code);
+        }
+        this.rooms.set(room.code, room);
+        if (room.status === 'playing') this.advance(room);
+        // treat each person as just disconnected: lobby seats wait for them, real-time games let go of holds
+        for (const seat of room.seats) if (seat.userId !== null) this.disconnected(seat.userId);
+        count++;
+      } catch (e) {
+        console.warn(`saved table ${row.code} couldn't be restored: ${e instanceof Error ? e.message : e}`);
+      }
+    }
+    return count;
+  }
+
+  /** Stop every timer (the server is shutting down; nothing should move after the last save). */
+  stop() {
+    for (const room of this.rooms.values()) this.clearTimers(room);
+    for (const t of this.grace.values()) clearTimeout(t);
+    this.grace.clear();
+  }
+
+  /** A message to everyone seated anywhere (e.g. "the server is restarting"). */
+  notice(message: string) {
+    for (const userId of this.where.keys()) this.send(userId, { type: 'error', message });
   }
 }

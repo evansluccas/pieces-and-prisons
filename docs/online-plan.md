@@ -100,6 +100,11 @@ Solo memory games already hide the log and deduction aids. Online adds a new ris
 
 Not tied to one game. Ordered by when they're needed.
 
+**Also done along the way**
+- [x] Countdowns use the server's clock (a wrong computer clock no longer skews them).
+- [x] Game screens get the server's refusal reason, and the puzzle races show it ("That loop doesn't fit every number…").
+- [x] The app loads each game only when it's opened: the first download fell from 558 kB to 179 kB.
+
 **Before more games**
 - [x] **Per-game clocks**: a game may set `turnMs(state)` for the current decision (Split Decision needs 30 s; duels may want longer). Otherwise 60 s.
 - [x] **Reload in the lobby**: the seat is kept, marked away, for 45 s (`LOBBY_GRACE_MS`); the hub offers *Rejoin table*. If the game starts meanwhile, you keep the seat in the game.
@@ -110,13 +115,13 @@ Not tied to one game. Ordered by when they're needed.
 - [x] **Choose hosting**: Fly.io — one always-on machine, a 1 GB volume for SQLite (daily snapshots), HTTPS. See README → *Hosting on Fly.io*.
 - [x] **Production server mode**: `npm start` serves `dist/` from the game server, Secure cookies, `DB_PATH`, the real client address behind the proxy (`CLIENT_IP_HEADER`), `/api/health`, clean shutdown. `Dockerfile` + `fly.toml` added.
 - [x] **First deploy**: live at https://pieces-and-prisons.fly.dev — one machine in Amsterdam, health check passing, database on an encrypted 1 GB volume, server running as an unprivileged user.
-- [ ] **Tables survive a restart** — today they live in memory and are lost on deploy. At minimum, warn players and finish/record what we can; later, save running tables.
-- [ ] **Load check**: a scripted run with many tables and bots at once.
+- [x] **Tables survive a restart**: every table is saved when the server stops (and every 30 s), and picked up again when it starts; players are warned, their pages reconnect on their own and they're back in their seats. Move clocks and pauses start afresh; real-time games carry on from their own times. (`server/persist.ts`, `Rooms.snapshot/restore`)
+- [x] **Load check** (`npx tsx server/loadcheck.ts [tables] [seconds]`): 150 tables over all 30 games, everyone answering instantly — about 260 MB of memory and 37% of one Mac core; 50 tables about 22%. Fly's shared core is perhaps 2–4× slower, so the 512 MB machine handles roughly 50 very busy tables (more with real players, who take seconds per move). The Ask & Arrange bot was the one hot spot (up to 222 ms per move) and now judges questions on a sample: same strength, ~6× faster. If the site grows, move to a `performance-1x` machine.
 
 **After hosting**
-- [ ] **My matches** screen: matches are recorded but not shown anywhere yet.
-- [ ] **Leaderboards** per game (from `match_players`).
-- [ ] Guest name filter / reporting, if the site becomes public.
+- [x] **My matches** screen (from the account panel): your finished online matches, newest first, with everyone's place.
+- [x] **Leaderboards** (link on the main page): per game or all games together; most wins, then win rate, then games played. Only real players count.
+- [x] **Name filter and reporting**: slurs, abuse and staff-like names are refused for guests and accounts (`server/names.ts`); players can report a name from a table's seat list, and `server/admin.ts` lists reports, resolves them and renames players.
 
 ## 6. Suggested next steps
 

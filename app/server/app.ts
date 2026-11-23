@@ -2,6 +2,9 @@
  * The HTTP API for accounts. JSON in, JSON out, session in an HttpOnly cookie.
  *
  *   GET    /api/me        who am I, and am I seated at a table? ({ user: null } when signed out)
+ *   GET    /api/matches   my finished matches, newest first (signed in)
+ *   GET    /api/leaderboard?game=<id>   top players for a game (no game = all games)
+ *   GET    /api/health    for the host's health check
  *   POST   /api/signup    { username, password }
  *   POST   /api/login     { username, password }
  *   POST   /api/guest     { name }
@@ -16,6 +19,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Db } from './db';
 import { AuthError, Signed, User, deleteUser, endSession, guest, login, sessionUser, signup, upgrade } from './auth';
 import type { TableInfo } from './rooms';
+import { leaderboard, myMatches } from './stats';
 
 export const COOKIE = 'pp_session';
 
@@ -116,6 +120,17 @@ export function createApp(db: Db, opts: AppOptions) {
       if (req.method === 'GET' && path === '/api/me') {
         const me = sessionUser(db, token, now());
         return send(res, 200, { user: me ? { ...publicUser(me), table: opts.tableOf?.(me.id) ?? null } : null });
+      }
+      if (req.method === 'GET' && path === '/api/matches') {
+        const me = sessionUser(db, token, now());
+        if (!me) throw new AuthError(401, 'Sign in or pick a guest name first.');
+        return send(res, 200, { matches: myMatches(db, me.id) });
+      }
+      if (req.method === 'GET' && path === '/api/leaderboard') {
+        const game = url.searchParams.get('game');
+        if (game !== null && !/^[a-z-]{2,40}$/.test(game)) throw new AuthError(400, 'No such game.');
+        const me = sessionUser(db, token, now());
+        return send(res, 200, { rows: leaderboard(db, game, me?.id ?? null) });
       }
       if (req.method !== 'POST') return send(res, 405, { error: 'Method not allowed.' });
       if (!(req.headers['content-type'] ?? '').startsWith('application/json')) return send(res, 415, { error: 'Send JSON.' });

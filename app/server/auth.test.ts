@@ -13,8 +13,8 @@ beforeEach(() => {
 describe('database', () => {
   it('creates the schema once and records its version', () => {
     const tables = (db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as { name: string }[]).map((t) => t.name);
-    expect(tables).toEqual(expect.arrayContaining(['users', 'sessions', 'matches', 'match_players']));
-    expect((db.prepare('PRAGMA user_version').get() as { user_version: number }).user_version).toBe(1);
+    expect(tables).toEqual(expect.arrayContaining(['users', 'sessions', 'matches', 'match_players', 'saved_tables', 'reports']));
+    expect((db.prepare('PRAGMA user_version').get() as { user_version: number }).user_version).toBe(2);
   });
 });
 

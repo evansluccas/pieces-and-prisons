@@ -75,6 +75,8 @@ Signed-in players (accounts or guests) choose **Play online**, start a table and
 
 - Each decision has a time limit (60 seconds unless a game sets its own); if it runs out, a bot makes that move.
 - Losing connection keeps your seat; opening Play online again puts you back. In the lobby the seat waits 45 seconds for you. Leaving mid-game hands your seat to a bot.
+- A server restart (a deploy) doesn't end the games: every table is saved when the server stops and picked up again when it starts, and players' pages reconnect on their own.
+- **My matches** (in the account panel) lists your finished matches; **Leaderboards** (on the main page) ranks players per game.
 - Finished tables are saved to the database (`matches`, `match_players`).
 
 Every game can be played online: **Lonely Number**, **Dice Tower**, **Blind Bingo**, **Walls & Wards**, **Turf War**, **Tri-Mancala**, **Nine Men's Morris**, **Tigers & Goats**, **Tipping Scales**, **Rumor Exchange**, **Color Doubt**, **Deadeye Hold'em**, **High-Low Equations**, **Smuggler's Gems**, **Piggy Bluff**, **Six Chambers**, **High or Low**, **Ask & Arrange**, **Hex Sum** and **Blind Five** (turn-based), **Sand Bid**, **Number Forge** and **Split Decision** (real-time: the server owns every clock. It times Sand Bid holds and Split Decision answers, forgiving up to 1.5 s of connection lag but never crediting more than it saw, and in Number Forge it decides who forged first), and the seven solo puzzles as **puzzle races** (everyone gets the same puzzle each round; the server keeps the answers, checks every solution and times everyone — see `app/src/games/shared/race.ts`). Each game adds an `online.ts` (its actions and per-player view) and an online view. What's next is in [docs/online-plan.md](docs/online-plan.md).
@@ -129,8 +131,10 @@ Then open `https://<your-app-name>.fly.dev`.
 
 **Later**
 
-- Deploy changes: `fly deploy` (open tables are lost on each deploy; accounts and finished matches are kept).
+- Deploy changes: `fly deploy`. Tables in progress are saved and carry on after the restart (players see a short "restarting" notice and reconnect by themselves).
 - Logs: `fly logs`. Health: `fly status`. The server answers `GET /api/health`.
+- Reported names: `fly ssh console -C "node_modules/.bin/tsx server/admin.ts reports"` lists them; `... admin.ts resolve <id>` and `... admin.ts rename <user id> <new name>` deal with them.
+- Load: `npx tsx server/loadcheck.ts 150 60` (in `app/`) runs 150 busy tables for a minute and reports memory, CPU and lag.
 - `npm ci` in the image is strict about the lockfile. If a deploy fails with "package.json and package-lock.json … are not in sync", regenerate it with the same npm version the image uses (shown in the build log), e.g. `npx npm@11.19.1 install --package-lock-only` in `app/`.
 - Backups: Fly snapshots the volume daily and keeps the snapshots for a few days (`fly volumes snapshots list pieces_data`). For an extra copy, `fly ssh sftp get /data/pieces.db`.
 

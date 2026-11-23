@@ -3,7 +3,7 @@ import { AccountPanel } from './AccountPanel';
 import { ONLINE_IDS } from './Online';
 import { Panel, Sprite } from './Panel';
 
-export function Hub({ onPlay, onOnline }: { onPlay: (id: string) => void; onOnline: () => void }) {
+export function Hub({ onPlay, onOnline, onPage }: { onPlay: (id: string) => void; onOnline: () => void; onPage: (page: 'matches' | 'leaders') => void }) {
   const stages: Stage[] = ['prison', 'main', 'exile', 'final', 'hidden'];
   return (
     <div className="hub">
@@ -14,7 +14,10 @@ export function Hub({ onPlay, onOnline }: { onPlay: (id: string) => void; onOnli
           <p className="muted">Strategy, deduction and bluffing games. Earn Pieces. Stay out of prison.</p>
         </div>
       </header>
-      <AccountPanel onOnline={onOnline} />
+      <AccountPanel onOnline={onOnline} onMatches={() => onPage('matches')} />
+      <p className="hub-links">
+        <button className="link" onClick={() => onPage('leaders')}>Leaderboards</button>
+      </p>
       {stages.map((stage) => (
         <section key={stage}>
           <h2>{STAGE_LABEL[stage]}</h2>

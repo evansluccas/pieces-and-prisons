@@ -146,3 +146,17 @@ canvas.stage { image-rendering: pixelated; display: block; max-width: 100%; }
 .race-board p.tip { color: var(--ruby); }
 .race-board li.you b { color: var(--gold); }
 .race-board .btn { margin-top: 8px; }
+.seats .report { color: var(--muted); margin-left: 8px; font-size: 12px; }
+
+/* my matches and leaderboards */
+.records { max-width: 760px; margin: 0 auto; }
+.match-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.match-head { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.match-head .win { color: var(--emerald); }
+.match-players { margin: 6px 0 0; padding-left: 0; list-style: none; }
+.match-players li.you { color: var(--gold); }
+.leaderboard { width: 100%; border-collapse: collapse; }
+.leaderboard th, .leaderboard td { text-align: left; padding: 4px 8px; border-bottom: 1px solid #241944; }
+.leaderboard th { color: var(--muted); font-weight: normal; }
+.leaderboard tr.you td { color: var(--gold); }
+.hub-links { display: flex; gap: 16px; margin: 0 0 12px; }

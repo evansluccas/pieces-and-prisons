@@ -18,7 +18,7 @@ const REPLY_MS = 3000; // no word back by then: the server refused the build
  * the moment the reflection looks right the build is sent, and the server
  * checks it and stops the clock.
  */
-export function MirrorPiecesOnline({ game, send, onAgain }: OnlineGameProps) {
+export function MirrorPiecesOnline({ game, send, onAgain, error }: OnlineGameProps) {
   const v = game.view as RaceView;
   const b = v.puzzle as View;
   const finished = !!v.me?.finished;
@@ -28,6 +28,7 @@ export function MirrorPiecesOnline({ game, send, onAgain }: OnlineGameProps) {
   const hand = mine.round === v.round ? mine.hand : emptyHand(b);
   const [warn, setWarn] = useState(0);
   const sentAt = useRef<number | null>(null);
+  const sentWall = useRef(0); // the same moment on the wall clock, to match the server's refusal
   const arrived = useMemo(() => performance.now(), [game]);
 
   useEffect(() => {
@@ -44,6 +45,7 @@ export function MirrorPiecesOnline({ game, send, onAgain }: OnlineGameProps) {
     // looks like a perfect reflection: send it for the server to check
     if (isMirrored({ target: reflect(b.left, b.cols) }, next.placed)) {
       sentAt.current = performance.now();
+      sentWall.current = Date.now();
       send({ type: 'act', action: { type: 'submit', placements: next.placed } });
     }
   };
@@ -78,7 +80,9 @@ export function MirrorPiecesOnline({ game, send, onAgain }: OnlineGameProps) {
     if (solving) {
       drawTray(g, b, hand, now - warn < 1800);
       const sent = sentAt.current;
-      if (sent !== null && now - sent >= REPLY_MS) g.text('Not accepted — check each piece and try again.', TRAY_X + 8, 226, { size: 7, color: COLORS.ruby });
+      // the server's own reason, if it turned the build down
+      const refused = sent !== null && error && error.at >= sentWall.current ? error.text : null;
+      if (refused || (sent !== null && now - sent >= REPLY_MS)) g.text(refused ?? 'Not accepted — check each piece and try again.', TRAY_X + 8, 226, { size: 7, color: COLORS.ruby });
       else if (sent !== null) g.text('Checking your reflection…', TRAY_X + 8, 226, { size: 7, color: COLORS.gold });
       return;
     }

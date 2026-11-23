@@ -10,6 +10,7 @@
  */
 import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import type { Db } from './db';
+import { badName } from './names';
 
 export interface User { id: number; username: string | null; name: string; guest: boolean }
 
@@ -30,6 +31,8 @@ export function checkUsername(u: unknown): string {
   if (typeof u !== 'string' || !/^[A-Za-z0-9_-]{3,16}$/.test(u)) {
     throw new AuthError(400, 'Usernames are 3–16 letters, numbers, _ or -.');
   }
+  const bad = badName(u);
+  if (bad) throw new AuthError(400, bad);
   return u;
 }
 
@@ -37,6 +40,8 @@ export function checkUsername(u: unknown): string {
 export function checkGuestName(n: unknown): string {
   const name = typeof n === 'string' ? n.trim().replace(/\s+/g, ' ') : '';
   if (!/^[\p{L}\p{N} _-]{2,16}$/u.test(name)) throw new AuthError(400, 'Guest names are 2–16 letters, numbers or spaces.');
+  const bad = badName(name);
+  if (bad) throw new AuthError(400, bad);
   return name;
 }
 

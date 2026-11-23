@@ -16,11 +16,16 @@ export interface RoomView {
   maxPlayers: number;
   results: { name: string; place: number; detail: string; you: boolean }[] | null;
 }
+/**
+ * The latest game message. `deadline` and `pauseUntil` are already turned
+ * into THIS page's clock (Date.now() terms), so a computer whose clock is off
+ * still counts down correctly.
+ */
 export interface GameMessage<V = unknown> { view: V; waiting: boolean; deadline: number | null; pauseUntil: number | null }
 
 type ServerMessage =
   | { type: 'room'; room: RoomView }
-  | ({ type: 'game' } & GameMessage)
+  | ({ type: 'game'; now?: number } & GameMessage)
   | { type: 'left' }
   | { type: 'error'; message: string };
 
@@ -51,7 +56,12 @@ export function useTable() {
         if (msg.type === 'room') {
           setRoom(msg.room);
           if (msg.room.status === 'lobby') setGame(null);
-        } else if (msg.type === 'game') setGame({ view: msg.view, waiting: msg.waiting, deadline: msg.deadline, pauseUntil: msg.pauseUntil });
+        } else if (msg.type === 'game') {
+          // the server's times, moved onto this page's clock
+          const shift = msg.now === undefined ? 0 : Date.now() - msg.now;
+          const local = (t: number | null) => (t === null ? null : t + shift);
+          setGame({ view: msg.view, waiting: msg.waiting, deadline: local(msg.deadline), pauseUntil: local(msg.pauseUntil) });
+        }
         else if (msg.type === 'left') {
           setRoom(null);
           setGame(null);

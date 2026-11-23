@@ -51,6 +51,26 @@ const MIGRATIONS: string[] = [
   );
   CREATE INDEX match_players_user ON match_players(user_id);
   `,
+  `
+  -- running tables, saved when the server stops (a deploy) and picked up again when it starts
+  CREATE TABLE saved_tables (
+    code      TEXT PRIMARY KEY,
+    data      TEXT NOT NULL,
+    saved_at  INTEGER NOT NULL
+  );
+
+  -- players reporting another player's name
+  CREATE TABLE reports (
+    id           INTEGER PRIMARY KEY,
+    reporter_id  INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    reported_id  INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    name         TEXT NOT NULL,                 -- the name as it was shown
+    table_code   TEXT,
+    created_at   INTEGER NOT NULL,
+    resolved_at  INTEGER
+  );
+  CREATE INDEX reports_open ON reports(resolved_at);
+  `,
 ];
 
 export type Db = DatabaseSyncType;

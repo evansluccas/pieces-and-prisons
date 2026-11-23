@@ -18,12 +18,12 @@ const CHECK_MS = 3000;
  * server, which checks it and stops your clock. Hints are asked of the
  * server so their 30 s count.
  */
-export function KnightsTourOnline({ game, send, onAgain }: OnlineGameProps) {
+export function KnightsTourOnline({ game, send, onAgain, error }: OnlineGameProps) {
   const v = game.view as RaceView;
   const p = v.puzzle as View;
   const n = p.n;
   const [path, setPath] = useState<number[]>([]);
-  const sent = useRef<{ at: number; key: string } | null>(null);
+  const sent = useRef<{ at: number; key: string; wall: number } | null>(null);
   const finished = !!v.me?.finished;
   const playing = v.stage === 'solve' && !!v.me && !finished;
 
@@ -38,12 +38,12 @@ export function KnightsTourOnline({ game, send, onAgain }: OnlineGameProps) {
     if (!playing || !complete(n, path)) return;
     const key = path.join();
     if (sent.current?.key === key) return;
-    sent.current = { at: performance.now(), key };
+    sent.current = { at: performance.now(), key, wall: Date.now() };
     send({ type: 'act', action: { type: 'submit', path } });
   }, [path, playing, n, send]);
 
   const resend = () => {
-    sent.current = { at: performance.now(), key: path.join() };
+    sent.current = { at: performance.now(), key: path.join(), wall: Date.now() };
     send({ type: 'act', action: { type: 'submit', path } });
   };
 
@@ -81,8 +81,10 @@ export function KnightsTourOnline({ game, send, onAgain }: OnlineGameProps) {
 
     if (playing) {
       const waiting = sent.current && complete(n, path) && sent.current.key === path.join();
-      const late = waiting && performance.now() - sent.current!.at > CHECK_MS;
-      const note = late ? { text: 'The server didn’t accept that tour.', color: COLORS.ruby }
+      // the server's own reason, if it turned the tour down
+      const refused = waiting && error && error.at >= sent.current!.wall ? error.text : null;
+      const late = waiting && (!!refused || performance.now() - sent.current!.at > CHECK_MS);
+      const note = late ? { text: refused ?? 'The server didn’t accept that tour.', color: COLORS.ruby }
         : waiting ? { text: 'Checking your tour…', color: COLORS.gold } : undefined;
       drawPlayPanel(g, n, path, tip, note);
       if (late) {
