@@ -30,7 +30,7 @@ export const GAMES: GameInfo[] = [
   { id: 'smugglers-gems', name: "Smuggler's Gems", tagline: 'Swap gem cards, dodge bombs, and match the buyer.', stage: 'main', players: '3–6', icon: ['gems', 'diamond'], playable: true, paced: true, memory: true },
   { id: 'split-decision', name: 'Split Decision', tagline: 'Ten two-answer questions: cubes, sums, turf and card memory.', stage: 'main', players: '2–6', icon: ['icons', 'swap'], playable: true },
   { id: 'rumor-exchange', name: 'Rumor Exchange', tagline: 'Trade stocks whose hidden rules are revealed bit by bit.', stage: 'main', players: '2–6', icon: ['coins', 'coin_10'], playable: true },
-  { id: 'high-low-equations', name: 'High-Low Equations', tagline: 'Build an equation from your cards and bet it lands nearest 1 or 20.', stage: 'main', players: '3–6', icon: ['cards', 'op_times'], playable: false },
+  { id: 'high-low-equations', name: 'High-Low Equations', tagline: 'Build an equation from your cards and bet it lands nearest 1 or 20.', stage: 'main', players: '3–6', icon: ['cards', 'op_times'], playable: true, paced: true },
   { id: 'turf-war', name: 'Turf War', tagline: 'Grow your land with turf pieces; your score is your biggest square.', stage: 'main', players: '2–4', icon: ['board', 'tile_grass'], playable: false },
   { id: 'tri-mancala', name: 'Tri-Mancala', tagline: 'Sow stones into three colours — only your weakest score counts.', stage: 'main', players: '2–4', icon: ['items', 'rock_medium'], playable: false },
   { id: 'color-doubt', name: 'Color Doubt', tagline: 'Bid on how many cards of a colour exist — or call the bluff.', stage: 'main', players: '3–6', icon: ['cards', 'color_ruby'], playable: true, paced: true },

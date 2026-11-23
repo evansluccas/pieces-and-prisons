@@ -29,6 +29,7 @@ import { AskAndArrange, RULES as ASK_RULES } from './games/ask-and-arrange/AskAn
 import { KnightsTour, RULES as KNIGHT_RULES } from './games/knights-tour/KnightsTour';
 import { BlindFive, RULES as BLIND_FIVE_RULES } from './games/blind-five/BlindFive';
 import { MagicSquares, RULES as MAGIC_RULES } from './games/magic-squares/MagicSquares';
+import { HighLowEquations, RULES as HLE_RULES } from './games/high-low-equations/HighLowEquations';
 import { Hub } from './ui/Hub';
 import { Panel } from './ui/Panel';
 
@@ -60,6 +61,7 @@ const GAME_VIEWS: Record<string, { rules: string[]; View: (p: { botCount: number
   'knights-tour': { rules: KNIGHT_RULES, View: KnightsTour },
   'blind-five': { rules: BLIND_FIVE_RULES, View: BlindFive },
   'magic-squares': { rules: MAGIC_RULES, View: MagicSquares },
+  'high-low-equations': { rules: HLE_RULES, View: HighLowEquations },
 };
 
 export function App() {
