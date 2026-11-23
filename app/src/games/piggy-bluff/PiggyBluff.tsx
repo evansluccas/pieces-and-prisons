@@ -42,8 +42,44 @@ function setup(botCount: number) {
   return { state, bots, rng: seededRng(Date.now() & 0xffff) };
 }
 
-interface Draft { black: number; white: number; to: string | null; count: number }
-const freshDraft = (): Draft => ({ black: 1, white: 0, to: null, count: 0 });
+export interface Draft { black: number; white: number; to: string | null; count: number }
+export const freshDraft = (): Draft => ({ black: 1, white: 0, to: null, count: 0 });
+
+export type PiggyAction =
+  | { type: 'add'; black: number; white: number; to: string }
+  | { type: 'claim'; count: number }
+  | { type: 'respond'; doubt: boolean };
+
+/** What a click does (solo and online share this): the new draft, and a move once one is chosen. */
+export function piggyClick(id: string, s: GameState, draft: Draft): { draft: Draft; action?: PiggyAction } {
+  if (s.phase === 'add' && s.holder === ME) {
+    const room = draft.black + draft.white < s.config.maxAdd;
+    if (id === 'b+' && room) return { draft: { ...draft, black: draft.black + 1 } };
+    if (id === 'b-' && draft.black > 0) return { draft: { ...draft, black: draft.black - 1 } };
+    if (id === 'w+' && room) return { draft: { ...draft, white: draft.white + 1 } };
+    if (id === 'w-' && draft.white > 0) return { draft: { ...draft, white: draft.white - 1 } };
+    if (id.startsWith('to:')) return { draft: { ...draft, to: id.slice(3) } };
+    if (id === 'pass' && draft.to && draft.black + draft.white > 0) {
+      return { draft: freshDraft(), action: { type: 'add', black: draft.black, white: draft.white, to: draft.to } };
+    }
+  } else if (s.phase === 'claim' && s.receiver === ME) {
+    if (id === 'n-' && draft.count > 0) return { draft: { ...draft, count: draft.count - 1 } };
+    if (id === 'n+' && draft.count < MAX_CLAIM) return { draft: { ...draft, count: draft.count + 1 } };
+    if (id === 'announce') return { draft, action: { type: 'claim', count: draft.count } };
+  } else if (s.phase === 'doubt' && s.receiver !== ME && !(ME in s.responses)) {
+    if (id === 'doubt') return { draft, action: { type: 'respond', doubt: true } };
+    if (id === 'believe') return { draft, action: { type: 'respond', doubt: false } };
+  }
+  return { draft };
+}
+
+export const PORTRAITS = ['citizen', 'officer', 'journalist', 'fanatic', 'researcher', 'terrorist'];
+
+/**
+ * Online play: the move clock, a hint line, the label on the "next" button,
+ * and the latest drop (online views never carry the coins' colours).
+ */
+export interface OnlineHud { clock?: string; sub?: string; nextLabel?: string; drop?: { player: string; count: number } | null }
 
 export function PiggyBluff({ botCount = 3 }: { botCount?: number }) {
   const [game, setGame] = useState(() => setup(botCount));
@@ -88,24 +124,12 @@ export function PiggyBluff({ botCount = 3 }: { botCount?: number }) {
       setDraft(freshDraft());
       return setGame(setup(botCount));
     }
-    if (id === 'continue') return set(proceed(s));
-    if (s.phase === 'add' && s.holder === ME) {
-      const max = s.config.maxAdd;
-      if (id === 'b+' && draft.black + draft.white < max) setDraft({ ...draft, black: draft.black + 1 });
-      if (id === 'b-' && draft.black > 0) setDraft({ ...draft, black: draft.black - 1 });
-      if (id === 'w+' && draft.black + draft.white < max) setDraft({ ...draft, white: draft.white + 1 });
-      if (id === 'w-' && draft.white > 0) setDraft({ ...draft, white: draft.white - 1 });
-      if (id.startsWith('to:')) setDraft({ ...draft, to: id.slice(3) });
-      if (id === 'pass' && draft.to && draft.black + draft.white > 0) {
-        set(add(s, ME, { black: draft.black, white: draft.white }, draft.to));
-        setDraft(freshDraft());
-      }
-    } else if (s.phase === 'claim' && s.receiver === ME) {
-      if (id === 'n-' && draft.count > 0) setDraft({ ...draft, count: draft.count - 1 });
-      if (id === 'n+' && draft.count < MAX_CLAIM) setDraft({ ...draft, count: draft.count + 1 });
-      if (id === 'announce') set(claim(s, ME, draft.count));
-    } else if (s.phase === 'doubt' && id === 'doubt') set(respond(s, ME, true));
-    else if (s.phase === 'doubt' && id === 'believe') set(respond(s, ME, false));
+    if (id === 'next') return set(proceed(s));
+    const r = piggyClick(id, s, draft);
+    setDraft(r.draft);
+    if (r.action?.type === 'add') set(add(s, ME, { black: r.action.black, white: r.action.white }, r.action.to));
+    if (r.action?.type === 'claim') set(claim(s, ME, r.action.count));
+    if (r.action?.type === 'respond') set(respond(s, ME, r.action.doubt));
   };
 
   const meta: Record<string, string> = { [ME]: 'citizen' };
@@ -123,7 +147,7 @@ export function PiggyBluff({ botCount = 3 }: { botCount?: number }) {
 
 const nameOf = (s: GameState, id: string | null) => (id === ME ? 'You' : s.players.find((p) => p.id === id)?.name ?? '');
 
-function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, draft: Draft) {
+export function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, draft: Draft, hud?: OnlineHud) {
   const me = s.players.find((p) => p.id === ME)!;
   const last = s.history[s.history.length - 1];
   const passing = s.phase === 'add' && s.holder === ME;
@@ -131,7 +155,7 @@ function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, draft: Dr
   g.tile('board', 'tile_night', 0, 0, W, H);
   topBar(g, [
     { text: `CLAIM ${Math.min(s.claims + 1, s.config.maxClaims)}/${s.config.maxClaims}`, color: COLORS.gold },
-    { text: `first to ${s.config.target} points`, color: COLORS.muted },
+    hud?.clock ? { text: hud.clock, color: COLORS.ruby } : { text: `first to ${s.config.target} points`, color: COLORS.muted },
   ], 'PIGGY BLUFF');
 
   // opponents
@@ -157,11 +181,12 @@ function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, draft: Dr
   const jiggle = shaking ? (Math.floor(g.time / 120) % 2 ? 1 : 0) : 0;
   g.sprite('items', 'piggy_bank', bx + jiggle, 100, { scale: 3 });
   // only the latest drop is announced — keep your own tally
-  const drop = s.additions[s.additions.length - 1];
+  const latest = s.additions[s.additions.length - 1];
+  const drop = hud ? hud.drop : latest && { player: latest.player, count: latest.black + latest.white };
   if (drop && s.phase !== 'reveal') {
-    const n = drop.black + drop.white;
+    const n = drop.count;
     g.text(`${nameOf(s, drop.player)} dropped ${n} coin${n === 1 ? '' : 's'}`, bx + 36, 172, { align: 'center', size: 8, color: COLORS.ink });
-  } else if (s.phase !== 'reveal' && s.additions.length === 0) {
+  } else if (s.phase !== 'reveal' && !drop) {
     g.text('fresh bank: 1 black + 1 white', bx + 36, 172, { align: 'center', size: 8, color: COLORS.muted });
   }
   g.text('NEXT ASK', 230, 104, { size: 7, color: COLORS.muted });
@@ -236,7 +261,8 @@ function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, draft: Dr
     } else {
       g.text('Nobody doubted, so nobody looks inside.', x, 214, { size: 8, color: COLORS.muted });
     }
-    g.button('continue', s.players.some((p) => p.points >= s.config.target) || s.claims >= s.config.maxClaims ? 'Final result' : 'Continue', 392, 244, 80);
+    if (hud?.sub) g.text(hud.sub, 392, 236, { size: 6, color: COLORS.muted });
+    g.button('next', hud?.nextLabel ?? (s.players.some((p) => p.points >= s.config.target) || s.claims >= s.config.maxClaims ? 'Final result' : 'Continue'), 392, 244, 80);
   } else {
     g.text(s.phase === 'add' ? `${nameOf(s, s.holder)} holds the bank` : '', x, 214, { size: 8, color: COLORS.muted });
   }
@@ -275,7 +301,7 @@ function coinStepper(g: Gfx, color: Color, n: number, key: string, x: number, y:
 
 // ---------------------------------------------------------------- log (DOM)
 
-function ClaimLog({ state }: { state: GameState }) {
+export function ClaimLog({ state }: { state: GameState }) {
   const name = (id: string) => nameOf(state, id);
   return (
     <aside className="log">

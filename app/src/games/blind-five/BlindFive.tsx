@@ -5,7 +5,7 @@ import { seededRng } from '../shared/rng';
 import { pace } from '../shared/pace';
 import { topBar } from '../shared/draw';
 import { Level, Memory, botMove, fade, observe, wrongCall } from './bots';
-import { CELLS, GameState, MAX_STRIKES, Move, N, Side, Turn, lineBetween, newGame, play, square, xy } from './logic';
+import { CELLS, DOWN, GameState, MAX_STRIKES, Move, N, Screen, Side, Turn, lineBetween, newGame, play, screenOf, square, xy } from './logic';
 
 const W = 480;
 const H = 270;
@@ -30,7 +30,27 @@ export const RULES = [
 ];
 
 /** Building a call: first stone picked, then the far end. */
-interface Calling { from: number | null; line: number[] | null }
+export interface Calling { from: number | null; line: number[] | null }
+
+/** A click on the board or its buttons (solo and online): the new call-in-progress, and the move if one is made. */
+export function boardClick(id: string, s: Screen, calling: Calling | null): { calling: Calling | null; move?: Move } {
+  if (id === 'call') return { calling: { from: null, line: null } };
+  if (id === 'cancel') return { calling: null };
+  if (id === 'confirm' && calling?.line) return { calling: null, move: { kind: 'call', cells: calling.line } };
+  if (!id.startsWith('sq:')) return { calling };
+  const c = Number(id.slice(3));
+  if (!calling) return { calling, move: s.board[c] === null ? { kind: 'place', cell: c } : undefined };
+  if (s.board[c] === null) return { calling };
+  if (calling.from === null || calling.line) return { calling: { from: c, line: null } };
+  if (c === calling.from) return { calling: { from: null, line: null } };
+  const line = lineBetween(calling.from, c);
+  if (line && line.every((d) => s.board[d] !== null)) return { calling: { ...calling, line } };
+  return { calling: { from: c, line: null } };
+}
+
+/** Online: the opponent's name and the move clock. */
+export interface OnlineHud { opponent: string; clock?: string }
+export type Flash = { cells: number[]; at: number } | null;
 
 export function BlindFive() {
   const [level, setLevel] = useState<Level | null>(null);
@@ -69,30 +89,17 @@ export function BlindFive() {
     }
     if (id === 'again') return setLevel(null);
     if (s.winner !== null || s.turn !== ME) return;
-    if (id === 'call') return setCalling({ from: null, line: null });
-    if (id === 'cancel') return setCalling(null);
-    if (id === 'confirm' && calling?.line) {
-      setS(apply(s, ME, { kind: 'call', cells: calling.line }));
-      return setCalling(null);
-    }
-    if (!id.startsWith('sq:')) return;
-    const c = Number(id.slice(3));
-    if (!calling) {
-      if (s.board[c] === null) setS(apply(s, ME, { kind: 'place', cell: c }));
-      return;
-    }
-    if (s.board[c] === null) return;
-    if (calling.from === null || calling.line) return setCalling({ from: c, line: null });
-    if (c === calling.from) return setCalling({ from: null, line: null });
-    const line = lineBetween(calling.from, c);
-    if (line && line.every((d) => s.board[d] !== null)) setCalling({ ...calling, line });
-    else setCalling({ from: c, line: null });
+    const r = boardClick(id, screen, calling);
+    setCalling(r.calling);
+    if (r.move) setS(apply(s, ME, r.move));
   };
 
+  // the solo screen sees exactly what an online player is sent
+  const screen = screenOf(s, ME);
   return (
     <div className="game-layout">
-      <PixelStage width={W} height={H} draw={(g) => (level ? drawScene(g, s, level, calling, flash) : drawIntro(g))} onHit={onHit} />
-      <StoneLog state={s} />
+      <PixelStage width={W} height={H} draw={(g) => (level ? drawScene(g, screen, level, calling, flash) : drawIntro(g))} onHit={onHit} />
+      <StoneLog state={screen} />
     </div>
   );
 }
@@ -117,7 +124,7 @@ const cx = (c: number) => X0 + xy(c)[0] * CS;
 const cy = (c: number) => Y0 + xy(c)[1] * CS;
 
 /** Valid far ends for a call starting at `from`: four away in a line, every square holding a stone. */
-function ends(s: GameState, from: number): number[] {
+function ends(s: Screen, from: number): number[] {
   const out: number[] = [];
   for (let c = 0; c < CELLS; c++) {
     const line = lineBetween(from, c);
@@ -126,11 +133,10 @@ function ends(s: GameState, from: number): number[] {
   return out;
 }
 
-function drawScene(g: Gfx, s: GameState, level: Level, calling: Calling | null, flash: { cells: number[]; at: number } | null) {
+export function drawScene(g: Gfx, s: Screen, level: Level | null, calling: Calling | null, flash: Flash, hud?: OnlineHud) {
+  const rival = hud?.opponent ?? 'Opponent';
   const over = s.winner !== null;
   const myTurn = s.turn === ME && !over;
-  const last = s.history[s.history.length - 1];
-  const lastBot = [...s.history].reverse().find((h) => h.side === BOT && h.move.kind === 'place');
   const callFlash = flash && performance.now() - flash.at < pace(2600) ? flash.cells : null;
   const targets = calling?.from != null && !calling.line ? ends(s, calling.from) : [];
   const placed = s.board.filter((b) => b !== null).length;
@@ -138,8 +144,8 @@ function drawScene(g: Gfx, s: GameState, level: Level, calling: Calling | null, 
   g.tile('board', 'tile_night', 0, 0, W, H);
   topBar(g, [
     { text: over ? 'GAME OVER' : myTurn ? 'YOUR TURN' : "OPPONENT'S TURN", color: COLORS.gold },
-    { text: `vs ${level} bot`, color: COLORS.muted },
-    { text: `${placed} stones down`, color: COLORS.muted },
+    { text: `vs ${hud ? hud.opponent : `${level} bot`}`, color: COLORS.muted },
+    hud?.clock ? { text: hud.clock, color: COLORS.ruby } : { text: `${placed} stones down`, color: COLORS.muted },
   ], 'BLIND FIVE');
 
   // board
@@ -156,13 +162,13 @@ function drawScene(g: Gfx, s: GameState, level: Level, calling: Calling | null, 
     const id = `sq:${c}`;
     const who = s.board[c];
     if (who !== null) {
-      if (over) g.sprite('board', COLOR_SPRITE[who], x + 2, y + 2);
-      else g.sprite('coins', 'coin_black', x + 4, y + 4);
+      if (who === DOWN) g.sprite('coins', 'coin_black', x + 4, y + 4);
+      else g.sprite('board', COLOR_SPRITE[who], x + 2, y + 2);
     }
     // the opponent's newest stone is ringed so you can see where it went
-    if (!over && lastBot?.move.kind === 'place' && lastBot.move.cell === c && last === lastBot) g.frame(x + 1, y + 1, CS - 2, CS - 2, COLORS.gold);
+    if (s.ring === c) g.frame(x + 1, y + 1, CS - 2, CS - 2, COLORS.gold);
     if (callFlash?.includes(c)) g.frame(x + 1, y + 1, CS - 2, CS - 2, Math.floor(g.time / 200) % 2 ? COLORS.ruby : '#ffd0d6', 2);
-    if (over && s.winLine?.includes(c)) g.frame(x, y, CS, CS, s.history[s.history.length - 1].ok ? COLORS.emerald : COLORS.ruby, 2);
+    if (over && s.winLine?.includes(c)) g.frame(x, y, CS, CS, s.call?.ok ? COLORS.emerald : COLORS.ruby, 2);
     if (!myTurn) continue;
     if (!calling) {
       if (who === null) {
@@ -182,17 +188,17 @@ function drawScene(g: Gfx, s: GameState, level: Level, calling: Calling | null, 
   const sx = 286;
   const pw = W - sx - 4;
   g.panel('panel_night', sx, 30, pw, 236, 4);
-  const lastCall = last?.move.kind === 'call' ? last : null;
+  const lastCall = s.call;
   let title = '';
   let note = '';
   let color: string = COLORS.gold;
   if (over) {
     const won = s.winner === ME;
-    title = s.winner === 'draw' ? 'Draw — board full' : won ? 'You win!' : 'You lose';
+    title = s.winner === 'draw' ? 'Draw — board full' : won ? 'You win!' : hud ? `${hud.opponent.slice(0, 14)} wins` : 'You lose';
     color = won ? COLORS.emerald : s.winner === 'draw' ? COLORS.gold : COLORS.ruby;
-    const callBy = last.side === ME ? 'Your' : 'Their';
-    note = s.winner === 'draw' ? 'nobody called five' : last.ok ? `${callBy} call was right` : `${callBy} 2nd wrong call`;
-  } else if (!myTurn) title = 'Opponent is thinking…';
+    const callBy = lastCall?.side === ME ? 'Your' : 'Their';
+    note = s.winner === 'draw' ? 'nobody called five' : lastCall?.ok ? `${callBy} call was right` : `${callBy} 2nd wrong call`;
+  } else if (!myTurn) title = `${rival.slice(0, 14)} is thinking…`;
   else if (calling) {
     title = calling.line ? 'Call these five?' : calling.from === null ? 'Pick the first stone' : 'Pick the stone 4 away';
     note = calling.line ? 'all yours = you win' : calling.from === null ? 'one end of your line' : 'flashing stones end a full line';
@@ -202,13 +208,13 @@ function drawScene(g: Gfx, s: GameState, level: Level, calling: Calling | null, 
   }
   g.text(title, sx + 10, 38, { size: 10, color });
   if (note) g.text(note, sx + 10, 53, { size: 7, color: COLORS.muted });
-  if (!over && lastCall && lastCall.side === BOT) g.text('Opponent called five — wrong! Strike.', sx + 10, 64, { size: 7, color: COLORS.ruby });
+  if (!over && lastCall && lastCall.side === BOT) g.text(`${hud ? hud.opponent.slice(0, 10) : 'Opponent'} called five — wrong! Strike.`, sx + 10, 64, { size: 7, color: COLORS.ruby });
   if (!over && lastCall && lastCall.side === ME) g.text('Not all yours — strike!', sx + 10, 64, { size: 7, color: COLORS.ruby });
 
   const row = (side: Side, y: number) => {
     if (over) g.sprite('board', COLOR_SPRITE[side], sx + 10, y - 4);
     else g.sprite('coins', 'coin_black', sx + 12, y - 2);
-    g.text(side === ME ? 'You' : 'Opponent', sx + 30, y, { size: 9, color: s.turn === side && !over ? COLORS.gold : COLORS.ink });
+    g.text(side === ME ? 'You' : rival.slice(0, 10), sx + 30, y, { size: 9, color: s.turn === side && !over ? COLORS.gold : COLORS.ink });
     g.text('strikes', sx + 104, y + 1, { size: 7, color: COLORS.muted });
     for (let i = 0; i < MAX_STRIKES; i++) g.rect(sx + 140 + i * 12, y + 1, 8, 8, i < s.strikes[side] ? COLORS.ruby : '#2a1f4d');
   };
@@ -236,13 +242,14 @@ function drawScene(g: Gfx, s: GameState, level: Level, calling: Calling | null, 
 
 // ---------------------------------------------------------------- log (DOM)
 
-function describeTurn(t: Turn) {
-  const who = t.side === ME ? 'You' : 'Opponent';
+function describeTurn(t: Turn, opponent: string) {
+  const who = t.side === ME ? 'You' : opponent;
   if (t.move.kind === 'place') return `${who} placed ${square(t.move.cell)}`;
   return `${who} called ${square(t.move.cells[0])}–${square(t.move.cells[4])}: ${t.ok ? 'five!' : 'wrong (strike)'}`;
 }
 
-function StoneLog({ state }: { state: GameState }) {
+/** The full move list, unsealed only once the game is over. */
+export function StoneLog({ state, opponent = 'Opponent' }: { state: Screen; opponent?: string }) {
   return (
     <aside className="log">
       <h3>Stone log</h3>
@@ -251,7 +258,7 @@ function StoneLog({ state }: { state: GameState }) {
       ) : (
         <ol>
           {state.history.map((t, i) => (
-            <li key={i}><em className={t.move.kind === 'call' ? (t.ok ? 'win' : 'tip') : ''}>{i + 1}. {describeTurn(t)}</em></li>
+            <li key={i}><em className={t.move.kind === 'call' ? (t.ok ? 'win' : 'tip') : ''}>{i + 1}. {describeTurn(t, opponent)}</em></li>
           ))}
         </ol>
       )}

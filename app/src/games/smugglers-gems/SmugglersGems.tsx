@@ -78,17 +78,10 @@ export function SmugglersGems({ botCount = 3 }: { botCount?: number }) {
       return setGame(setup(botCount));
     }
     if (id === 'next') return setGame((g) => ({ ...g, state: nextRound(g.state, g.rng) }));
-    if (currentTurn(s) !== ME) return;
-    if (id === 'pass') return setGame((g) => ({ ...g, state: pass(g.state, ME) }));
-    if (id === 'peek') return setPeeking((v) => !v);
-    if (id.startsWith('loc:')) {
-      const loc = id.slice(4);
-      if (peeking) {
-        setPeeking(false);
-        return setGame((g) => ({ ...g, state: peek(g.state, ME, loc) }));
-      }
-      setGame((g) => ({ ...g, state: swap(g.state, ME, loc) }));
-    }
+    const r = gemClick(id, s, peeking);
+    setPeeking(r.peeking);
+    const a = r.action;
+    if (a) setGame((g) => ({ ...g, state: a.type === 'pass' ? pass(g.state, ME) : a.type === 'peek' ? peek(g.state, ME, a.target) : swap(g.state, ME, a.target) }));
   };
 
   const meta: Record<string, string> = { [ME]: 'citizen' };
@@ -101,6 +94,25 @@ export function SmugglersGems({ botCount = 3 }: { botCount?: number }) {
     </div>
   );
 }
+
+export type GemAction = { type: 'pass' } | { type: 'swap'; target: string } | { type: 'peek'; target: string };
+
+/** What a click does (solo and online share this): the new peek mode, and a move once one is chosen. */
+export function gemClick(id: string, s: GameState, peeking: boolean): { peeking: boolean; action?: GemAction } {
+  if (currentTurn(s) !== ME) return { peeking };
+  if (id === 'pass') return { peeking, action: { type: 'pass' } };
+  if (id === 'peek') return { peeking: !peeking };
+  if (id.startsWith('loc:')) {
+    const target = id.slice(4);
+    return peeking ? { peeking: false, action: { type: 'peek', target } } : { peeking, action: { type: 'swap', target } };
+  }
+  return { peeking };
+}
+
+export const PORTRAITS = ['citizen', 'officer', 'journalist', 'fanatic', 'researcher', 'terrorist'];
+
+/** Online play: the move clock, a hint line and the label on the "next" button. */
+export interface OnlineHud { clock?: string; sub?: string; nextLabel?: string }
 
 // ---------------------------------------------------------------- drawing
 
@@ -117,7 +129,7 @@ function drawCardAt(g: Gfx, loc: string, x: number, y: number, face: Card | null
   }
 }
 
-function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, peeking: boolean) {
+export function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, peeking: boolean, hud?: OnlineHud) {
   const turn = currentTurn(s);
   const myTurn = turn === ME;
   const reveal = s.phase === 'reveal' || s.phase === 'gameOver';
@@ -130,7 +142,9 @@ function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, peeking: 
   g.tile('board', 'tile_night', 0, 0, W, H);
   topBar(g, [
     { text: `ROUND ${s.round}/${s.config.rounds}`, color: COLORS.gold },
-    { text: s.phase === 'exchange' ? `turn ${s.turnIdx + 1}/${s.order.length}` : 'reveal', color: COLORS.muted },
+    hud?.clock
+      ? { text: hud.clock, color: COLORS.ruby }
+      : { text: s.phase === 'exchange' ? `turn ${s.turnIdx + 1}/${s.order.length}` : 'reveal', color: COLORS.muted },
   ], "SMUGGLER'S GEMS");
 
   // opponents
@@ -216,7 +230,8 @@ function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, peeking: 
       disabled: !myTurn || me.peeked, color: peeking ? 'red' : 'blue',
     });
   } else if (s.phase === 'reveal') {
-    g.button('next', s.round >= s.config.rounds ? 'Final result' : 'Next round', 392, 244, 80);
+    g.button('next', hud?.nextLabel ?? (s.round >= s.config.rounds ? 'Final result' : 'Next round'), 392, 244, 80);
+    if (hud?.sub) g.text(hud.sub, 392, 236, { size: 6, color: COLORS.muted });
   }
 
   if (s.phase === 'gameOver') {
@@ -243,7 +258,7 @@ function describe(s: GameState, ev: TurnEvent): string {
 
 // ---------------------------------------------------------------- log (DOM)
 
-function GemLog({ state }: { state: GameState }) {
+export function GemLog({ state }: { state: GameState }) {
   const over = state.phase === 'gameOver';
   const name = (id: string) => locName(state, id);
   return (

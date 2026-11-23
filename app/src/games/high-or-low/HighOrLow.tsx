@@ -26,6 +26,19 @@ export const RULES = [
   'Most points after 10 rounds wins.',
 ];
 
+/** What a click does at the table (solo and online share this): the new picks, plus a deal or call once one is made. */
+export function tableClick(id: string, s: GameState, picks: number[]): { picks: number[]; deal?: { shown: number; hidden: number }; call?: Call } {
+  if (s.phase === 'deal' && s.dealer === ME) {
+    if (id.startsWith('card:')) {
+      const c = Number(id.slice(5));
+      return { picks: picks.includes(c) ? picks.filter((x) => x !== c) : picks.length < 2 ? [...picks, c] : picks };
+    }
+    if (id === 'deal' && picks.length === 2) return { picks: [], deal: { shown: picks[0], hidden: picks[1] } };
+  }
+  if (s.phase === 'call' && guesser(s) === ME && (id === 'higher' || id === 'lower')) return { picks, call: id };
+  return { picks };
+}
+
 export function HighOrLow() {
   const [level, setLevel] = useState<Level | null>(null);
   const [s, setS] = useState<GameState>(() => newGame());
@@ -65,17 +78,10 @@ export function HighOrLow() {
     }
     if (id === 'again') return setLevel(null);
     if (revealing()) return;
-    if (s.phase === 'deal' && s.dealer === ME) {
-      if (id.startsWith('card:')) {
-        const c = Number(id.slice(5));
-        setPicks((p) => (p.includes(c) ? p.filter((x) => x !== c) : p.length < 2 ? [...p, c] : p));
-      }
-      if (id === 'deal' && picks.length === 2) {
-        setS(deal(s, ME, picks[0], picks[1]));
-        setPicks([]);
-      }
-    }
-    if (s.phase === 'call' && guesser(s) === ME && (id === 'higher' || id === 'lower')) setS(call(s, ME, id as Call));
+    const r = tableClick(id, s, picks);
+    setPicks(r.picks);
+    if (r.deal) setS(deal(s, ME, r.deal.shown, r.deal.hidden));
+    if (r.call) setS(call(s, ME, r.call));
   };
 
   return (
@@ -120,7 +126,14 @@ function tracker(g: Gfx, hand: number[], x: number, y: number, mark: number | nu
   }
 }
 
-function drawScene(g: Gfx, s: GameState, picks: number[], level: Level, sinceReveal: number) {
+/** Online play: the opponent's name (instead of "the bot"), the move clock, and the between-rounds note and button. */
+export interface OnlineHud { opponent: string; clock?: string; note?: string; nextLabel?: string }
+
+/** `sinceReveal`: ms since the last round's cards were turned over, or -1 when they're not on show. */
+export function drawScene(g: Gfx, s: GameState, picks: number[], level: Level | null, sinceReveal: number, hud?: OnlineHud) {
+  const name = hud?.opponent;
+  const They = name ?? 'The bot';
+  const short = name ? name.slice(0, 10) : 'Bot';
   const last = s.history[s.history.length - 1];
   const showing = sinceReveal >= 0 && last;
   const over = s.phase === 'gameOver' && !showing;
@@ -130,13 +143,17 @@ function drawScene(g: Gfx, s: GameState, picks: number[], level: Level, sinceRev
   g.tile('board', 'tile_night', 0, 0, W, H);
   topBar(g, [
     { text: `ROUND ${Math.min(s.round, s.config.rounds)}/${s.config.rounds}`, color: COLORS.gold },
-    { text: s.dealer === ME ? 'you deal' : 'the bot deals', color: COLORS.muted },
-    { text: `vs ${level} bot`, color: COLORS.muted },
+    { text: s.dealer === ME ? 'you deal' : name ? `${short} deals` : 'the bot deals', color: COLORS.muted },
+    { text: name ? `vs ${short}` : `vs ${level} bot`, color: COLORS.muted },
+    ...(hud?.clock ? [{ text: hud.clock, color: COLORS.ruby }] : []),
   ], 'HIGH OR LOW');
 
   // opponent's cards left (public)
   g.panel('panel_night', 4, 30, 362, 40, 4);
-  g.text('BOT’S CARDS LEFT', 12, 34, { size: 7, color: COLORS.muted });
+  if (name) {
+    g.text(short.toUpperCase(), 12, 36, { size: 7, color: COLORS.muted });
+    g.text('CARDS LEFT', 12, 48, { size: 7, color: COLORS.muted });
+  } else g.text('BOT’S CARDS LEFT', 12, 34, { size: 7, color: COLORS.muted });
   tracker(g, s.hands[BOT], 124, 42, s.phase === 'call' && s.dealer === BOT ? s.shown : null);
 
   // the table
@@ -154,7 +171,7 @@ function drawScene(g: Gfx, s: GameState, picks: number[], level: Level, sinceRev
     g.text('FACE DOWN', 266, 78, { align: 'center', size: 7, color: COLORS.muted });
     g.sprite('cards', hidden !== null ? `number_${hidden}` : 'back', 234, 86, { scale: 2 });
   } else {
-    g.text(myDeal ? 'Pick a card to show, then a card to hide' : s.phase === 'deal' ? 'The bot is dealing…' : '', 185, 122, {
+    g.text(myDeal ? 'Pick a card to show, then a card to hide' : s.phase === 'deal' ? `${They} is dealing…` : '', 185, 122, {
       align: 'center', size: 9, color: COLORS.muted,
     });
   }
@@ -184,13 +201,15 @@ function drawScene(g: Gfx, s: GameState, picks: number[], level: Level, sinceRev
   g.panel('panel_night', px, 30, W - px - 4, 236, 4);
   g.text('YOU', px + 10, 38, { size: 7, color: COLORS.muted });
   g.text(`${s.scores[ME]}`, px + 10, 48, { size: 18, color: COLORS.sapphire });
-  g.text('BOT', px + 58, 38, { size: 7, color: COLORS.muted });
+  g.text(name ? short.slice(0, 8).toUpperCase() : 'BOT', px + 58, 38, { size: 7, color: COLORS.muted });
   g.text(`${s.scores[BOT]}`, px + 58, 48, { size: 18, color: COLORS.ruby });
   if (showing) {
-    const who = last.dealer === ME ? 'The bot' : 'You';
+    const who = last.dealer === ME ? (name ? short : 'The bot') : 'You';
     const good = last.right === (last.dealer === BOT);
     g.text(`${who} called ${last.call.toUpperCase()}`, px + 10, 80, { size: 8, color: COLORS.ink });
-    g.text(`${last.right ? 'Right' : 'Wrong'} — ${good ? 'you score!' : 'the bot scores'}`, px + 10, 92, { size: 8, color: good ? COLORS.emerald : COLORS.ruby });
+    g.text(`${last.right ? 'Right' : 'Wrong'} — ${good ? 'you score!' : name ? `${short} scores` : 'the bot scores'}`, px + 10, 92, { size: 8, color: good ? COLORS.emerald : COLORS.ruby });
+    if (hud?.nextLabel) g.button('next', hud.nextLabel, px + 10, 106, W - px - 24);
+    if (hud?.note) g.text(hud.note, px + 10, 128, { size: 7, color: COLORS.muted });
   } else if (myDeal) {
     g.button('deal', 'Deal', px + 10, 84, W - px - 24, { disabled: picks.length !== 2, color: 'red' });
     g.text(picks.length === 0 ? 'choose the face-up card' : picks.length === 1 ? 'now the face-down card' : 'ready to deal', px + 10, 104, { size: 7, color: COLORS.muted });
@@ -199,11 +218,11 @@ function drawScene(g: Gfx, s: GameState, picks: number[], level: Level, sinceRev
     g.button('higher', 'HIGHER', px + 10, 96, W - px - 24);
     g.button('lower', 'LOWER', px + 10, 116, W - px - 24, { color: 'red' });
   } else if (s.phase === 'call' && s.dealer === ME && !showing) {
-    g.text('The bot is deciding…', px + 10, 84, { size: 8, color: COLORS.muted });
+    g.text(`${name ? short : 'The bot'} is deciding…`, px + 10, 84, { size: 8, color: COLORS.muted });
   }
   g.text('LAST ROUNDS', px + 10, 146, { size: 7, color: COLORS.muted });
   s.history.slice(-8).reverse().forEach((r, i) => {
-    const dealerName = r.dealer === ME ? 'You' : 'Bot';
+    const dealerName = r.dealer === ME ? 'You' : name ? short.slice(0, 6) : 'Bot';
     g.text(`${dealerName}: ${r.shown} / ${r.hidden} · ${r.call[0].toUpperCase()}${r.right ? '✓' : '✗'}`, px + 10, 158 + i * 11, {
       size: 7, color: (r.right ? r.dealer === BOT : r.dealer === ME) ? COLORS.emerald : COLORS.muted,
     });
@@ -214,17 +233,17 @@ function drawScene(g: Gfx, s: GameState, picks: number[], level: Level, sinceRev
     standingsPanel(
       g,
       [ME, BOT].sort((a, b) => s.scores[b] - s.scores[a]).map((side) => ({
-        name: side === ME ? 'You' : `${level[0].toUpperCase()}${level.slice(1)} bot`,
+        name: side === ME ? 'You' : name ?? `${level![0].toUpperCase()}${level!.slice(1)} bot`,
         detail: `${s.scores[side]} points`,
       })),
-      w === 'draw' ? 'A draw!' : w === ME ? 'You win the duel!' : 'The bot wins the duel.',
+      w === 'draw' ? 'A draw!' : w === ME ? 'You win the duel!' : `${They} wins the duel.`,
     );
   }
 }
 
 // ---------------------------------------------------------------- log (DOM)
 
-function RoundLog({ state }: { state: GameState }) {
+export function RoundLog({ state, opponent = 'Bot' }: { state: GameState; opponent?: string }) {
   return (
     <aside className="log">
       <h3>Round log</h3>
@@ -236,7 +255,7 @@ function RoundLog({ state }: { state: GameState }) {
           return (
             <li key={n}>
               <em className={youScored ? 'win' : 'tip'}>
-                R{n}: {r.dealer === ME ? 'You' : 'Bot'} showed {r.shown}, hid {r.hidden} · {r.dealer === ME ? 'Bot' : 'You'} called {r.call} — {r.right ? 'right' : 'wrong'}
+                R{n}: {r.dealer === ME ? 'You' : opponent} showed {r.shown}, hid {r.hidden} · {r.dealer === ME ? opponent : 'You'} called {r.call} — {r.right ? 'right' : 'wrong'}
               </em>
             </li>
           );

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { PixelStage } from '../../engine/PixelStage';
 import { COLORS, Gfx } from '../../engine/gfx';
-import { seededRng } from '../shared/rng';
+import { Rng, seededRng } from '../shared/rng';
 import { pace } from '../shared/pace';
 import { topBar } from '../shared/draw';
 import { Level, botTurn, randomRow } from './bots';
@@ -37,6 +37,67 @@ export const RULES = [
 type Note = 0 | 1 | 2;
 interface Draft { kind: Question['kind']; a: number | null; b: number | null }
 
+/** Everything the screen keeps while you play: your setup row, the question being built, your guess and notes. */
+export interface Ui { mine: (number | null)[]; draft: Draft; guessing: boolean; guessRow: (number | null)[]; notes: Note[][] }
+
+export const freshUi = (): Ui => ({
+  mine: Array(N).fill(null),
+  draft: { kind: 'compare', a: null, b: null },
+  guessing: false,
+  guessRow: Array(N).fill(null),
+  notes: Array.from({ length: N }, () => Array<Note>(N).fill(0)),
+});
+
+/** A move the screen makes: solo applies it at once, online sends it to the table. */
+export type Move = { type: 'arrange'; row: Row } | { type: 'ask'; q: Question } | { type: 'guess'; row: Row };
+
+/**
+ * One click on the stage (solo and online share this). `s` is drawn with you
+ * as side 0. Returns the screen's new state and, if the click made one, a move.
+ */
+export function stageClick(id: string, s: GameState, ui: Ui, rng: Rng): { ui: Ui; move?: Move } {
+  const { mine, draft, guessRow } = ui;
+  const out = (u: Partial<Ui>, move?: Move) => ({ ui: { ...ui, ...u }, move });
+  if (id.startsWith('note:')) {
+    const [r, c] = id.slice(5).split(',').map(Number);
+    return out({ notes: ui.notes.map((row, i) => (i === r ? row.map((v, j) => (j === c ? (((v + 1) % 3) as Note) : v)) : row)) });
+  }
+  // setup: build your own row
+  if (s.phase === 'setup') {
+    if (id.startsWith('pal:')) {
+      const c = Number(id.slice(4));
+      const at = mine.indexOf(null);
+      if (at >= 0 && !mine.includes(c)) return out({ mine: mine.map((x, i) => (i === at ? c : x)) });
+    }
+    if (id.startsWith('mine:')) return out({ mine: mine.map((x, i) => (i === Number(id.slice(5)) ? null : x)) });
+    if (id === 'shuffle') return out({ mine: randomRow(rng) });
+    if (id === 'clearRow') return out({ mine: Array(N).fill(null) });
+    if (id === 'ready' && isRow(mine as Row)) return out({}, { type: 'arrange', row: mine as Row });
+    return out({});
+  }
+  if (s.phase !== 'ask' || s.turn !== ME || s.guesses[ME] !== null) return out({});
+  if (ui.guessing) {
+    if (id.startsWith('pal:')) {
+      const c = Number(id.slice(4));
+      const at = guessRow.indexOf(null);
+      if (at >= 0 && !guessRow.includes(c)) return out({ guessRow: guessRow.map((x, i) => (i === at ? c : x)) });
+    }
+    if (id.startsWith('their:')) return out({ guessRow: guessRow.map((x, i) => (i === Number(id.slice(6)) ? null : x)) });
+    if (id === 'back' && !mustGuess(s, ME)) return out({ guessing: false });
+    if (id === 'submit' && isRow(guessRow as Row)) return out({ guessing: false }, { type: 'guess', row: guessRow as Row });
+    return out({});
+  }
+  if (id.startsWith('kind:')) return out({ draft: { kind: id.slice(5) as Question['kind'], a: null, b: null } });
+  if (id.startsWith('pa:')) return out({ draft: { ...draft, a: Number(id.slice(3)) } });
+  if (id.startsWith('pb:')) return out({ draft: { ...draft, b: Number(id.slice(3)) } });
+  if (id === 'ask') {
+    const q = draftQuestion(draft);
+    if (q && s.tokens[ME] >= COST[q.kind]) return out({ draft: { ...draft, a: null, b: null } }, { type: 'ask', q });
+  }
+  if (id === 'guessNow') return out({ guessing: true });
+  return out({});
+}
+
 function draftQuestion(d: Draft): Question | null {
   if (d.a === null) return null;
   if (d.kind === 'slot') return { kind: 'slot', a: d.a };
@@ -52,11 +113,7 @@ export function AskAndArrange() {
   const [level, setLevel] = useState<Level | null>(null);
   const [rng] = useState(() => seededRng(Date.now() & 0xffff));
   const [s, setS] = useState<GameState>(() => newGame(randomRow(rng)));
-  const [mine, setMine] = useState<(number | null)[]>(Array(N).fill(null)); // setup row
-  const [draft, setDraft] = useState<Draft>({ kind: 'compare', a: null, b: null });
-  const [guessing, setGuessing] = useState(false);
-  const [guessRow, setGuessRow] = useState<(number | null)[]>(Array(N).fill(null));
-  const [notes, setNotes] = useState<Note[][]>(() => Array.from({ length: N }, () => Array<Note>(N).fill(0)));
+  const [ui, setUi] = useState<Ui>(freshUi);
 
   // the bot's turn
   useEffect(() => {
@@ -71,62 +128,21 @@ export function AskAndArrange() {
 
   // out of tokens: straight to guessing
   useEffect(() => {
-    if (s.phase === 'ask' && s.turn === ME && s.guesses[ME] === null && mustGuess(s, ME)) setGuessing(true);
+    if (s.phase === 'ask' && s.turn === ME && s.guesses[ME] === null && mustGuess(s, ME)) setUi((u) => ({ ...u, guessing: true }));
   }, [s.phase, s.turn, s.tokens[ME]]);
 
   const onHit = (id: string) => {
     if (id.startsWith('level:')) {
       setLevel(id.slice(6) as Level);
       setS(newGame(randomRow(rng)));
-      setMine(Array(N).fill(null));
-      setGuessing(false);
-      setGuessRow(Array(N).fill(null));
-      return setNotes(Array.from({ length: N }, () => Array<Note>(N).fill(0)));
+      return setUi({ ...freshUi(), draft: ui.draft });
     }
     if (id === 'again') return setLevel(null);
-    if (id.startsWith('note:')) {
-      const [r, c] = id.slice(5).split(',').map(Number);
-      return setNotes((n) => n.map((row, i) => (i === r ? row.map((v, j) => (j === c ? (((v + 1) % 3) as Note) : v)) : row)));
-    }
-    // setup: build your own row
-    if (s.phase === 'setup') {
-      if (id.startsWith('pal:')) {
-        const c = Number(id.slice(4));
-        const at = mine.indexOf(null);
-        if (at >= 0 && !mine.includes(c)) setMine(mine.map((x, i) => (i === at ? c : x)));
-      }
-      if (id.startsWith('mine:')) setMine(mine.map((x, i) => (i === Number(id.slice(5)) ? null : x)));
-      if (id === 'shuffle') setMine(randomRow(rng));
-      if (id === 'clearRow') setMine(Array(N).fill(null));
-      if (id === 'ready' && isRow(mine as Row)) setS(arrange(s, mine as Row));
-      return;
-    }
-    if (s.phase !== 'ask' || s.turn !== ME || s.guesses[ME] !== null) return;
-    if (guessing) {
-      if (id.startsWith('pal:')) {
-        const c = Number(id.slice(4));
-        const at = guessRow.indexOf(null);
-        if (at >= 0 && !guessRow.includes(c)) setGuessRow(guessRow.map((x, i) => (i === at ? c : x)));
-      }
-      if (id.startsWith('their:')) setGuessRow(guessRow.map((x, i) => (i === Number(id.slice(6)) ? null : x)));
-      if (id === 'back' && !mustGuess(s, ME)) setGuessing(false);
-      if (id === 'submit' && isRow(guessRow as Row)) {
-        setS(guess(s, ME, guessRow as Row));
-        setGuessing(false);
-      }
-      return;
-    }
-    if (id.startsWith('kind:')) return setDraft({ kind: id.slice(5) as Question['kind'], a: null, b: null });
-    if (id.startsWith('pa:')) return setDraft((d) => ({ ...d, a: Number(id.slice(3)) }));
-    if (id.startsWith('pb:')) return setDraft((d) => ({ ...d, b: Number(id.slice(3)) }));
-    if (id === 'ask') {
-      const q = draftQuestion(draft);
-      if (q && s.tokens[ME] >= COST[q.kind]) {
-        setS(ask(s, ME, q));
-        setDraft({ ...draft, a: null, b: null });
-      }
-    }
-    if (id === 'guessNow') setGuessing(true);
+    const r = stageClick(id, s, ui, rng);
+    setUi(r.ui);
+    if (r.move?.type === 'arrange') setS(arrange(s, r.move.row));
+    if (r.move?.type === 'ask') setS(ask(s, ME, r.move.q));
+    if (r.move?.type === 'guess') setS(guess(s, ME, r.move.row));
   };
 
   return (
@@ -134,7 +150,7 @@ export function AskAndArrange() {
       <PixelStage
         width={W}
         height={H}
-        draw={(g) => (level ? drawScene(g, s, level, mine, draft, guessing, guessRow, notes) : drawIntro(g))}
+        draw={(g) => (level ? drawScene(g, s, level, ui) : drawIntro(g))}
         onHit={onHit}
       />
       <AskLog state={s} />
@@ -169,22 +185,28 @@ function cardAt(g: Gfx, c: number | null, x: number, y: number, back = false) {
   }
 }
 
-function drawScene(
-  g: Gfx, s: GameState, level: Level, mine: (number | null)[], draft: Draft, guessing: boolean, guessRow: (number | null)[], notes: Note[][],
-) {
+/** Online play: the opponent's name (instead of "bot"), the move clock, and whether your row is locked in while they arrange. */
+export interface OnlineHud { opponent: string; clock?: string; locked?: boolean }
+
+export function drawScene(g: Gfx, s: GameState, level: Level | null, ui: Ui, hud?: OnlineHud) {
+  const { mine, draft, guessing, guessRow, notes } = ui;
   const over = s.phase === 'gameOver';
   const myTurn = s.phase === 'ask' && s.turn === ME && s.guesses[ME] === null;
+  const rival = hud?.opponent ?? 'bot';
+  const RIVAL = rival.toUpperCase();
+  const locked = s.phase === 'setup' && !!hud?.locked;
 
   g.tile('board', 'tile_night', 0, 0, W, H);
   topBar(g, [
-    { text: s.phase === 'setup' ? 'ARRANGE YOUR ROW' : over ? 'REVEAL' : myTurn ? 'YOUR TURN' : s.turn === BOT ? 'BOT ASKING…' : '', color: COLORS.gold },
+    { text: s.phase === 'setup' ? (locked ? 'ROW LOCKED IN' : 'ARRANGE YOUR ROW') : over ? 'REVEAL' : myTurn ? 'YOUR TURN' : s.turn === BOT ? `${RIVAL.slice(0, 14)} ASKING…` : '', color: COLORS.gold },
     { text: `your tokens ${s.tokens[ME]}`, color: COLORS.sapphire },
-    { text: `bot tokens ${s.tokens[BOT]}`, color: COLORS.ruby },
+    { text: `${rival.slice(0, 12)} tokens ${s.tokens[BOT]}`, color: COLORS.ruby },
+    ...(hud?.clock ? [{ text: hud.clock, color: COLORS.ruby }] : []),
   ], 'ASK & ARRANGE');
 
   // the bot's row (top)
   g.panel('panel_night', 4, 30, 296, 70, 4);
-  g.text(guessing ? 'YOUR GUESS OF THE BOT’S ROW — click a slot to take a card back' : 'BOT’S ROW', 10, 34, { size: 7, color: guessing ? COLORS.gold : COLORS.muted });
+  g.text(guessing ? `YOUR GUESS OF ${hud ? RIVAL.slice(0, 12) + '’S' : 'THE BOT’S'} ROW — click a slot to take a card back` : `${RIVAL}’S ROW`, 10, 34, { size: 7, color: guessing ? COLORS.gold : COLORS.muted });
   for (let i = 0; i < N; i++) {
     const x = SLOT_X(i);
     g.text(`${i + 1}`, x + 16, 44, { align: 'center', size: 7, color: COLORS.muted });
@@ -212,14 +234,16 @@ function drawScene(
       }
     }
   };
-  if (s.phase === 'setup') {
+  if (locked) {
+    g.text(`Your row is locked in — waiting for ${rival} to arrange theirs…`, 10, 140, { size: 8, color: COLORS.muted });
+  } else if (s.phase === 'setup') {
     g.text('Click cards in the order you want them (left to right)', 10, 106, { size: 7, color: COLORS.muted });
     palette(mine, 118);
     g.button('shuffle', 'Shuffle', 10, 168, 70);
     g.button('clearRow', 'Clear', 86, 168, 60, { disabled: !mine.some((x) => x !== null) });
     g.button('ready', 'Lock it in', 200, 168, 90, { color: 'red', disabled: !isRow(mine as Row) });
   } else if (guessing) {
-    g.text('Click cards to fill the bot’s row, slot 1 first', 10, 106, { size: 7, color: COLORS.muted });
+    g.text(`Click cards to fill ${hud ? `${rival}’s` : 'the bot’s'} row, slot 1 first`, 10, 106, { size: 7, color: COLORS.muted });
     palette(guessRow, 118);
     if (!mustGuess(s, ME)) g.button('back', 'Back to questions', 10, 168, 110);
     else g.text('Out of tokens — time to guess', 10, 172, { size: 7, color: COLORS.ruby });
@@ -247,32 +271,32 @@ function drawScene(
   } else if (over) {
     // the result sits between the two revealed rows, so both stay visible
     const w = winner(s);
-    g.text(w === 'draw' ? 'A DRAW' : w === ME ? 'YOU WIN THE DUEL!' : 'THE BOT WINS THE DUEL', 152, 108, {
+    g.text(w === 'draw' ? 'A DRAW' : w === ME ? 'YOU WIN THE DUEL!' : hud ? `${RIVAL.slice(0, 14)} WINS THE DUEL` : 'THE BOT WINS THE DUEL', 152, 108, {
       align: 'center', size: 11, color: w === ME ? COLORS.emerald : w === 'draw' ? COLORS.gold : COLORS.ruby,
     });
     g.text(`You: ${correct(s, ME)}/8 slots right · ${s.config.tokens - s.tokens[ME]} tokens used`, 152, 126, { align: 'center', size: 8, color: COLORS.sapphire });
-    g.text(`${level[0].toUpperCase()}${level.slice(1)} bot: ${correct(s, BOT)}/8 right · ${s.config.tokens - s.tokens[BOT]} tokens used`, 152, 138, { align: 'center', size: 8, color: COLORS.ruby });
-    g.text('green = your right guesses up top · red = what the bot got right below', 152, 152, { align: 'center', size: 6, color: COLORS.muted });
+    g.text(`${hud ? rival : `${level![0].toUpperCase()}${level!.slice(1)} bot`}: ${correct(s, BOT)}/8 right · ${s.config.tokens - s.tokens[BOT]} tokens used`, 152, 138, { align: 'center', size: 8, color: COLORS.ruby });
+    g.text(`green = your right guesses up top · red = what ${hud ? rival : 'the bot'} got right below`, 152, 152, { align: 'center', size: 6, color: COLORS.muted });
     g.button('again', 'Play again', 112, 166, 80);
   } else {
-    g.text(s.guesses[ME] ? 'Your guess is in — the bot is still asking…' : 'The bot is thinking about your row…', 10, 140, { size: 8, color: COLORS.muted });
+    g.text(s.guesses[ME] ? `Your guess is in — ${hud ? rival : 'the bot'} is still asking…` : `${hud ? rival : 'The bot'} is thinking about your row…`, 10, 140, { size: 8, color: COLORS.muted });
   }
 
   // your row (bottom)
   g.panel('panel_night', 4, 190, 296, 76, 4);
-  g.text(s.phase === 'setup' ? 'YOUR ROW — click a card to take it back' : 'YOUR ROW (secret)', 10, 194, { size: 7, color: COLORS.muted });
+  g.text(s.phase === 'setup' && !locked ? 'YOUR ROW — click a card to take it back' : 'YOUR ROW (secret)', 10, 194, { size: 7, color: COLORS.muted });
   for (let i = 0; i < N; i++) {
     const x = SLOT_X(i);
-    const c = s.phase === 'setup' ? mine[i] : s.rows[ME][i];
+    const c = s.phase === 'setup' && !locked ? mine[i] : s.rows[ME][i] ?? null;
     cardAt(g, c, x, 204);
-    if (s.phase === 'setup' && c !== null) g.hit(`mine:${i}`, x, 204, 32, 44);
+    if (s.phase === 'setup' && !locked && c !== null) g.hit(`mine:${i}`, x, 204, 32, 44);
     if (over && s.guesses[BOT]) {
       const bg = s.guesses[BOT]![i];
-      g.text(`bot: ${bg}`, x + 16, 252, { align: 'center', size: 6, color: bg === s.rows[ME][i] ? COLORS.ruby : COLORS.muted });
+      g.text(`${hud ? rival.slice(0, 5) : 'bot'}: ${bg}`, x + 16, 252, { align: 'center', size: 6, color: bg === s.rows[ME][i] ? COLORS.ruby : COLORS.muted });
     }
   }
   const lastBot = [...s.asked].reverse().find((a) => a.by === BOT);
-  if (lastBot && !over) g.text(`Bot asked: ${questionText(lastBot.q)} → ${answerText(lastBot.answer)}`, 10, 252, { size: 7, color: COLORS.ruby });
+  if (lastBot && !over) g.text(`${hud ? rival.slice(0, 12) : 'Bot'} asked: ${questionText(lastBot.q)} → ${answerText(lastBot.answer)}`, 10, 252, { size: 7, color: COLORS.ruby });
 
   // notes + your answers
   const nx = 304;
@@ -305,23 +329,24 @@ function drawScene(
 
 // ---------------------------------------------------------------- log (DOM)
 
-function AskLog({ state }: { state: GameState }) {
+export function AskLog({ state, opponent }: { state: GameState; opponent?: string }) {
+  const rival = opponent ?? 'Bot';
   return (
     <aside className="log">
       <h3>Questions</h3>
-      {!state.asked.length && <p className="muted">Every question and its true answer, yours and the bot’s.</p>}
+      {!state.asked.length && <p className="muted">Every question and its true answer, yours and {opponent ? `${opponent}’s` : 'the bot’s'}.</p>}
       <ol>
         {[...state.asked].reverse().map((a, i) => (
           <li key={state.asked.length - i}>
             <em className={a.by === ME ? 'win' : 'tip'}>
-              {a.by === ME ? 'You' : 'Bot'}: {questionText(a.q)} → {answerText(a.answer)}
+              {a.by === ME ? 'You' : rival}: {questionText(a.q)} → {answerText(a.answer)}
             </em>
           </li>
         ))}
       </ol>
       {state.phase === 'gameOver' && (
         <p className="muted">
-          Bot’s row: {state.rows[BOT].join(' ')} · your guess: {state.guesses[ME]?.join(' ')} · your row: {state.rows[ME].join(' ')} · bot’s guess: {state.guesses[BOT]?.join(' ')}
+          {rival}’s row: {state.rows[BOT].join(' ')} · your guess: {state.guesses[ME]?.join(' ')} · your row: {state.rows[ME].join(' ')} · {opponent ? `${opponent}’s` : 'bot’s'} guess: {state.guesses[BOT]?.join(' ')}
         </p>
       )}
     </aside>

@@ -6,7 +6,7 @@ import { pace } from '../shared/pace';
 import { standingsPanel, topBar } from '../shared/draw';
 import { Persona, botAction } from './bots';
 import {
-  ActionKind, COST, DEFAULT_CONFIG, GameState, NEEDS_PAIR, SEATS, TurnEvent, act, eventVisibleTo, fireThreshold,
+  Action, ActionKind, COST, DEFAULT_CONFIG, GameState, NEEDS_PAIR, SEATS, TurnEvent, act, eventVisibleTo, fireThreshold,
   newGame, nextRound, pairOf, standings,
 } from './logic';
 
@@ -51,6 +51,28 @@ function setup(botCount: number) {
   return { state, bots, rng };
 }
 
+export const PORTRAITS = ['citizen', 'officer', 'journalist', 'fanatic', 'researcher', 'terrorist'];
+
+/**
+ * Online play: the move clock, a hint line, the label on the "next" button,
+ * and your own move held on screen for a moment after someone else moved.
+ */
+export interface OnlineHud { clock?: string; sub?: string; nextLabel?: string; held?: TurnEvent }
+
+/** What a click does (solo and online share this): the action being aimed, and a move once one is chosen. */
+export function chambersClick(id: string, s: GameState, kind: ActionKind | null): { kind: ActionKind | null; action?: Action } {
+  const me = s.players.find((p) => p.id === ME)!;
+  if (s.phase !== 'turns' || s.turn !== ME) return { kind: null };
+  if (id.startsWith('act:')) {
+    const k = id.slice(4) as ActionKind;
+    if (!(k in COST) || me.credits < COST[k]) return { kind };
+    if (NEEDS_PAIR[k]) return { kind: kind === k ? null : k };
+    return { kind: null, action: { kind: k } };
+  }
+  if (id.startsWith('seat:') && kind) return { kind: null, action: { kind, seat: Number(id.slice(5)) } };
+  return { kind };
+}
+
 export function SixChambers({ botCount = 3 }: { botCount?: number }) {
   const [game, setGame] = useState(() => setup(botCount));
   const [kind, setKind] = useState<ActionKind | null>(null);
@@ -74,21 +96,14 @@ export function SixChambers({ botCount = 3 }: { botCount?: number }) {
   });
 
   const onHit = (id: string) => {
-    if (id.startsWith('act:')) {
-      const k = id.slice(4) as ActionKind;
-      if (NEEDS_PAIR[k]) setKind((cur) => (cur === k ? null : k));
-      else {
-        setKind(null);
-        apply(act(s, ME, { kind: k }));
-      }
-    } else if (id.startsWith('seat:') && kind) {
-      apply(act(s, ME, { kind, seat: Number(id.slice(5)) }));
+    if (id === 'next') return apply(nextRound(s, game.rng));
+    if (id === 'again') {
       setKind(null);
-    } else if (id === 'next') apply(nextRound(s, game.rng));
-    else if (id === 'again') {
-      setKind(null);
-      setGame(setup(botCount));
+      return setGame(setup(botCount));
     }
+    const r = chambersClick(id, s, kind);
+    setKind(r.kind);
+    if (r.action) apply(act(s, ME, r.action));
   };
 
   const meta: Record<string, string> = { [ME]: 'citizen' };
@@ -139,7 +154,7 @@ export function describe(s: GameState, ev: TurnEvent, viewer = ME): string {
 
 // ---------------------------------------------------------------- drawing
 
-function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, kind: ActionKind | null, sinceFire: number) {
+export function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, kind: ActionKind | null, sinceFire: number, hud?: OnlineHud) {
   const fired = s.phase === 'fired' || s.phase === 'gameOver';
   const last = s.history[s.history.length - 1];
   const reveal = fired && sinceFire > pace(700);
@@ -152,6 +167,7 @@ function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, kind: Act
   topBar(g, [
     { text: `ROUND ${s.round}/${s.config.rounds}`, color: COLORS.gold },
     { text: `fires at ${need} broke (${broke}/${need})`, color: broke >= need - 1 ? COLORS.ruby : COLORS.muted },
+    ...(hud?.clock ? [{ text: hud.clock, color: COLORS.ruby }] : []),
   ], 'SIX CHAMBERS');
 
   // nothing is tracked for you: chambers stay hidden until the cylinder fires
@@ -224,7 +240,13 @@ function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, kind: Act
   const lastMove = s.phase === 'turns' ? s.events[s.events.length - 1] : undefined;
   if (lastMove) {
     g.text('LAST MOVE', px + 10, 192, { size: 7, color: COLORS.muted });
-    wrapText(g, describe(s, lastMove), px + 10, 203, 156, COLORS.gold, 4);
+    // online, your own move stays up a moment even if the next player was quick
+    const held = hud?.held;
+    wrapText(g, describe(s, lastMove), px + 10, 203, 156, COLORS.gold, held ? 2 : 4);
+    if (held) {
+      g.text('YOUR MOVE', px + 10, 222, { size: 7, color: COLORS.muted });
+      wrapText(g, describe(s, held), px + 10, 233, 156, COLORS.gold, 2);
+    }
   }
 
   if (fired && reveal && last) {
@@ -232,7 +254,8 @@ function drawScene(g: Gfx, s: GameState, meta: Record<string, string>, kind: Act
     const verb = names.length === 1 && names[0] !== 'You' ? 'is' : 'are';
     const msg = names.length ? `${names.join(' & ')} ${verb} knocked out` : 'Both rounds hit empty seats!';
     g.text(msg, 150, 262 - 4, { align: 'center', size: 9, color: COLORS.ruby });
-    if (s.phase === 'fired') g.button('next', s.round >= s.config.rounds ? 'Final result' : 'Next round', px + 8, 246, 158);
+    if (s.phase === 'fired') g.button('next', hud?.nextLabel ?? (s.round >= s.config.rounds ? 'Final result' : 'Next round'), px + 8, 246, 158);
+    if (s.phase === 'fired' && hud?.sub) g.text(hud.sub, px + 10, 238, { size: 6, color: COLORS.muted });
   }
 
   if (s.phase === 'gameOver' && reveal) {
@@ -263,7 +286,7 @@ function wrapText(g: Gfx, text: string, x: number, y: number, maxW: number, colo
 
 // ---------------------------------------------------------------- log (DOM)
 
-function ChamberLog({ state }: { state: GameState }) {
+export function ChamberLog({ state }: { state: GameState }) {
   const rounds = [
     ...state.history.map((r) => ({ round: r.round, events: r.events, hit: r.hit, chambers: r.chambers as boolean[] | null })),
     ...(state.phase === 'turns' ? [{ round: state.round, events: state.events, hit: [] as string[], chambers: null }] : []),

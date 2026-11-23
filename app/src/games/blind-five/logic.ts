@@ -93,3 +93,45 @@ export function play(s: GameState, side: Side, move: Move): GameState {
 
 export const stones = (s: GameState, side: Side) => s.board.filter((b) => b === side).length;
 export const square = (c: number) => `${'abcdefghijk'[xy(c)[0]]}${N - xy(c)[1]}`;
+
+/** A face-down stone: everyone sees it is there, nobody sees whose it is. */
+export const DOWN = 'down';
+export type Spot = Side | typeof DOWN | null;
+
+/**
+ * What one player can see, drawn with them as side 0. Owners stay hidden
+ * until the game ends; until then all you get is the opponent's newest stone
+ * (ringed) and the last call, if that was the last move.
+ */
+export interface Screen {
+  board: Spot[];
+  turn: Side;
+  strikes: [number, number];
+  winner: Side | 'draw' | null;
+  winLine: number[] | null;
+  /** Moves made so far (only to notice a new one). */
+  moves: number;
+  /** The opponent's newest stone, while it is the last move. */
+  ring: number | null;
+  /** The last move, if it was a call. */
+  call: { side: Side; cells: number[]; ok: boolean } | null;
+  /** Every move, only once the game is over. */
+  history: Turn[];
+}
+
+export function screenOf(s: GameState, me: Side): Screen {
+  const rel = (x: Side): Side => (x === me ? 0 : 1);
+  const over = s.winner !== null;
+  const last = s.history[s.history.length - 1];
+  return {
+    board: s.board.map((b) => (b === null ? null : over ? rel(b) : DOWN)),
+    turn: rel(s.turn),
+    strikes: [s.strikes[me], s.strikes[other(me)]],
+    winner: s.winner === null || s.winner === 'draw' ? s.winner : rel(s.winner),
+    winLine: s.winLine,
+    moves: s.history.length,
+    ring: !over && last?.move.kind === 'place' && last.side !== me ? last.move.cell : null,
+    call: last?.move.kind === 'call' ? { side: rel(last.side), cells: last.move.cells, ok: !!last.ok } : null,
+    history: over ? s.history.map((t) => ({ ...t, side: rel(t.side) })) : [],
+  };
+}

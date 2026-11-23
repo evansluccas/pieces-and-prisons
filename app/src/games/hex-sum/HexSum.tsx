@@ -5,7 +5,8 @@ import { seededRng } from '../shared/rng';
 import { pace } from '../shared/pace';
 import { standingsPanel, topBar } from '../shared/draw';
 import { Level, Memory, botLine, memorize } from './bots';
-import { GameState, HEXES, LINES, Side, lineOf, newGame, startPlay, tryLine, winner } from './logic';
+import { GameState, HEXES, LINES, Side, lineOf, newGame, startPlay, tryLine } from './logic';
+import type { SeenState } from './online';
 
 const W = 480;
 const H = 270;
@@ -14,7 +15,7 @@ const BOT: Side = 1;
 const S = 19;          // hex size (centre to corner)
 const CX = 136;
 const CY = 150;
-const FLASH_MS = 1700;
+export const FLASH_MS = 1700;
 const LEVELS: { id: Level; label: string; note: string; studyMs: number }[] = [
   { id: 'easy', label: 'Easy', note: '40 s to study · forgetful bot', studyMs: 40_000 },
   { id: 'normal', label: 'Normal', note: '30 s to study', studyMs: 30_000 },
@@ -80,17 +81,9 @@ export function HexSum() {
     }
     if (id === 'ready' && s.phase === 'memorize') return setS(startPlay(s));
     if (s.phase !== 'play' || s.turn !== ME || flashing()) return;
-    if (id.startsWith('hex:')) {
-      const i = Number(id.slice(4));
-      setPicked((p) => (p.includes(i) ? p.filter((x) => x !== i) : p.length < 3 ? [...p, i] : p));
-    }
-    if (id === 'flip') {
-      const line = lineOf(picked);
-      if (line < 0 || s.claimed.includes(line)) return;
-      setPicked([]);
-      setS(tryLine(s, ME, line, rng));
-    }
-    if (id === 'clear') setPicked([]);
+    const r = tileClick(id, s, picked);
+    setPicked(r.picked);
+    if (r.line !== undefined) setS(tryLine(s, ME, r.line, rng));
   };
 
   return (
@@ -98,12 +91,29 @@ export function HexSum() {
       <PixelStage
         width={W}
         height={H}
-        draw={(g) => (s && level ? drawScene(g, s, picked, level, performance.now() - phaseAt.current, flashing() ? performance.now() - flashAt.current : -1) : drawIntro(g))}
+        draw={(g) => (s && level
+          ? drawScene(g, s, picked, { left: level.studyMs - (performance.now() - phaseAt.current), total: level.studyMs }, flashing() ? performance.now() - flashAt.current : -1, `${level.label} bot`)
+          : drawIntro(g))}
         onHit={onHit}
       />
       <HexLog state={s} />
     </div>
   );
+}
+
+/** A click on your turn (shared by solo and online): pick tiles, clear, or flip a line. */
+export function tileClick(id: string, s: SeenState, picked: number[]): { picked: number[]; line?: number } {
+  if (id.startsWith('hex:')) {
+    const i = Number(id.slice(4));
+    return { picked: picked.includes(i) ? picked.filter((x) => x !== i) : picked.length < 3 ? [...picked, i] : picked };
+  }
+  if (id === 'flip') {
+    const line = lineOf(picked);
+    if (line < 0 || s.claimed.includes(line)) return { picked };
+    return { picked: [], line };
+  }
+  if (id === 'clear') return { picked: [] };
+  return { picked };
 }
 
 // ---------------------------------------------------------------- drawing
@@ -144,18 +154,25 @@ function hex(g: Gfx, i: number, fill: string, edge: string, edgeW = 1) {
   g.ctx.stroke();
 }
 
-function drawScene(g: Gfx, s: GameState, picked: number[], level: (typeof LEVELS)[number], sincePhase: number, sinceFlash: number) {
+/** Online play: the opponent's name (instead of "Bot"), the move clock, and the round-result countdown. */
+export interface OnlineHud { opponent: string; clock?: string; nextIn?: number }
+
+/** `study` is the time left to study (ms) and its total; `rival` names the bot on the final standings. */
+export function drawScene(g: Gfx, s: SeenState, picked: number[], study: { left: number; total: number }, sinceFlash: number, rival: string, hud?: OnlineHud) {
   const over = s.phase === 'gameOver';
   const memo = s.phase === 'memorize';
+  const between = hud?.nextIn !== undefined;
   const last = s.attempts[s.attempts.length - 1];
-  const flashLine = sinceFlash >= 0 && last ? LINES[last.line] : [];
-  const myTurn = s.phase === 'play' && s.turn === ME && sinceFlash < 0;
-  const left = level.studyMs - sincePhase;
+  const flashLine = (sinceFlash >= 0 || between) && last ? LINES[last.line] : [];
+  const myTurn = s.phase === 'play' && s.turn === ME && sinceFlash < 0 && !between;
+  const left = study.left;
+  const foe = hud ? hud.opponent.slice(0, 10) : 'Bot';
 
   g.tile('board', 'tile_night', 0, 0, W, H);
   topBar(g, [
     { text: memo ? `STUDY — ${Math.max(0, Math.ceil(left / 1000))}s` : `ROUND ${s.round}/${s.config.rounds}`, color: memo ? COLORS.emerald : COLORS.gold },
     { text: memo ? 'every tile turns face down when time is up' : `misses ${s.misses}/${s.config.maxMisses}`, color: COLORS.muted },
+    ...(hud?.clock ? [{ text: hud.clock, color: COLORS.ruby }] : []),
   ], 'HEX SUM');
   g.panel('panel_night', 4, 30, 266, 236, 4);
 
@@ -180,72 +197,78 @@ function drawScene(g: Gfx, s: GameState, picked: number[], level: (typeof LEVELS
   if (memo) {
     g.text('STUDY THE BOARD', px + 10, 38, { size: 10, color: COLORS.emerald });
     g.rect(px + 10, 56, W - px - 24, 5, '#2a1f4d');
-    g.rect(px + 10, 56, Math.round((W - px - 24) * Math.max(0, left / level.studyMs)), 5, COLORS.emerald);
+    g.rect(px + 10, 56, Math.round((W - px - 24) * Math.max(0, left / study.total)), 5, COLORS.emerald);
     g.text('Lines run in 3 directions:', px + 10, 72, { size: 7, color: COLORS.muted });
     g.text('across, and both diagonals.', px + 10, 82, { size: 7, color: COLORS.muted });
     g.button('ready', 'I’m ready', px + 10, 100, 90);
     return;
   }
 
-  g.text('TARGET', px + 10, 36, { size: 7, color: COLORS.muted });
+  g.text(between ? 'NEXT TARGET' : 'TARGET', px + 10, 36, { size: 7, color: COLORS.muted });
   g.text(`${s.target}`, px + 10, 44, { size: 24, color: COLORS.gold });
   g.text('YOU', px + 90, 40, { size: 7, color: COLORS.muted });
   g.text(`${s.scores[ME]}`, px + 90, 50, { size: 16, color: COLORS.sapphire });
-  g.text('BOT', px + 140, 40, { size: 7, color: COLORS.muted });
+  g.text(foe.toUpperCase(), px + 140, 40, { size: 7, color: COLORS.muted });
   g.text(`${s.scores[BOT]}`, px + 140, 50, { size: 16, color: COLORS.ruby });
 
   let msg = '';
   if (over) msg = '';
-  else if (sinceFlash >= 0 && last) msg = `${last.side === ME ? 'You' : 'Bot'}: ${LINES[last.line].map((i) => s.values[i]).join(' + ')} = ${last.sum} ${last.ok ? '— HIT!' : '— miss'}`;
-  else if (s.turn === BOT) msg = 'The bot is choosing…';
+  else if ((sinceFlash >= 0 || between) && last) msg = `${last.side === ME ? 'You' : foe}: ${LINES[last.line].map((i) => s.values[i]).join(' + ')} = ${last.sum} ${last.ok ? '— HIT!' : '— miss'}`;
+  else if (s.turn === BOT) msg = hud ? `${hud.opponent} is choosing…` : 'The bot is choosing…';
   else if (picked.length < 3) msg = `Pick 3 tiles in a straight line (${picked.length}/3)`;
   else if (line < 0) msg = 'Those three aren’t a straight line';
   else if (s.claimed.includes(line)) msg = 'That line is already claimed';
   else msg = 'Flip them!';
-  g.text(msg, px + 10, 80, { size: 8, color: sinceFlash >= 0 && last ? (last.ok ? COLORS.emerald : COLORS.ruby) : COLORS.ink });
+  g.text(msg, px + 10, 80, { size: 8, color: (sinceFlash >= 0 || between) && last ? (last.ok ? COLORS.emerald : COLORS.ruby) : COLORS.ink });
+  if (between) {
+    g.button('ready', 'Ready', px + 10, 94, 72);
+    g.text(`${last && !last.ok ? 'Round void. ' : ''}Next round in ${hud!.nextIn}s`, px + 90, 98, { size: 7, color: COLORS.muted });
+  }
   if (myTurn) {
     g.button('flip', 'Flip them', px + 10, 94, 96, { color: 'red', disabled: line < 0 || s.claimed.includes(line) });
     g.button('clear', 'Clear', px + 112, 94, 72, { disabled: !picked.length });
   }
 
-  g.text('THIS ROUND', px + 10, 118, { size: 7, color: COLORS.muted });
-  s.attempts.filter((a) => a.round === s.round).slice(-6).forEach((a, i) => {
-    g.text(`${a.side === ME ? 'You' : 'Bot'}: ${LINES[a.line].map((t) => s.values[t]).join('+')} = ${a.sum}`, px + 10, 130 + i * 11, {
+  // between rounds, keep showing the round that just ended
+  const shown = between && last ? last.round : s.round;
+  g.text(between ? `ROUND ${shown}` : 'THIS ROUND', px + 10, 118, { size: 7, color: COLORS.muted });
+  s.attempts.filter((a) => a.round === shown).slice(-6).forEach((a, i) => {
+    g.text(`${a.side === ME ? 'You' : foe}: ${LINES[a.line].map((t) => s.values[t]).join('+')} = ${a.sum}`, px + 10, 130 + i * 11, {
       size: 7, color: a.ok ? COLORS.emerald : COLORS.muted,
     });
   });
   const won = s.attempts.filter((a) => a.ok).slice(-3).reverse();
   if (won.length) {
     g.text('LAST HITS', px + 10, 200, { size: 7, color: COLORS.muted });
-    won.forEach((a, i) => g.text(`R${a.round} ${a.side === ME ? 'You' : 'Bot'} hit ${a.target}`, px + 10, 212 + i * 11, { size: 7, color: COLORS.ink }));
+    won.forEach((a, i) => g.text(`R${a.round} ${a.side === ME ? 'You' : foe} hit ${a.target}`, px + 10, 212 + i * 11, { size: 7, color: COLORS.ink }));
   }
 
   if (over && sinceFlash < 0) {
-    const w = winner(s);
+    const w = s.scores[0] === s.scores[1] ? 'draw' : s.scores[0] > s.scores[1] ? ME : BOT;
     standingsPanel(
       g,
       [ME, BOT].sort((a, b) => s.scores[b] - s.scores[a]).map((side) => ({
-        name: side === ME ? 'You' : `${level.label} bot`,
+        name: side === ME ? 'You' : hud?.opponent ?? rival,
         detail: `${s.scores[side]} rounds`,
       })),
-      w === 'draw' ? 'A draw!' : w === ME ? 'You win the duel!' : 'The bot wins the duel.',
+      w === 'draw' ? 'A draw!' : w === ME ? 'You win the duel!' : hud ? `${hud.opponent} wins the duel.` : 'The bot wins the duel.',
     );
   }
 }
 
 // ---------------------------------------------------------------- log (DOM)
 
-function HexLog({ state }: { state: GameState | null }) {
+export function HexLog({ state, opponent }: { state: SeenState | null; opponent?: string }) {
   const list = state?.attempts ?? [];
   return (
     <aside className="log">
       <h3>Flip log</h3>
-      {!list.length && <p className="muted">Every flip appears here — yours and the bot’s. Memory is part of the game, but nothing here is secret.</p>}
+      {!list.length && <p className="muted">Every flip appears here — yours and {opponent ? `${opponent}’s` : 'the bot’s'}. Memory is part of the game, but nothing here is secret.</p>}
       <ol>
         {[...list].reverse().map((a, i) => (
           <li key={list.length - i}>
             <em className={a.ok ? 'win' : ''}>
-              R{a.round} (target {a.target}) — {a.side === ME ? 'You' : 'Bot'}: {LINES[a.line].map((t) => state!.values[t]).join(' + ')} = {a.sum} {a.ok ? '✓' : '✗'}
+              R{a.round} (target {a.target}) — {a.side === ME ? 'You' : opponent ?? 'Bot'}: {LINES[a.line].map((t) => state!.values[t]).join(' + ')} = {a.sum} {a.ok ? '✓' : '✗'}
             </em>
           </li>
         ))}

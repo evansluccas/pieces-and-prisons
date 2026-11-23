@@ -14,6 +14,13 @@ import { RumorExchangeOnline } from '../games/rumor-exchange/RumorExchangeOnline
 import { ColorDoubtOnline } from '../games/color-doubt/ColorDoubtOnline';
 import { DeadeyeHoldemOnline } from '../games/deadeye-holdem/DeadeyeHoldemOnline';
 import { HighLowEquationsOnline } from '../games/high-low-equations/HighLowEquationsOnline';
+import { SmugglersGemsOnline } from '../games/smugglers-gems/SmugglersGemsOnline';
+import { PiggyBluffOnline } from '../games/piggy-bluff/PiggyBluffOnline';
+import { SixChambersOnline } from '../games/six-chambers/SixChambersOnline';
+import { HighOrLowOnline } from '../games/high-or-low/HighOrLowOnline';
+import { AskAndArrangeOnline } from '../games/ask-and-arrange/AskAndArrangeOnline';
+import { HexSumOnline } from '../games/hex-sum/HexSumOnline';
+import { BlindFiveOnline } from '../games/blind-five/BlindFiveOnline';
 import { GameMessage, RoomView, useTable } from '../net/table';
 import { Me, account } from '../net/account';
 import { Panel, Sprite } from './Panel';
@@ -42,6 +49,13 @@ const ONLINE_VIEWS: Record<string, (p: OnlineGameProps) => ReactElement> = {
   'color-doubt': ColorDoubtOnline,
   'deadeye-holdem': DeadeyeHoldemOnline,
   'high-low-equations': HighLowEquationsOnline,
+  'smugglers-gems': SmugglersGemsOnline,
+  'piggy-bluff': PiggyBluffOnline,
+  'six-chambers': SixChambersOnline,
+  'high-or-low': HighOrLowOnline,
+  'ask-and-arrange': AskAndArrangeOnline,
+  'hex-sum': HexSumOnline,
+  'blind-five': BlindFiveOnline,
 };
 export const ONLINE_IDS = Object.keys(ONLINE_VIEWS);
 

@@ -20,6 +20,13 @@ import * as rumor from '../../src/games/rumor-exchange/online';
 import * as doubt from '../../src/games/color-doubt/online';
 import * as deadeye from '../../src/games/deadeye-holdem/online';
 import * as hilo from '../../src/games/high-low-equations/online';
+import * as d_smugglers_gems from '../../src/games/smugglers-gems/online';
+import * as d_piggy_bluff from '../../src/games/piggy-bluff/online';
+import * as d_six_chambers from '../../src/games/six-chambers/online';
+import * as d_high_or_low from '../../src/games/high-or-low/online';
+import * as d_ask_and_arrange from '../../src/games/ask-and-arrange/online';
+import * as d_hex_sum from '../../src/games/hex-sum/online';
+import * as d_blind_five from '../../src/games/blind-five/online';
 
 const lonelyNumber: OnlineGame<LonelyState> = {
   id: 'lonely-number',
@@ -215,6 +222,26 @@ const highLowEquations: OnlineGame<hilo.OnlineState> = {
   results: hilo.results,
 };
 
+/** Build a table entry from a game's online module (its exported functions). */
+function fromModule(id: string, minPlayers: number, maxPlayers: number, m: Record<string, any>): OnlineGame<any> {
+  return {
+    id, minPlayers, maxPlayers,
+    start: m.start, act: m.act, view: m.view, waitingOn: m.waitingOn, botAction: m.botAction, over: m.over, results: m.results,
+    pause: m.pause, turnMs: m.turnMs, decisionKey: m.decisionKey, realtime: m.realtime,
+  };
+}
+
+/** Group D: memory and private-information games. */
+const GROUP_D = [
+  fromModule('smugglers-gems', 3, 6, d_smugglers_gems),
+  fromModule('piggy-bluff', 3, 6, d_piggy_bluff),
+  fromModule('six-chambers', 3, 6, d_six_chambers),
+  fromModule('high-or-low', 2, 2, d_high_or_low),
+  fromModule('ask-and-arrange', 2, 2, d_ask_and_arrange),
+  fromModule('hex-sum', 2, 2, d_hex_sum),
+  fromModule('blind-five', 2, 2, d_blind_five),
+];
+
 export const ONLINE_GAMES: Record<string, OnlineGame<any>> = {
   [lonelyNumber.id]: lonelyNumber,
   [sandBid.id]: sandBid,
@@ -230,4 +257,5 @@ export const ONLINE_GAMES: Record<string, OnlineGame<any>> = {
   [colorDoubt.id]: colorDoubt,
   [deadeyeHoldem.id]: deadeyeHoldem,
   [highLowEquations.id]: highLowEquations,
+  ...Object.fromEntries(GROUP_D.map((g) => [g.id, g])),
 };
