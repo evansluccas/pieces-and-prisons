@@ -8,12 +8,18 @@ export interface Seat { id: string; name: string; isBot: boolean }
 
 export interface Result { seat: string; place: number; detail: string }
 
+/** A yes/no choice the host can make in the lobby (e.g. the Party's practice round). */
+export interface GameOption { key: string; label: string; default: boolean }
+export type Options = Record<string, boolean>;
+
 export interface OnlineGame<S = unknown> {
   id: string;
   minPlayers: number;
   maxPlayers: number;
+  /** Optional: choices the host can make in the lobby; their values reach `start`. */
+  options?: GameOption[];
   /** `now` is the server's clock (ms); real-time games keep their timing from it. */
-  start(seats: Seat[], rng: Rng, now: number): S;
+  start(seats: Seat[], rng: Rng, now: number, options?: Options): S;
   /** Apply one player's action; throws with a friendly message if it isn't allowed. */
   act(state: S, seat: string, action: unknown, now: number): S;
   /** What `seat` may see (null = a spectator), as of `now`. */

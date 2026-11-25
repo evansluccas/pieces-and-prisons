@@ -34,10 +34,12 @@ const act = (u: User, action: unknown) => say(u, { type: 'act', action });
 const error = (u: User) => last(u, 'error')?.message;
 const state = () => [...(rooms as unknown as { rooms: Map<string, { state: any }> }).rooms.values()][0].state;
 
-function party(bots: number) {
+/** Ana hosts, Ben joins, bots fill the rest; the practice round is off unless asked for. */
+function party(bots: number, practice = false) {
   say(a, { type: 'create', gameId: 'party' });
   say(b, { type: 'join', code: room(a).code });
   for (let i = 0; i < bots; i++) say(a, { type: 'addBot' });
+  if (!practice) say(a, { type: 'option', key: 'practice', value: false });
   say(a, { type: 'start' });
 }
 
@@ -138,5 +140,58 @@ describe('party', () => {
       expect(after.stage, m.id).toBe('payout');
       expect(after.last.id).toBe(m.id);
     }
+  });
+
+  it('the practice round is a lobby choice: on at first, only the host can change it', () => {
+    say(a, { type: 'create', gameId: 'party' });
+    say(b, { type: 'join', code: room(a).code });
+    expect(room(b).options).toEqual([{ key: 'practice', label: expect.any(String), value: true }]);
+    say(b, { type: 'option', key: 'practice', value: false });
+    expect(error(b)).toMatch(/host/i);
+    say(a, { type: 'option', key: 'nonsense', value: true });
+    expect(error(a)).toMatch(/isn’t a choice/);
+    say(a, { type: 'option', key: 'practice', value: false });
+    expect(room(b).options[0].value).toBe(false);
+    say(a, { type: 'start' });
+    expect(view(a).stage).toBe('board');
+  });
+
+  it('a practice mini-game comes first, everyone plays it, and nothing is won or lost', () => {
+    party(2, true);
+    const v = view(a);
+    expect(v.stage).toBe('intro');
+    expect(v.practice).toBe(true);
+    expect(v.next!.kind).toBe('ffa');
+    expect(v.next!.seats).toHaveLength(4);
+    let guard = 0;
+    let sawPayout = false;
+    while (state().stage !== 'board' && guard++ < 500) {
+      if (state().stage === 'mini') expect(view(a).mini!.playing).toBe(true);
+      if (state().stage === 'payout') {
+        sawPayout = true;
+        expect(view(a).last!.practice).toBe(true);
+      }
+      playFor(a);
+      playFor(b);
+      vi.advanceTimersByTime(1500);
+    }
+    expect(sawPayout).toBe(true);
+    const s = state();
+    expect(s.stage).toBe('board');
+    expect(s.practice).toBe(false);
+    expect(s.board.round).toBe(1);
+    expect(Object.values(s.board.pieces)).toEqual([10, 10, 10, 10]);
+    expect(Object.values(s.board.wins)).toEqual([0, 0, 0, 0]);
+    expect(view(a).practice).toBe(false);
+  });
+
+  it('a table saved before lobby choices existed still gets them', () => {
+    say(a, { type: 'create', gameId: 'party' });
+    const saved = rooms.snapshot().map((r) => ({ ...r, data: r.data.replace(/,"options":\{[^}]*\}/, '') }));
+    expect(saved[0].data).not.toContain('"options"');
+    const again = new Rooms(() => undefined, db);
+    again.restore(saved);
+    expect((again as unknown as { rooms: Map<string, { options: unknown }> }).rooms.values().next().value!.options).toEqual({ practice: true });
+    again.stop();
   });
 });

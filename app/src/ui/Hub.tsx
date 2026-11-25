@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { MINI_INFO } from '../games/party/minis';
+import { RulesDialog } from './RulesDialog';
 import { GAMES, STAGE_LABEL, Stage } from '../games/registry';
 import { AccountPanel } from './AccountPanel';
 import { ONLINE_IDS } from './Online';
@@ -34,7 +36,7 @@ export function Hub({ onPlay, onOnline, onParty, onPage }: { onPlay: (id: string
         <button role="tab" aria-selected={mode === 'games'} className={mode === 'games' ? 'on' : ''} onClick={() => choose('games')}>Mini-games</button>
         <button role="tab" aria-selected={mode === 'party'} className={mode === 'party' ? 'on' : ''} onClick={() => choose('party')}>Party</button>
       </div>
-      {mode === 'party' ? <PartyPanel onParty={onParty} /> : stages.map((stage) => (
+      {mode === 'party' ? <PartyPanel onParty={onParty} onPractice={onPlay} /> : stages.map((stage) => (
         <section key={stage}>
           <h2>{STAGE_LABEL[stage]}</h2>
           <div className="game-grid">
@@ -63,7 +65,9 @@ export function Hub({ onPlay, onOnline, onParty, onPage }: { onPlay: (id: string
   );
 }
 
-function PartyPanel({ onParty }: { onParty: () => void }) {
+function PartyPanel({ onParty, onPractice }: { onParty: () => void; onPractice: (id: string) => void }) {
+  const [open, setOpen] = useState<string | null>(null);
+  const mini = MINI_INFO.find((m) => m.id === open);
   return (
     <Panel className="party-panel">
       <div className="party-head">
@@ -81,7 +85,22 @@ function PartyPanel({ onParty }: { onParty: () => void }) {
         <li>The player with the most mini-game wins gets a bonus of 10 Pieces at the end.</li>
       </ul>
       <button className="btn go" onClick={onParty}>Play a party online</button>
-      <p className="muted small">Sign in or pick a guest name above first.</p>
+      <p className="muted small">Sign in or pick a guest name above first. New to it? The host can start the party with a practice mini-game that’s worth nothing.</p>
+      <h3>The mini-games</h3>
+      <p className="muted small">Read the rules here, or practise any of them against bots before you play.</p>
+      <ul className="party-minis">
+        {MINI_INFO.map((m) => (
+          <li key={m.id}>
+            <b>{m.label}</b>
+            <small>{m.blurb}</small>
+            <small>{m.duel && !m.round ? 'Duels only' : m.round && !m.duel ? 'After rounds' : 'After rounds and in duels'} · {m.min === m.max ? m.min : `${Math.max(m.min, 2)}–${m.max}`} players</small>
+            <button className="link" onClick={() => setOpen(m.id)}>Rules · practice</button>
+          </li>
+        ))}
+      </ul>
+      {mini && (
+        <RulesDialog gameId={mini.id} title={mini.label} note={mini.blurb} onClose={() => setOpen(null)} onPractice={() => onPractice(mini.id)} />
+      )}
     </Panel>
   );
 }

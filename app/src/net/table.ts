@@ -15,6 +15,8 @@ export interface RoomView {
   minPlayers: number;
   maxPlayers: number;
   results: { name: string; place: number; detail: string; you: boolean }[] | null;
+  /** Choices the host can make in the lobby (e.g. the Party's practice round). */
+  options: { key: string; label: string; value: boolean }[];
 }
 /**
  * The latest game message. `deadline` and `pauseUntil` are already turned

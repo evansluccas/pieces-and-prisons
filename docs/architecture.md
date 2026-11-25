@@ -62,13 +62,14 @@ app/
   src/
     main.tsx, App.tsx  app shell and screen switching
     engine/          atlas.ts (sprite sheets), gfx.ts (drawing helpers), PixelStage.tsx (the canvas)
-    ui/              Hub, AccountPanel, Online (tables + lobby), Records (history, leaderboards), RaceBoard, Panel
+    ui/              Hub, AccountPanel, Online (tables + lobby), Records (history, leaderboards), RulesDialog, RaceBoard, Panel
     net/             account.ts (HTTP API client), table.ts (WebSocket hook)
     games/
       registry.ts    the list of games shown on the hub
+      loaders.ts     each game's screen and rules, loaded on demand
       shared/        rng.ts, pace.ts, race.ts, draw.ts — used by many games
       <game>/        logic.ts, bots.ts, <Game>.tsx, online.ts, <Game>Online.tsx, logic.test.ts
-      party/         Party mode: logic.ts (board rules) and PartyOnline.tsx (board screen)
+      party/         Party mode: logic.ts (board rules), minis.ts (mini-game list), PartyOnline.tsx (board screen)
   server/
     index.ts         start-up, saving, shutdown
     app.ts           HTTP API
@@ -123,8 +124,8 @@ Shared helpers in `app/src/games/shared/`:
 
 `App.tsx` switches between screens with a single `current` value (no URL routes):
 
-- `null` → **Hub** (`ui/Hub.tsx`): account panel, Leaderboards link, and the **Mini-games / Party** switch (remembered in `localStorage`). Mini-games shows every game by stage; Party shows the rules and a button.
-- a game id → that game's **solo screen**, loaded on demand (`GAME_VIEWS` uses dynamic `import()`, so the first download is about 180 kB), with the rules dialog, bot count and speed.
+- `null` → **Hub** (`ui/Hub.tsx`): account panel, Leaderboards link, and the **Mini-games / Party** switch (remembered in `localStorage`). Mini-games shows every game by stage; Party shows the rules, a button, and every mini-game with its rules and a solo practice button.
+- a game id → that game's **solo screen**, loaded on demand (`GAME_VIEWS` in `games/loaders.ts` uses dynamic `import()`, so the first download is about 180 kB), with the rules, bot count and speed.
 - `'online'` → **Online tables** (`ui/Online.tsx`): start a table for any game, or join one by code.
 - `'party'` → the same Online screen in party mode: "Start a party" plus join by code.
 - `'matches'`, `'leaders'` → **My matches** and **Leaderboards** (`ui/Records.tsx`).
@@ -168,11 +169,12 @@ Security (`server/auth.ts`, `server/app.ts`, `server/ws.ts`):
 ```ts
 interface OnlineGame<S> {
   id, minPlayers, maxPlayers
-  start(seats, rng, now): S
+  start(seats, rng, now, options?): S
   act(state, seat, action, now): S          // throws a friendly message if the move isn't allowed
   view(state, seat | null, now): unknown    // only what this seat may see
   waitingOn(state): string[]                // seats that must move now
   botAction(state, seat, rng): unknown
+  options?: { key, label, default }[]        // yes/no choices for the host in the lobby; values reach start()
   turnMs?(state): number                    // time for this decision (default 60 s)
   decisionKey?(state): string               // moves within one decision don't restart the clock
   pause?(state): { ms, next(state, now) } | null   // e.g. a result on screen
@@ -186,14 +188,14 @@ interface OnlineGame<S> {
 
 ### Rooms: the table engine
 
-`server/rooms.ts` runs every table in memory. A table has a four-letter code (no I or O), a host, seats (people or bots), a status (`lobby` → `playing` → `over`), the game state and its own seeded `Rng`.
+`server/rooms.ts` runs every table in memory. A table has a four-letter code (no I or O), a host, seats (people or bots), a status (`lobby` → `playing` → `over`), the host's lobby choices for the game (saved with the table), the game state and its own seeded `Rng`.
 
 **Messages** (JSON over `/ws`):
 
 | Client → server | Server → client |
 |---|---|
-| `hello` (on every connect), `create {gameId}`, `join {code}`, `leave` | `room {room}` — seats, host, status, results |
-| `addBot`, `removeSeat {seat}`, `start`, `again` (host) | `game {view, waiting, deadline, pauseUntil, now}` — this seat's view |
+| `hello` (on every connect), `create {gameId}`, `join {code}`, `leave` | `room {room}` — seats, host, status, results, lobby choices |
+| `addBot`, `removeSeat {seat}`, `option {key, value}`, `start`, `again` (host) | `game {view, waiting, deadline, pauseUntil, now}` — this seat's view |
 | `act {action}`, `ready` (skip a pause), `report {seat}` | `error {message}`, `left` |
 
 **After every change** the room calls `advance()`:
@@ -228,6 +230,7 @@ The Party (`server/games/party.ts`) is itself an `OnlineGame`, and it runs the o
 
 - The board rules are pure functions in `app/src/games/party/logic.ts`: rolls, spaces, events, duels, the vault, payouts and standings.
 - Its stages are `board` → `intro` → `mini` → `payout` → back to `board`, ending at `done`. Board decisions have a 30 s clock.
+- With the host's `practice` lobby choice on, the party opens with a practice mini-game for everyone that pays nothing, then round 1 begins.
 - A mini-game is a real `OnlineGame` from the catalog, started with only the seats that play it and shortened (one puzzle, fewer rounds). The Party passes the child's `realtime` ticks and pauses through, and drives turn-based children with its own per-seat timers (45 s for people, under 2 s for bots).
 - Moves for a mini-game arrive as `{ type: 'mini', action }`. The client wraps the child's own online screen so its moves go through the Party (`PartyOnline.tsx`).
 - A duel between two bots is played out at once on a pretend clock, so nobody waits on it.
@@ -267,7 +270,7 @@ One SQLite file (`app/data/pieces.db` locally, `/data/pieces.db` on Fly), opened
 
 ## 10. Tests
 
-`npm test` runs Vitest over 63 files (433 tests):
+`npm test` runs Vitest over 63 files (436 tests):
 
 - `app/src/games/*/logic.test.ts` (and Sand Bid's `round.test.ts`): rules, scoring, bots and edge cases for every game, plus the Party board.
 - `app/server/*.test.ts`: accounts and the API, the name filter, saving and restoring, stats, static files, and for every online game what each seat can and can't see, invalid moves refused, and a whole match played to the end and recorded. `party.test.ts` covers table sizes, clocks, mini-games and a full 8-player party.
@@ -278,7 +281,7 @@ One SQLite file (`app/data/pieces.db` locally, `/data/pieces.db` on Fly), opened
 
 **A new online game:** write `logic.ts`, `bots.ts` and the solo screen; add `online.ts`; wrap it in `server/games/catalog.ts`; add `<Game>Online.tsx` and register it in `ONLINE_VIEWS` (`app/src/ui/Online.tsx`); add it to `GAME_VIEWS` (`App.tsx`) and `registry.ts`; write a server test that checks hidden information. The checklist is in [online-plan.md §2](online-plan.md#2-converting-a-game--the-checklist).
 
-**A game as a Party mini-game:** add an entry to `MINIS` in `server/games/party.ts` with the player counts it supports, whether it fits rounds and/or duels, and a `short` function that cuts it down to a minute or two.
+**A game as a Party mini-game:** add it to `MINI_INFO` in `app/src/games/party/minis.ts` (name, one-line blurb, player counts, whether it fits rounds and/or duels) and a function to `SHORT` in `server/games/party.ts` that cuts it down to a minute or two. The hub's mini-game list and rules pick it up from there.
 
 **A sprite:** define it in `tools/build_assets.py`, run `python3 tools/build_assets.py`, and draw it with `g.sprite(category, name, x, y)`.
 

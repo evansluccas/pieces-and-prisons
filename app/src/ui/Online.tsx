@@ -187,6 +187,21 @@ function Lobby({ room, send }: { room: RoomView; send: (m: Record<string, unknow
           </li>
         ))}
       </ul>
+      {room.options?.length > 0 && room.status !== 'playing' && (
+        <div className="lobby-options">
+          {room.options.map((o) => (
+            <label key={o.key}>
+              <input
+                type="checkbox"
+                checked={o.value}
+                disabled={!room.host}
+                onChange={(e) => send({ type: 'option', key: o.key, value: e.target.checked })}
+              />{' '}
+              {o.label}
+            </label>
+          ))}
+        </div>
+      )}
       {room.host ? (
         <div className="lobby-actions">
           {room.status === 'over' ? (

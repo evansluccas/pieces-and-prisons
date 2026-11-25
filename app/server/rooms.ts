@@ -23,7 +23,7 @@ import type { User } from './auth';
 import type { Db } from './db';
 import { ONLINE_GAMES } from './games';
 import { decode, encode } from './persist';
-import type { OnlineGame, Result } from './games/types';
+import type { OnlineGame, Options, Result } from './games/types';
 
 export const TURN_MS = 60_000;
 export const LOBBY_GRACE_MS = 45_000;
@@ -56,6 +56,7 @@ interface Room {
   decision: number;               // bumps each time a new decision begins
   decisionKey: string | null;     // the game's own name for the current decision, if it gives one
   startedAt: number | null;       // when the current game began
+  options: Options;               // the host's choices for this game (see OnlineGame.options)
 }
 
 /** What is kept of a room when the server stops (see snapshot/restore). */
@@ -71,6 +72,7 @@ export interface RoomView {
   minPlayers: number;
   maxPlayers: number;
   results: { name: string; place: number; detail: string; you: boolean }[] | null;
+  options: { key: string; label: string; value: boolean }[];
 }
 
 export interface TableInfo { code: string; gameId: string; status: Status }
@@ -93,9 +95,13 @@ export type ClientMessage =
   | { type: 'ready' }
   | { type: 'again' }
   | { type: 'report'; seat: number }
+  | { type: 'option'; key: string; value: boolean }
   | { type: 'hello' };
 
 class TableError extends Error {}
+
+/** A game's choices as they start out in a new table. */
+const defaults = (game: OnlineGame<any>): Options => Object.fromEntries((game.options ?? []).map((o) => [o.key, o.default]));
 
 export class Rooms {
   private rooms = new Map<string, Room>();
@@ -123,6 +129,7 @@ export class Rooms {
         case 'ready': return this.ready(user);
         case 'again': return this.again(user);
         case 'report': return this.report(user, Number(msg.seat));
+        case 'option': return this.option(user, String(msg.key), msg.value === true);
         default: throw new TableError('Unknown request.');
       }
     } catch (e) {
@@ -206,6 +213,7 @@ export class Rooms {
       code: this.newCode(), gameId, game, hostId: user.id, seats: [], status: 'lobby', state: null,
       rng: seededRng(randomInt(1 << 30)), results: null, deadline: null, pauseUntil: null, ready: new Set(),
       timers: new Set(), emptySince: null, nextSeat: 0, decision: 0, decisionKey: null, startedAt: null,
+      options: defaults(game),
     };
     this.rooms.set(room.code, room);
     this.seat(room, user);
@@ -305,7 +313,7 @@ export class Rooms {
     const room = this.mustHost(user);
     if (room.status !== 'lobby') throw new TableError('The game has already started.');
     if (room.seats.length < room.game.minPlayers) throw new TableError(`This game needs at least ${room.game.minPlayers} players — add bots to fill seats.`);
-    room.state = room.game.start(room.seats.map((s) => ({ id: s.id, name: s.name, isBot: s.isBot })), room.rng, this.now());
+    room.state = room.game.start(room.seats.map((s) => ({ id: s.id, name: s.name, isBot: s.isBot })), room.rng, this.now(), room.options);
     room.status = 'playing';
     room.startedAt = this.now();
     room.results = null;
@@ -373,6 +381,15 @@ export class Rooms {
       }
     }
     this.send(user.id, { type: 'error', message: `Thanks — “${seat.name}” has been reported and will be looked at.` });
+  }
+
+  /** The host changes one of the game's choices in the lobby. */
+  private option(user: User, key: string, value: boolean) {
+    const room = this.mustHost(user);
+    if (room.status === 'playing') throw new TableError('The game has already started.');
+    if (!room.game.options?.some((o) => o.key === key)) throw new TableError('That isn’t a choice for this game.');
+    room.options = { ...room.options, [key]: value };
+    this.broadcast(room);
   }
 
   private again(user: User) {
@@ -512,6 +529,7 @@ export class Rooms {
         const seat = room.seats.find((s) => s.id === r.seat)!;
         return { name: seat.name, place: r.place, detail: r.detail, you: seat.userId === userId };
       }) ?? null,
+      options: (room.game.options ?? []).map((o) => ({ key: o.key, label: o.label, value: room.options[o.key] ?? o.default })),
     };
   }
 
@@ -584,7 +602,7 @@ export class Rooms {
         const s = decode<SavedRoom>(row.data);
         const game = ONLINE_GAMES[s.gameId];
         if (!game || this.rooms.has(s.code)) continue;
-        const room: Room = { ...s, game, timers: new Set(), ready: new Set(s.ready), emptySince: this.now() };
+        const room: Room = { ...s, game, timers: new Set(), ready: new Set(s.ready), emptySince: this.now(), options: { ...defaults(game), ...s.options } };
         for (const seat of room.seats) {
           if (seat.userId === null) continue;
           seat.connected = false;

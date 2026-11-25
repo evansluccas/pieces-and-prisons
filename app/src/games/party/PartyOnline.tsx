@@ -1,10 +1,12 @@
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { PixelStage } from '../../engine/PixelStage';
 import { COLORS, Gfx } from '../../engine/gfx';
 import type { OnlineGameProps } from '../../ui/Online';
 import { ONLINE_VIEWS } from '../../ui/Online';
 import { BOARD, BoardState, SpaceKind, current, standings } from './logic';
 import type { PartyView } from '../../../server/games/party';
+import { RulesDialog } from '../../ui/RulesDialog';
+import { miniInfo } from './minis';
 
 const W = 480;
 const H = 270;
@@ -65,6 +67,10 @@ export function PartyOnline({ game, room, send, onAgain, error }: OnlineGameProp
   const b = v.board;
   const names = useMemo(() => Object.fromEntries(b.players.map((p) => [p.id, p.id === v.me ? 'You' : p.name])), [b.players, v.me]);
   const seatNo = useMemo(() => Object.fromEntries(b.order.map((id, i) => [id, i % 8])), [b.order]);
+  const [rulesFor, setRulesFor] = useState<string | null>(null);
+  const rules = rulesFor && (
+    <RulesDialog gameId={rulesFor} title={miniInfo(rulesFor)?.label ?? rulesFor} note={miniInfo(rulesFor)?.blurb} onClose={() => setRulesFor(null)} />
+  );
 
   // start an animation whenever a new move arrives (not for the one already on screen when we open)
   const anim = useRef<Anim | null>(null);
@@ -87,15 +93,18 @@ export function PartyOnline({ game, room, send, onAgain, error }: OnlineGameProp
     };
     const relay = (msg: Record<string, unknown>) =>
       send(msg.type === 'act' ? { type: 'act', action: { type: 'mini', action: msg.action } } : msg);
-    const match = b.match;
+    const match = v.mini.match;
     const team = match?.teams ? (match.teams[0].includes(v.me!) ? 'blue' : 'red') : null;
+    const miniId = v.mini.id;
     return (
       <div className="party-mini">
         <p className="party-bar">
-          <b>Party</b> · round {b.round}/{b.rounds} · <b>{v.mini.label}</b> — {match ? KIND_TEXT[match.kind] : ''}
+          <b>Party</b> · {v.practice ? <b className="practice">practice round — nothing at stake</b> : <>round {b.round}/{b.rounds}</>} · <b>{v.mini.label}</b> — {match ? KIND_TEXT[match.kind] : ''}
           {team && <span className={`team ${team}`}> · you’re on team {team}</span>}
           {match?.kind === 'duel' && <span> · {match.seats.map((id) => names[id]).join(' vs ')}</span>}
+          <button className="link" onClick={() => setRulesFor(miniId)}>Rules</button>
         </p>
+        {rules}
         {View && <View key={`${b.round}-${b.turn}-${v.mini.id}`} game={inner} room={room} send={relay} error={error} onAgain={() => undefined} />}
       </div>
     );
@@ -106,6 +115,7 @@ export function PartyOnline({ game, room, send, onAgain, error }: OnlineGameProp
   const onHit = (id: string) => {
     if (id === 'again') return onAgain();
     if (id === 'ready') return send({ type: 'ready' });
+    if (id === 'rules' && v.next) return setRulesFor(v.next.id);
     if (id === 'roll' && myTurn && b.phase === 'roll') send({ type: 'act', action: { type: 'roll' } });
     if (id.startsWith('rival:') && myTurn && b.phase === 'duelPick') send({ type: 'act', action: { type: 'duel', rival: id.slice(6) } });
   };
@@ -128,6 +138,7 @@ export function PartyOnline({ game, room, send, onAgain, error }: OnlineGameProp
     <div className="party-layout">
       <PixelStage width={W} height={H} draw={draw} onHit={onHit} />
       <PartyLog board={b} names={names} />
+      {rules}
     </div>
   );
 }
@@ -335,8 +346,9 @@ function heads(g: Gfx, ctx: Ctx, ids: string[], cx: number, y: number) {
 function drawIntro(g: Gfx, ctx: Ctx, pauseLeft: number | null) {
   const { v, names } = ctx;
   const n = v.next!;
-  const top = card(g, `Next: ${n.label}`, 170);
-  g.text(n.kind === 'duel' ? `Duel — ${n.seats.map((id) => names[id]).join(' vs ')}` : KIND_TEXT[n.kind], W / 2, top + 28, { align: 'center', size: 9, color: '#86192f', shadow: false });
+  const top = card(g, `${v.practice ? 'Practice' : 'Next'}: ${n.label}`, 170);
+  const kind = n.kind === 'duel' ? `Duel — ${n.seats.map((id) => names[id]).join(' vs ')}` : KIND_TEXT[n.kind];
+  g.text(v.practice ? 'Practice round — nothing at stake, just learn the game' : kind, W / 2, top + 28, { align: 'center', size: 9, color: '#86192f', shadow: false });
   if (n.teams) {
     g.text('BLUE', 150, top + 48, { size: 8, color: '#22408e', shadow: false, align: 'right' });
     heads(g, ctx, n.teams[0], 240, top + 43);
@@ -346,14 +358,17 @@ function drawIntro(g: Gfx, ctx: Ctx, pauseLeft: number | null) {
   wrap(g, n.blurb, 90, top + 88, W - 180, '#3a2216', 3);
   const playing = v.me && n.seats.includes(v.me);
   g.text(playing ? `starts in ${pauseLeft ?? 0} s` : `you’re watching this one · ${pauseLeft ?? 0} s`, W / 2, top + 130, { align: 'center', size: 8, color: '#5e3a24', shadow: false });
-  if (playing) g.button('ready', 'Ready', W / 2 - 40, top + 144, 80);
+  if (playing) {
+    g.button('rules', 'Rules', W / 2 - 86, top + 144, 80);
+    g.button('ready', 'Ready', W / 2 + 6, top + 144, 80);
+  } else g.button('rules', 'Rules', W / 2 - 40, top + 144, 80);
 }
 
 function drawPayout(g: Gfx, ctx: Ctx, pauseLeft: number | null) {
   const { v, names, seatNo } = ctx;
   const l = v.last!;
   const h = 36 + l.results.length * 19 + 36;
-  const top = card(g, l.kind === 'duel' ? 'Duel result' : 'Mini-game result', h);
+  const top = card(g, l.practice ? 'Practice result' : l.kind === 'duel' ? 'Duel result' : 'Mini-game result', h);
   [...l.results].sort((a, b) => a.place - b.place).forEach((r, i) => {
     const y = top + 28 + i * 19;
     const d = (l.after[r.seat] ?? 0) - (l.before[r.seat] ?? 0);
@@ -362,12 +377,12 @@ function drawPayout(g: Gfx, ctx: Ctx, pauseLeft: number | null) {
     g.text(r.detail.slice(0, 28), 220, y + 5, { size: 7, color: '#5e3a24', shadow: false });
     g.text(d ? `${d > 0 ? '+' : ''}${d}` : '', W - 86, y + 5, { size: 9, color: d > 0 ? '#1b6a43' : '#86192f', shadow: false, align: 'right' });
   });
-  g.text(`back to the board in ${pauseLeft ?? 0} s`, W / 2, top + h - 30, { align: 'center', size: 7, color: '#5e3a24', shadow: false });
+  g.text(l.practice ? `nothing at stake — the party starts in ${pauseLeft ?? 0} s` : `back to the board in ${pauseLeft ?? 0} s`, W / 2, top + h - 30, { align: 'center', size: 7, color: '#5e3a24', shadow: false });
   g.button('ready', 'Ready', W / 2 - 40, top + h - 20, 80);
 }
 
 function drawWatching(g: Gfx, ctx: Ctx) {
-  const m = ctx.b.match;
+  const m = ctx.v.mini?.match ?? ctx.b.match;
   const top = card(g, 'A duel is on', 84);
   if (m) heads(g, ctx, m.seats, W / 2, top + 26);
   g.text(m ? m.seats.map((id) => ctx.names[id]).join(' vs ') : '', W / 2, top + 48, { align: 'center', size: 10, color: '#86192f', shadow: false });

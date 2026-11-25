@@ -79,7 +79,7 @@ How these fit together — the table engine, the message protocol, accounts, dat
 
 ### Party mode
 
-The home screen has two modes: **Mini-games** (every game on its own) and **Party** — a board game for 2, 4, 6 or 8 players where you roll, move around the yard collecting Pieces, duel rivals and play a short mini-game from the collection after every round. Fewest Pieces after 8 rounds goes to prison. Rules and code: [docs/party-mode.md](docs/party-mode.md).
+The home screen has two modes: **Mini-games** (every game on its own) and **Party** — a board game for 2, 4, 6 or 8 players where you roll, move around the yard collecting Pieces, duel rivals and play a short mini-game from the collection after every round. Fewest Pieces after 8 rounds goes to prison. Every mini-game's rules are a click away (and each can be practised against bots from the home screen), and the host can start with a practice mini-game that's worth nothing. Rules and code: [docs/party-mode.md](docs/party-mode.md).
 
 Each game keeps its rules in pure TypeScript, separate from rendering. That way the bots, the tests and a future online mode can all share the same rules.
 

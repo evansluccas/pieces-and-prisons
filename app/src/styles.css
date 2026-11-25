@@ -176,3 +176,17 @@ canvas.stage { image-rendering: pixelated; display: block; max-width: 100%; }
 .party-mini .team.red { color: #f2687a; }
 .party-layout { display: flex; flex-direction: column; gap: 12px; }
 .party-layout .log { width: 100%; max-height: 200px; }
+.lobby-options { margin: 10px 0; display: grid; gap: 6px; }
+.lobby-options input { accent-color: var(--gold); }
+.rules-dialog { position: fixed; inset: 0; z-index: 50; background: rgba(10, 6, 20, 0.7); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.rules-dialog-box { max-width: 620px; width: 100%; max-height: 85vh; overflow: auto; }
+.rules-dialog h2 { margin: 0 0 8px; color: #5e3a24; }
+.rules-dialog li { margin: 4px 0; }
+.rules-note { background: rgba(94, 58, 36, 0.12); padding: 6px 8px; margin: 0 0 10px; }
+.rules-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; flex-wrap: wrap; }
+.party-minis { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; margin: 8px 0 16px; padding: 0; list-style: none; }
+.party-minis li { display: flex; flex-direction: column; gap: 2px; padding: 8px; background: rgba(0, 0, 0, 0.25); border-radius: 6px; }
+.party-minis small { color: var(--muted); }
+.party-minis button { align-self: flex-start; margin-top: 4px; }
+.party-bar .link { margin-left: 8px; }
+.party-bar .practice { color: var(--emerald); }
