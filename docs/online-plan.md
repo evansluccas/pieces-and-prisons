@@ -2,7 +2,7 @@
 
 How Pieces & Prisons moves from solo play to online tables: what's done, what each game needs, and what's left on the server before we can host it. Tick items off as they land.
 
-**Status (2026-11-23):** all 30 games online · live at https://pieces-and-prisons.fly.dev (Fly.io, Amsterdam).
+**Status (2026-11-25):** all 30 games online, plus **Party mode** (a board game that runs them as mini-games — see [party-mode.md](party-mode.md)) · live at https://pieces-and-prisons.fly.dev (Fly.io, Amsterdam). How the platform fits together: [architecture.md](architecture.md).
 
 ---
 
@@ -25,7 +25,7 @@ Every game goes through the same steps. A game counts as **online** only when al
 
 1. **`<game>/online.ts`** — `start`, `act` (validates every move), `waitingOn`, `botAction`, `pause`, `over`, `results`, and `view`.
 2. **Hide everything the seat mustn't see** in `view`: rival hands, secret choices, bids, and — for memory games — anything the player is meant to *remember* rather than read (see §4). The viewer is renamed `'you'` so the solo drawing code works unchanged.
-3. **Register** it in `app/server/games/index.ts`.
+3. **Register** it in `app/server/games/catalog.ts`. To use it in Party mode too, add it to `MINIS` in `app/server/games/party.ts` with a short version.
 4. **Server tests** (`app/server/<game>.test.ts`): what each seat can and can't see, invalid moves refused, and a whole match played to the end and recorded.
 5. **Online view** (`<Game>Online.tsx`) reusing the solo `drawScene` with a small `OnlineHud` (move clock, countdown, *Ready* button), registered in `app/src/ui/Online.tsx`.
 6. **Browser check**: one round with a scripted second player, confirming in its network messages that nothing secret leaks.
@@ -104,11 +104,12 @@ Not tied to one game. Ordered by when they're needed.
 - [x] Countdowns use the server's clock (a wrong computer clock no longer skews them).
 - [x] Game screens get the server's refusal reason, and the puzzle races show it ("That loop doesn't fit every number…").
 - [x] The app loads each game only when it's opened: the first download fell from 558 kB to 179 kB.
+- [x] Online pages are up to 1500 px wide, so game screens scale to 2x on laptops and 3x on 1920-wide screens.
 
 **Before more games**
 - [x] **Per-game clocks**: a game may set `turnMs(state)` for the current decision (Split Decision needs 30 s; duels may want longer). Otherwise 60 s.
 - [x] **Reload in the lobby**: the seat is kept, marked away, for 45 s (`LOBBY_GRACE_MS`); the hub offers *Rejoin table*. If the game starts meanwhile, you keep the seat in the game.
-- [ ] **README**: keep the list of online games current (ongoing).
+- [x] **README**: the list of online games is current (keep it so).
 
 **Before hosting**
 - [x] **Upgrade development tools**: Vite 8, Vitest 5, tsx 4.23 — `npm audit` finds 0 vulnerabilities.
@@ -131,3 +132,4 @@ Not tied to one game. Ordered by when they're needed.
 4. ~~Development tool upgrades, hosting, first deploy~~ — done: https://pieces-and-prisons.fly.dev
 5. ~~Groups D and E~~ — done.
 6. ~~Group F~~ — done as puzzle races. Every game is online.
+7. ~~Party mode~~ — done: a board for 2/4/6/8 players with the games as mini-games ([party-mode.md](party-mode.md)).

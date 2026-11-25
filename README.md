@@ -24,6 +24,9 @@ A collection of strategy, deduction and bluffing party games inspired by Korean 
 | `assets/preview.html` | Visual gallery (open it locally) |
 | `tools/pixelkit.py` | A small pixel-art engine: parts, auto-shading, sel-out outlines |
 | `tools/build_assets.py` | Every sprite definition; rebuilds all of the above |
+| `docs/architecture.md` | **How the platform works**: app, server, tables, data, hosting — start here |
+| `docs/online-plan.md` | How each game went online, and the rules for keeping secrets hidden |
+| `docs/party-mode.md` | Party mode: rules, mini-games, clocks and screen |
 | `docs/game-catalog.md` | Research notes: game mechanics and rules to adapt |
 | `docs/art-style-guide.md` | Art direction and rules |
 | `docs/asset-inventory.md` | Auto-generated list of every sprite |
@@ -64,9 +67,15 @@ Solo play needs only `npm run dev`. For accounts and online tables, run `npm run
 | `app/src/games/registry.ts` | Every game in the hub, and which ones are playable |
 | `app/src/games/<game>/logic.ts` | Rules as pure, unit-tested functions |
 | `app/src/games/<game>/bots.ts` | Computer opponents |
-| `app/src/ui/` | Hub and DOM panels drawn with the UI sprites |
-| `app/server/` | Game server: SQLite database (`db.ts`), accounts and guests (`auth.ts`), HTTP API (`app.ts`), online tables (`rooms.ts`, `ws.ts`) |
-| `app/server/games/` | Which games can be played online, and how each plugs into a table |
+| `app/src/games/<game>/online.ts` | The game at an online table: moves, and what each seat may see |
+| `app/src/games/shared/` | Seeded random numbers, game speed, puzzle races, common overlays |
+| `app/src/games/party/` | Party mode: board rules and the board screen |
+| `app/src/ui/` | Hub, account panel, online tables, match history and leaderboards |
+| `app/src/net/` | The account API client and the live table connection |
+| `app/server/` | Game server: database (`db.ts`), accounts and guests (`auth.ts`, `names.ts`), HTTP API (`app.ts`), online tables (`rooms.ts`, `ws.ts`), saving tables (`persist.ts`), history and leaderboards (`stats.ts`), admin tool (`admin.ts`) |
+| `app/server/games/` | How each game plugs into a table (`catalog.ts`), and the Party (`party.ts`) |
+
+How these fit together — the table engine, the message protocol, accounts, data and hosting — is in **[docs/architecture.md](docs/architecture.md)**.
 
 ### Party mode
 
@@ -84,7 +93,7 @@ Signed-in players (accounts or guests) choose **Play online**, start a table and
 - **My matches** (in the account panel) lists your finished matches; **Leaderboards** (on the main page) ranks players per game.
 - Finished tables are saved to the database (`matches`, `match_players`).
 
-Every game can be played online: **Lonely Number**, **Dice Tower**, **Blind Bingo**, **Walls & Wards**, **Turf War**, **Tri-Mancala**, **Nine Men's Morris**, **Tigers & Goats**, **Tipping Scales**, **Rumor Exchange**, **Color Doubt**, **Deadeye Hold'em**, **High-Low Equations**, **Smuggler's Gems**, **Piggy Bluff**, **Six Chambers**, **High or Low**, **Ask & Arrange**, **Hex Sum** and **Blind Five** (turn-based), **Sand Bid**, **Number Forge** and **Split Decision** (real-time: the server owns every clock. It times Sand Bid holds and Split Decision answers, forgiving up to 1.5 s of connection lag but never crediting more than it saw, and in Number Forge it decides who forged first), and the seven solo puzzles as **puzzle races** (everyone gets the same puzzle each round; the server keeps the answers, checks every solution and times everyone — see `app/src/games/shared/race.ts`). Each game adds an `online.ts` (its actions and per-player view) and an online view. What's next is in [docs/online-plan.md](docs/online-plan.md).
+Every game can be played online: **Lonely Number**, **Dice Tower**, **Blind Bingo**, **Walls & Wards**, **Turf War**, **Tri-Mancala**, **Nine Men's Morris**, **Tigers & Goats**, **Tipping Scales**, **Rumor Exchange**, **Color Doubt**, **Deadeye Hold'em**, **High-Low Equations**, **Smuggler's Gems**, **Piggy Bluff**, **Six Chambers**, **High or Low**, **Ask & Arrange**, **Hex Sum** and **Blind Five** (turn-based), **Sand Bid**, **Number Forge** and **Split Decision** (real-time: the server owns every clock. It times Sand Bid holds and Split Decision answers, forgiving up to 1.5 s of connection lag but never crediting more than it saw, and in Number Forge it decides who forged first), and the seven solo puzzles as **puzzle races** (everyone gets the same puzzle each round; the server keeps the answers, checks every solution and times everyone — see `app/src/games/shared/race.ts`). Each game adds an `online.ts` (its actions and per-player view) and an online view. How each game went online is in [docs/online-plan.md](docs/online-plan.md).
 
 ### Accounts
 

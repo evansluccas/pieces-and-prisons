@@ -17,6 +17,7 @@ We take only the **general look** from these games. Every sprite here is an orig
    - Big items and tokens: 24x24
    - Cards: 32x44
    - Buttons: 32x14
+   - Party pawns: 16x24 (head-only versions 16x17); board spaces: 24x22 (a coloured top on a darker rim); buildings: 30x28 and 22x40
 3. **Material ramps.** Every colour comes from a five-tone material ramp in `assets/palette.json`:
    - `0` is the outline
    - `1` is the shadow

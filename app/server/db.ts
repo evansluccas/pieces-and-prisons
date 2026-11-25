@@ -3,7 +3,8 @@
  *
  * We keep as little as possible about people: a username (or, for guests,
  * just a display name), a password hash for accounts, and their sessions.
- * Match history tables are ready for multiplayer results.
+ * Besides people: finished matches (history, leaderboards), running tables
+ * saved for a restart, and name reports. See docs/architecture.md §8.
  *
  * Schema changes go in MIGRATIONS, in order; `PRAGMA user_version` records
  * how many have run, so an existing file is upgraded in place.
